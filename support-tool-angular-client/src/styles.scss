@@ -1,0 +1,21 @@
+/* You can add global styles to this file, and also import other style files */
+@import "~bootstrap/dist/css/bootstrap.css";
+@font-face { font-family: 'NotoSans-Thin'; src: url('./assets/fonts/NotoSans-Thin.ttf') format('truetype');}
+@font-face { font-family: 'NotoSans-ExtraLight'; src: url('./assets/fonts/NotoSans-ExtraLight.ttf') format('truetype');}
+@font-face { font-family: 'NotoSans-Light'; src: url('./assets/fonts/NotoSans-Light.ttf') format('truetype');}
+@font-face { font-family: 'NotoSans-Regular'; src: url('./assets/fonts/NotoSans-Regular.ttf') format('truetype');}
+@font-face { font-family: 'NotoSans-Medium'; src: url('./assets/fonts/NotoSans-Medium.ttf') format('truetype');}
+@font-face { font-family: 'NotoSans-SemiBold'; src: url('./assets/fonts/NotoSans-SemiBold.ttf') format('truetype');}
+html, body { height: 100%; overflow-x: hidden; font-family: "NotoSans-Light",Helvetica,sans-serif !important;}
+body { margin: 0; background: #f0f3f5; }
+
+
+h1 {font-size: 2.2rem;margin: 1rem 0 1.25rem; font-family: 'NotoSans-Medium',Helvetica, sans-serif !important;}
+
+h5 { font-family: 'NotoSans-Light',Helvetica,sans-serif !important;}
+
+
+mat-card-header .mat-card-header-text{margin: auto;}
+mat-card { opacity: 0.75;min-height: 150px;border-radius: 0.75rem !important;}
+.mat-card-header, div, p, span { font-family: 'NotoSans-Regular', Helvetica, sans-serif !important;};
+a.btn { font-family: 'NotoSans-Light', Helvetica, sans-serif !important;}

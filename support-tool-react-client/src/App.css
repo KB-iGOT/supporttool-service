@@ -1,0 +1,33 @@
+html,
+body {
+  background-color: rgb(252 229 204 / 50%);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.flex-container {
+  display: flex;
+}
+
+.sidebar-collapsed .content-container {
+  width: calc(100% - 80px);
+}
+
+.content-container {
+  padding: 1rem 2rem 2rem;
+  width: calc(100% - 254px);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.dialog-content-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 2rem 1.5rem !important;
+}
+
+.padding-1-2 {
+  padding: 1rem 2rem !important;
+}
