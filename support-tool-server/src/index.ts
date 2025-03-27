@@ -12,6 +12,7 @@ import pool from "./config/database";
 
 import supportUserRoutes from "./routes/support-user.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
+import moduleRoutes from './routes/modules.routes';
 
 const memoryStore = new session.MemoryStore();
 
@@ -106,6 +107,7 @@ require('./routes/clientRoutes.js')(app, keyCloak);
 
 app.use("/support-users", supportUserRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/modules", moduleRoutes);
 
 
 app.get('*', (req, res) => {

@@ -7,6 +7,7 @@ import { Header } from "./Components/common-components/header";
 import { Sidebar } from "./Components/common-components/sidebar";
 import { BreadcrumbNavigator } from "./Components/common-components/breadcrumbs";
 import { SupportUsers } from "./Components/support-users";
+import { Modules } from "./Components/modules";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
               <Route index element={<Login />} />
               <Route path="/home" element={<Home />} />
               <Route path="/support-users" element={<SupportUsers />} />
+              <Route path="/modules" element={<Modules />} />
             </Routes>
           </BrowserRouter>
         </div>

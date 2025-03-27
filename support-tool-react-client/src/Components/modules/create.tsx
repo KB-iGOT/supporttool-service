@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useMemo } from "react";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -10,31 +10,51 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import { ICreateUser, User } from "../../types/users";
 import DEFAULT from "../../Config/Defaults";
+import { Module } from "../../types/modules";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 
-const CreateSupportUser: React.FC<{
-  open: { visible: boolean; edit: boolean; user: User | null };
+const CreateModule: React.FC<{
+  open: { visible: boolean; edit: boolean; module: Module | null };
   handleClose: () => void;
-  handleSubmit: (fields: ICreateUser, type: string) => void;
+  handleSubmit: (fields: Module, type: string) => void;
 }> = ({ open, handleClose, handleSubmit }) => {
-  const [fields, setFields] = React.useState<ICreateUser>(DEFAULT.CREATE_USER);
+  const [fields, setFields] = useState<Module>(DEFAULT.CREATE_MODULE);
 
   const handleRoleChange = (event: SelectChangeEvent) => {
-    setFields({ ...fields, roles: event.target.value as string });
+    setFields({ ...fields, roles: [event.target.value] });
   };
 
-  React.useMemo(() => {
-    if (open.edit) {
+  const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    switch(type){
+      case 'isVisible':
+        setFields({ ...fields, isVisible: event.target.checked });
+        break;
+      case 'isAdminModule':
+        setFields({ ...fields, isAdminModule: event.target.checked });
+        break;
+      case 'isRootModule':
+        setFields({ ...fields, isRootModule: event.target.checked });
+        break;
+      default:
+        break;
+    }
+  };
+
+  useMemo(() => {
+    if (open.edit && open.module) {
       setFields({
-        userId: open.user?.userId,
-        userName: open.user?.userName,
-        firstName: open.user?.firstName,
-        lastName: open.user?.lastName,
-        roles: open.user?.roles,
+        id: open.module.id,
+        name: open.module.name,
+        url: open.module.url,
+        roles: open.module.roles,
+        isVisible: open.module.isVisible,
+        isAdminModule: open.module.isAdminModule,
+        isRootModule: open.module.isRootModule,
       });
     } else {
-      setFields(DEFAULT.CREATE_USER);
+      setFields(DEFAULT.CREATE_MODULE);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -68,14 +88,14 @@ const CreateSupportUser: React.FC<{
               autoComplete="off"
               required
               margin="dense"
-              id="userId"
-              name="userId"
-              label="User ID"
+              id="name"
+              name="name"
+              label="Name"
               type="text"
               fullWidth
               variant="outlined"
-              value={fields.userId}
-              onChange={(e) => setFields({ ...fields, userId: e.target.value })}
+              value={fields.name}
+              onChange={(e) => setFields({ ...fields, name: e.target.value })}
               disabled={open.edit}
             />
           </FormControl>
@@ -84,56 +104,17 @@ const CreateSupportUser: React.FC<{
               autoComplete="off"
               required
               margin="dense"
-              id="userName"
-              name="userName"
-              label="Username / E-mail"
+              id="url"
+              name="url"
+              label="URL"
               type="text"
               fullWidth
               variant="outlined"
-              value={fields.userName}
-              onChange={(e) =>
-                setFields({ ...fields, userName: e.target.value })
-              }
+              value={fields.url}
+              onChange={(e) => setFields({ ...fields, url: e.target.value })}
               disabled={open.edit}
             />
           </FormControl>
-          <FormControl fullWidth>
-            <TextField
-              autoComplete="off"
-              required
-              margin="dense"
-              id="firstName"
-              name="firstName"
-              label="First Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={fields.firstName}
-              onChange={(e) =>
-                setFields({ ...fields, firstName: e.target.value })
-              }
-              disabled={open.edit}
-            />
-          </FormControl>
-          <FormControl fullWidth>
-            <TextField
-              autoComplete="off"
-              required
-              margin="dense"
-              id="lastName"
-              name="lastName"
-              label="Last Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={fields.lastName}
-              onChange={(e) =>
-                setFields({ ...fields, lastName: e.target.value })
-              }
-              disabled={open.edit}
-            />
-          </FormControl>
-
           <FormControl fullWidth>
             <InputLabel id="roles-label" required>
               Assign role
@@ -141,7 +122,7 @@ const CreateSupportUser: React.FC<{
             <Select
               labelId="roles-label"
               id="roles"
-              value={fields.roles}
+              value={fields.roles.toString()}
               label="Assign role"
               onChange={handleRoleChange}
               required
@@ -150,6 +131,45 @@ const CreateSupportUser: React.FC<{
               <MenuItem value="USER">USER</MenuItem>
               <MenuItem value="VIEWER">VIEWER</MenuItem>
             </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <FormControlLabel
+              control={
+                <Switch
+                  defaultChecked
+                  checked={fields.isVisible}
+                  onChange={(e) => handleSwitchChange(e, 'isVisible')}
+                  inputProps={{ "aria-label": "controlled" }}
+                />
+              }
+              label="Is Visible?"
+            />
+          </FormControl>
+          <FormControl fullWidth>
+          <FormControlLabel
+              control={
+                <Switch
+                  defaultChecked
+                  checked={fields.isAdminModule}
+                  onChange={(e) => handleSwitchChange(e, 'isAdminModule')}
+                  inputProps={{ "aria-label": "controlled" }}
+                />
+              }
+              label="Is Admin Module?"
+            />
+          </FormControl>
+          <FormControl fullWidth>
+          <FormControlLabel
+              control={
+                <Switch
+                  defaultChecked
+                  checked={fields.isRootModule}
+                  onChange={(e) => handleSwitchChange(e, 'isRootModule')}
+                  inputProps={{ "aria-label": "controlled" }}
+                />
+              }
+              label="Is Root Module?"
+            />
           </FormControl>
         </DialogContent>
         <DialogActions className="padding-1-2">
@@ -160,10 +180,8 @@ const CreateSupportUser: React.FC<{
             type="submit"
             variant="contained"
             disabled={
-              !fields.userId ||
-              !fields.userName ||
-              !fields.firstName ||
-              !fields.lastName ||
+              !fields.name ||
+              !fields.url ||
               !fields.roles
             }
           >
@@ -175,4 +193,4 @@ const CreateSupportUser: React.FC<{
   );
 };
 
-export default CreateSupportUser;
+export default CreateModule;
