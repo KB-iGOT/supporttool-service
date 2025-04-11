@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Container from "@mui/material/Container";
@@ -13,6 +13,8 @@ import { authService } from "../../../services/authentication.service";
 import { useNavigate } from "react-router-dom";
 import Snackbar from "@mui/material/Snackbar";
 import Alert, { AlertColor } from "@mui/material/Alert";
+import { appContextType } from "../../../types";
+import { AppContext } from "../../../Context/AppContext";
 
 const useStyles = makeStyles(() =>
   createStyles({
@@ -45,6 +47,10 @@ export const Login: React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
+    const { setIsLoggedIn } = useContext(
+      AppContext,
+    ) as appContextType;
+    
   const [fields, setFields] = useState<{username: string; password: string}>({
     username: "",
     password: "",
@@ -64,6 +70,7 @@ export const Login: React.FC = () => {
     try{
       const response = await authService.auth({ username: fields.username, password: fields.password });
       if(response.status === 200){
+        setIsLoggedIn(true);
         navigate("/home");
       }else{
         setToasts({

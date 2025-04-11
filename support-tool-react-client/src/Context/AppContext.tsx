@@ -1,8 +1,7 @@
 import React, {
     createContext,
     ReactNode,
-    useEffect,
-    useState,
+        useState,
   } from 'react';
 import { appContextType } from '../types';
   
@@ -16,18 +15,13 @@ import { appContextType } from '../types';
     const [loading, setLoading] = useState<boolean>(false);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);   
 
-    useEffect(()=> {
-        console.log(window.location.pathname, window.location.pathname.includes('/login'));
-        setIsLoggedIn(!window.location.pathname.includes('/login'));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[window.location.pathname])
-
   return (
     <AppContext.Provider
       value={{
         loading,
         setLoading,
-        isLoggedIn
+        isLoggedIn,
+        setIsLoggedIn
       }}
     >
       {children}

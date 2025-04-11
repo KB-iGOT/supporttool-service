@@ -38,7 +38,7 @@ const useStyles = makeStyles(() =>
 );
 
 export const Header = () => {
-  const { isLoggedIn } = useContext(
+  const { isLoggedIn, setIsLoggedIn } = useContext(
     AppContext,
   ) as appContextType;
   
@@ -70,6 +70,7 @@ export const Header = () => {
   const triggerMenuClick = async (setting: string) => {
     if (setting === "Logout") {
       await authService.logout();
+      setIsLoggedIn(false);
       navigate("/login");
     }else{
 

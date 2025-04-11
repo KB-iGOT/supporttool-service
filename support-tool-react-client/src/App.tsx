@@ -9,6 +9,7 @@ import { BreadcrumbNavigator } from "./Components/common-components/breadcrumbs"
 import { SupportUsers } from "./Components/support-users";
 import { Modules } from "./Components/modules";
 import { AppContextProvider } from "./Context/AppContext";
+import ProtectedRoute from "./Components/common-components/auth/ProtectedRoute";
 
 function App() {
 
@@ -22,12 +23,11 @@ function App() {
           <div className="content-container">
             <BreadcrumbNavigator />
               <Routes>
-                {/* <Route path="/" element={<Login />} /> */}
-                {/* <Route index element={<Login />} /> */}
+                <Route path="/" element={<Login />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/support-users" element={<SupportUsers />} />
-                <Route path="/modules" element={<Modules />} />
+                <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                <Route path="/support-users" element={<ProtectedRoute><SupportUsers /></ProtectedRoute>} />
+                <Route path="/modules" element={<ProtectedRoute><Modules /></ProtectedRoute>} />
               </Routes>
           </div>
         </div>
