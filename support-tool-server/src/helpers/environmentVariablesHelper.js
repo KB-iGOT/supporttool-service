@@ -17,7 +17,7 @@ let envVariables = {
   APPID: process.env.sunbird_environment + '.' + process.env.sunbird_instance + '.portal',
   DEFAULT_CHANNEL: env.sunbird_default_channel,
   EKSTEP_ENV: env.ekstep_env || 'qa',
-  PORTAL_PORT: env.sunbird_port || 3000,
+  PORTAL_PORT: env.sunbird_port || 5000,
   PORTAL_API_AUTH_TOKEN: env.sunbird_api_auth_token,
   PORTAL_TELEMETRY_PACKET_SIZE: env.sunbird_telemetry_packet_size || 1000,
   PORTAL_ECHO_API_URL: env.sunbird_echo_api_url || 'https://staging.open-sunbird.org/api/echo/',

@@ -2,31 +2,21 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import http from "http";
-import morgan from "morgan";
-import path from "path";
-import dotenv from "dotenv";
 import session from 'express-session';
 import { check, validationResult } from 'express-validator';
-var Keycloak = require('keycloak-connect');
 import pool from "./config/database";
 
+import PgSession from "connect-pg-simple";
+import {isAuthenticated} from './helpers/sessionValidator';
+
+import authRoutes from './routes/authentication.routes';
 import supportUserRoutes from "./routes/support-user.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import moduleRoutes from './routes/modules.routes';
 
-const memoryStore = new session.MemoryStore();
+const pgsession = PgSession(session);
 
 
-let keyCloakConfig = {
-  "realm": "sunbird",
-  "auth-server-url": "https://portal.dev.karmayogibharat.net/auth",
-  "ssl-required": "none",
-  "resource": "support_igot",
-  "public-client": true,
-  "confidential-port": 0
-}
-
-let keyCloak = new Keycloak({ store: memoryStore }, keyCloakConfig);
 
 const app = express();
 app.use(bodyParser.json());
@@ -34,6 +24,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
 app.use(cors());
+
+app.use(
+  session({
+      store: new pgsession({
+          pool,
+          tableName: "sessions",
+      }),
+      secret: "f4be817d-845f-4057-b72c-96f48896502f",
+      resave: false,
+      saveUninitialized: false,
+      cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
+  })
+);
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
@@ -102,9 +105,9 @@ const createTable = async () => {
 };
 createTable();
 
-require('./routes/clientRoutes.js')(app, keyCloak);
+require('./routes/clientRoutes.js')(app, isAuthenticated);
 
-
+app.use('/auth', authRoutes);
 app.use("/support-users", supportUserRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/modules", moduleRoutes);

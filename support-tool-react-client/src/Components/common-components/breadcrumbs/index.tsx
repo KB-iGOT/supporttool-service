@@ -12,17 +12,18 @@ interface IBreaadCrumb {
 }
 
 export const BreadcrumbNavigator: React.FC = () => {
-  const config = CONSTANTS.BREADCRUMBSCONFIG.filter(
+  const isLogin = window.location.pathname.includes('/login');
+  const config = !isLogin ? CONSTANTS.BREADCRUMBSCONFIG.filter(
     (item) => item.path === window.location.pathname
   ).map(
     (item) =>
       CONSTANTS.BREADCRUMBVALUES[
         item.type as keyof typeof CONSTANTS.BREADCRUMBVALUES
       ]
-  )[0];
+  )[0]: [];
 
   return (
-    <Breadcrumbs aria-label="breadcrumb">
+    !isLogin ? <Breadcrumbs aria-label="breadcrumb">
       {config.map((item: IBreaadCrumb, index: number) =>
         item.state === "active" ? (
           <Typography key={index} sx={{ color: "text.primary" }}>
@@ -38,6 +39,6 @@ export const BreadcrumbNavigator: React.FC = () => {
           </Link>
         )
       )}
-    </Breadcrumbs>
+    </Breadcrumbs> : null
   );
 };

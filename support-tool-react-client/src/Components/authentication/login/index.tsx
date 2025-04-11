@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import TextField from "@mui/material/TextField";
 import Grid from "@mui/material/Grid";
 import Container from "@mui/material/Container";
@@ -9,7 +9,10 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import Button from "@mui/material/Button";
 import { makeStyles, createStyles } from "@mui/styles";
+import { authService } from "../../../services/authentication.service";
 import { useNavigate } from "react-router-dom";
+import Snackbar from "@mui/material/Snackbar";
+import Alert, { AlertColor } from "@mui/material/Alert";
 
 const useStyles = makeStyles(() =>
   createStyles({
@@ -42,8 +45,36 @@ export const Login: React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
 
-  const submitForm = () => {
-    navigate('/home');
+  const [fields, setFields] = useState<{username: string; password: string}>({
+    username: "",
+    password: "",
+  })
+
+  const [toasts, setToasts] = useState<{
+    message: string;
+    open: boolean;
+    severity: AlertColor | undefined;
+  }>({ message: "", open: false, severity: undefined });
+
+  
+  const handleToastClose = () =>
+    setToasts({ message: "", open: false, severity: undefined });
+
+  const submitForm = async() => {
+    try{
+      const response = await authService.auth({ username: fields.username, password: fields.password });
+      if(response.status === 200){
+        navigate("/home");
+      }else{
+        setToasts({
+          message: response.message,
+          open: true,
+          severity: "error"
+        })
+      }
+    }catch(err){
+      console.error(err);
+    }
   };
 
   return (
@@ -56,7 +87,11 @@ export const Login: React.FC = () => {
         </Grid>
         <Grid item xs={12} lg={6}>
           <Box mb={2}>
-            <TextField label="E-mail" variant="outlined" fullWidth />
+            <TextField label="E-mail" variant="outlined" fullWidth value={
+              fields.username
+            } onChange={(e)=> 
+            setFields({...fields, username: e.target.value})
+            } />
           </Box>
           <Box mb={2}>
             <TextField
@@ -65,6 +100,8 @@ export const Login: React.FC = () => {
               variant="outlined"
               required
               fullWidth
+              value={fields.password}
+              onChange={(e) => setFields({...fields, password: e.target.value})}
             />
           </Box>
           <Box mb={2}>
@@ -76,10 +113,20 @@ export const Login: React.FC = () => {
             </FormGroup>
           </Box>
           <Box mb={2}>
-            <Button variant="contained" onClick={submitForm}>Sign in</Button>
+            <Button variant="contained" disabled={!fields.username && !fields.password} onClick={submitForm}>Sign in</Button>
           </Box>
         </Grid>
       </Grid>
+      <Snackbar
+                  anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                  open={toasts.open}
+                  autoHideDuration={6000}
+                  onClose={handleToastClose}
+                >
+                  <Alert variant="filled" severity={toasts.severity}>
+                    {toasts.message}
+                  </Alert>
+                </Snackbar>
     </Container>
   );
 };

@@ -10,25 +10,28 @@ import { SupportUsers } from "./Components/support-users";
 import { Modules } from "./Components/modules";
 
 function App() {
+  const isLogin = window.location.pathname.includes('/login');
+
   return (
-    <div className="App">
-      <Header />
-      <div className="flex-container">
-        <Sidebar />
-        <div className="content-container">
-          <BreadcrumbNavigator />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Login />} />
-              <Route index element={<Login />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/support-users" element={<SupportUsers />} />
-              <Route path="/modules" element={<Modules />} />
-            </Routes>
-          </BrowserRouter>
+    <BrowserRouter>
+      <div className="App">
+        {!isLogin && <Header />}
+        <div className="flex-container">
+          {!isLogin && <Sidebar />}
+          <div className="content-container">
+            {!isLogin && <BreadcrumbNavigator />}
+              <Routes>
+                {/* <Route path="/" element={<Login />} /> */}
+                {/* <Route index element={<Login />} /> */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/home" element={<Home />} />
+                <Route path="/support-users" element={<SupportUsers />} />
+                <Route path="/modules" element={<Modules />} />
+              </Routes>
+          </div>
         </div>
       </div>
-    </div>
+    </BrowserRouter>
   );
 }
 

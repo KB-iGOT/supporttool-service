@@ -36,7 +36,7 @@ const setZipConfig = (req, res, type, encoding, dist = '../../../support-tool-re
     }
 }
 
-module.exports = (app, keycloak) => {
+module.exports = (app, isAuthenticated) => {
   console.log(" in here");
     app.set('view engine', 'ejs')
 
@@ -71,37 +71,20 @@ module.exports = (app, keycloak) => {
     next()
   })
   
-  console.log("in the client routes keycloak");
-
-  app.all(['/','/home'],keycloak.protect(),(req,res)=>{
-    console.log("in here");
+  app.all(['/home'],isAuthenticated,(req,res)=>{
     let session = req.session;
-      if(JSON.parse(session['keycloak-token'])['access_token']){
-        res.cookie("auth",JSON.parse(session['keycloak-token'])['access_token']);
-        res.cookie("uid",session.userId);
-        res.render(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'))
-      }else{
+    if(session.user){
+      res.cookie("user",session.user);
+      res.cookie("uid",session.user.id);
+      res.sendFile(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'));
+    }
+  });
 
-      }
+  app.all(['/login'],(req,res)=>{
+    renderDefaultIndexPage(req, res);
   });
 
 }
-
-const indexPage = (loggedInRoute) => {
-    return async (req, res) => {
-      //console.log(req.session);
-      let session = req.session;
-      //console.log(JSON.parse(session['keycloak-token'])['access_token']);
-      if(JSON.parse(session['keycloak-token'])['access_token']){
-        //console.log("In the valid check if");
-        res.cookie("auth",JSON.parse(session['keycloak-token'])['access_token']);
-        renderDefaultIndexPage(req, res);
-      }else{
-
-      }
-
-      }
-};
   
   const renderDefaultIndexPage = (req, res) => {
         res.render(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'))

@@ -13,6 +13,8 @@ import MenuItem from "@mui/material/MenuItem";
 import AdbIcon from "@mui/icons-material/Adb";
 import logo from "../../../assets/logo.svg";
 import { makeStyles, createStyles } from "@mui/styles";
+import { authService } from "../../../services/authentication.service";
+import { useNavigate } from "react-router-dom";
 
 const pages = ["Products", "Pricing", "Blog"];
 const settings = ["Profile", "Account", "Dashboard", "Logout"];
@@ -35,7 +37,8 @@ const useStyles = makeStyles(() =>
 
 export const Header = () => {
   const classes = useStyles();
-
+  const navigate = useNavigate();
+  
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
     null
   );
@@ -59,6 +62,15 @@ export const Header = () => {
   };
 
   const isLogin = window.location.pathname === "/";
+
+  const triggerMenuClick = async (setting: string) => {
+    if (setting === "Logout") {
+      await authService.logout();
+      navigate("/login");
+    }else{
+
+    }
+  }
 
   return (
     <>
@@ -160,8 +172,9 @@ export const Header = () => {
                     onClose={handleCloseUserMenu}
                   >
                     {settings.map((setting) => (
-                      <MenuItem key={setting} onClick={handleCloseUserMenu}>
-                        <Typography sx={{ textAlign: "center" }}>
+                      <MenuItem key={setting} onClick={() => triggerMenuClick(setting)} >
+                        <Typography sx={{ textAlign: "center" }}
+                        >
                           {setting}
                         </Typography>
                       </MenuItem>

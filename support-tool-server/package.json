@@ -16,6 +16,7 @@
     "async": "^3.2.6",
     "body-parser": "^1.20.3",
     "compression": "^1.8.0",
+    "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
@@ -35,12 +36,14 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.11",
     "@types/pg": "^8.11.11",
+    "@types/request": "^2.48.12",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
