@@ -11,9 +11,11 @@
 /support-tool-react-client/node_modules
 /support-tool-angular-client/node_modules
 /support-tool-server/node_modules
+/support-tool-server/.env
 npm-debug.log
 yarn-error.log
 
+/support-tool-server/.env
 # IDEs and editors
 .idea/
 .project
