@@ -13,6 +13,7 @@ import authRoutes from './routes/authentication.routes';
 import supportUserRoutes from "./routes/support-user.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import moduleRoutes from './routes/modules.routes';
+import channelsRoutes from './routes/channels.routes';
 
 const pgsession = PgSession(session);
 
@@ -111,6 +112,7 @@ app.use('/auth', authRoutes);
 app.use("/support-users", supportUserRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/modules", moduleRoutes);
+app.use("/channels", channelsRoutes);
 
 
 app.get('*', (req, res) => {

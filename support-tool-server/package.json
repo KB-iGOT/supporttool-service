@@ -14,6 +14,7 @@
   "dependencies": {
     "@project-sunbird/logger": "^0.0.14",
     "async": "^3.2.6",
+    "axios": "^1.8.4",
     "body-parser": "^1.20.3",
     "compression": "^1.8.0",
     "connect-pg-simple": "^10.0.0",

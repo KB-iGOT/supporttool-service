@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import { Grid2, LinearProgress } from "@mui/material";
 import { dashboardService } from "../../services/dashboard.service";
 import { Module } from "../../types/modules";
+import { useNavigate } from "react-router-dom";
 
 export const Home = () => {
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,8 @@ export const Home = () => {
     modules: [],
     adminModules: [],
   });
+
+  const navigate = useNavigate();
 
     const fetchDashboardModules = async () => {
       setLoading(true);
@@ -59,7 +62,7 @@ export const Home = () => {
                 {/* <Typography variant="body2">{element.description}</Typography> */}
               </CardContent>
               <CardActions>
-                <Button size="small" href={element.url}>
+                <Button size="small" onClick={()=>navigate(element.url)}>
                   Go to {element.name}
                 </Button>
               </CardActions>
@@ -85,7 +88,7 @@ export const Home = () => {
                 {/* <Typography variant="body2">{element.description}</Typography> */}
               </CardContent>
               <CardActions>
-                <Button size="small" href={element.url}>
+                <Button size="small" onClick={()=>navigate(element.url)}>
                   Go to {element.name}
                 </Button>
               </CardActions>
