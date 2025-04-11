@@ -10,6 +10,7 @@ import { SupportUsers } from "./Components/support-users";
 import { Modules } from "./Components/modules";
 import { AppContextProvider } from "./Context/AppContext";
 import ProtectedRoute from "./Components/common-components/auth/ProtectedRoute";
+import { Contents } from "./Components/contents";
 
 function App() {
 
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/support-users" element={<ProtectedRoute><SupportUsers /></ProtectedRoute>} />
                 <Route path="/modules" element={<ProtectedRoute><Modules /></ProtectedRoute>} />
+                <Route path="/contents" element={<ProtectedRoute><Contents /></ProtectedRoute>} />
               </Routes>
           </div>
         </div>

@@ -2,6 +2,7 @@ const BREADCRUMBSCONFIG = [
   { path: "/home", type: "Home" },
   { path: "/support-users", type: "SupportUsers" },
   { path: "/modules", type: "Modules" },
+  { path: "/contents", type: "Contents" },
 ];
 
 const BREADCRUMBVALUES = {
@@ -17,52 +18,13 @@ const BREADCRUMBVALUES = {
     { title: "", link: "/home", state: "inactive" },
     { title: "Modules", link: "#", state: "active" },
   ],
+  Contents: [
+    { title: "", link: "/home", state: "inactive" },
+    { title: "Contents", link: "#", state: "active" },
+  ],
 };
 
-const DASHBOARDELEMENTS = [
-  {
-    title: "Contents",
-    link: "/contents",
-    description:
-      "This feature consists of a list of contents that are available in the IGot environment.",
-    allowedRole: ["admin"],
-  },
-  {
-    title: "Courses",
-    link: "/courses",
-    description:
-      "This feature consists of a list of courses that are available in the IGot environment.",
-    allowedRole: ["admin"],
-  },
-  {
-    title: "Forms",
-    link: "/forms",
-    description:
-      "This feature consists of a list of forms that are available in the IGot environment.",
-    allowedRole: ["admin"],
-  },
-  {
-    title: "Frameworks",
-    link: "/frameworks",
-    description:
-      "This feature consists of a list of frameworks that are available in the IGot environment.",
-    allowedRole: ["admin"],
-  },
-  {
-    title: "Organisations",
-    link: "/organisations",
-    description:
-      "This feature consists of a list of organisations that are available in the IGot environment.",
-    allowedRole: ["admin"],
-  },
-  {
-    title: "Users",
-    link: "/users",
-    description:
-      "This feature consists of a list of users that have access to the IGot environment.",
-    allowedRole: ["admin"],
-  },
-];
+
 
 const ADMINELEMENTS = [
   {
@@ -84,6 +46,5 @@ const ADMINELEMENTS = [
 export default {
   BREADCRUMBSCONFIG,
   BREADCRUMBVALUES,
-  DASHBOARDELEMENTS,
   ADMINELEMENTS,
 };
