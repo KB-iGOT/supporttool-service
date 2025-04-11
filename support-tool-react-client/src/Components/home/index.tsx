@@ -1,32 +1,66 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import CardActions from "@mui/material/CardActions";
 import Button from "@mui/material/Button";
-import { Grid2 } from "@mui/material";
-import CONSTANTS from "../../Config/Constants";
+import { Grid2, LinearProgress } from "@mui/material";
+import { dashboardService } from "../../services/dashboard.service";
+import { Module } from "../../types/modules";
 
 export const Home = () => {
+  const [loading, setLoading] = useState(false);
+  const [list, setList] = useState<{modules: Module[]; adminModules: Module[]}>({
+    modules: [],
+    adminModules: [],
+  });
+
+    const fetchDashboardModules = async () => {
+      setLoading(true);
+      try {
+        const data = await dashboardService.getModules();
+        (data.status === 200) ?
+        setList({
+          modules: data.modules,
+          adminModules: data.adminModules,
+        }): 
+        setList({
+          modules: [],
+          adminModules: [],
+          });
+      } catch (error) {
+        console.error("Error fetching modules:", error);
+      }
+      setLoading(false);
+    };
+
+
+    useEffect(() => {
+      fetchDashboardModules();
+    },
+    []);
   return (
-    <>
+    loading ? (
+      <LinearProgress />
+    ) : (
+      <>
       <Grid2
         container
         rowSpacing={{ xs: 1, sm: 2, md: 3 }}
         columnSpacing={{ xs: 1, sm: 2, md: 3 }}
       >
-        {CONSTANTS.DASHBOARDELEMENTS.map((element, index) => (
+        {list.modules.map((element, index) => (
           <Grid2 key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <Card sx={{ minWidth: 275 }}>
               <CardContent>
                 <Typography variant="h6" component="div">
-                  {element.title}
+                  {element.name}
                 </Typography>
-                <Typography variant="body2">{element.description}</Typography>
+                {/* <Typography variant="body2">{element.description}</Typography> */}
               </CardContent>
               <CardActions>
-                <Button size="small" href={element.link}>
-                  Go to {element.title}
+                <Button size="small" href={element.url}>
+                  Go to {element.name}
                 </Button>
               </CardActions>
             </Card>
@@ -41,18 +75,18 @@ export const Home = () => {
         rowSpacing={{ xs: 1, sm: 2, md: 3 }}
         columnSpacing={{ xs: 1, sm: 2, md: 3 }}
       >
-        {CONSTANTS.ADMINELEMENTS.map((element, index) => (
+        {list.adminModules.map((element, index) => (
           <Grid2 key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <Card sx={{ minWidth: 275 }}>
               <CardContent>
                 <Typography variant="h6" component="div">
-                  {element.title}
+                  {element.name}
                 </Typography>
-                <Typography variant="body2">{element.description}</Typography>
+                {/* <Typography variant="body2">{element.description}</Typography> */}
               </CardContent>
               <CardActions>
-                <Button size="small" href={element.link}>
-                  Go to {element.title}
+                <Button size="small" href={element.url}>
+                  Go to {element.name}
                 </Button>
               </CardActions>
             </Card>
@@ -60,5 +94,6 @@ export const Home = () => {
         ))}
       </Grid2>
     </>
+    )
   );
 };

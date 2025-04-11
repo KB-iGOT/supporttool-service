@@ -37,7 +37,6 @@ const setZipConfig = (req, res, type, encoding, dist = '../../../support-tool-re
 }
 
 module.exports = (app, isAuthenticated) => {
-  console.log(" in here");
     app.set('view engine', 'ejs')
 
   app.get(['*.js', '*.css'], (req, res, next) => {

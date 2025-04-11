@@ -1,8 +1,10 @@
 import { createStyles, makeStyles } from "@mui/styles";
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Fab } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { AppContext } from "../../../Context/AppContext";
+import { appContextType } from "../../../types";
 
 const useStyles = makeStyles(() =>
   createStyles({
@@ -19,6 +21,9 @@ const useStyles = makeStyles(() =>
 );
 
 export const Sidebar = () => {
+    const { isLoggedIn } = useContext(
+      AppContext,
+    ) as appContextType;
   const classes = useStyles();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -32,6 +37,7 @@ export const Sidebar = () => {
   };
 
   return (
+    isLoggedIn ?
     <div className={classes.root} style={{ width: collapsed ? "80px" : "254px" }}>
         <Fab variant="extended" onClick={toggleSidebar} size="small" style={{top: '50%',
     position: 'absolute',
@@ -40,6 +46,6 @@ export const Sidebar = () => {
             {collapsed && <ChevronRightIcon fontSize="small" />}
         </Fab>
       {!collapsed && <div>Sidebar Content</div>}
-    </div>
+    </div> : null
   );
 };

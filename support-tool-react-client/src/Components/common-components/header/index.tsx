@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -15,6 +15,8 @@ import logo from "../../../assets/logo.svg";
 import { makeStyles, createStyles } from "@mui/styles";
 import { authService } from "../../../services/authentication.service";
 import { useNavigate } from "react-router-dom";
+import { AppContext } from "../../../Context/AppContext";
+import { appContextType } from "../../../types";
 
 const pages = ["Products", "Pricing", "Blog"];
 const settings = ["Profile", "Account", "Dashboard", "Logout"];
@@ -36,6 +38,10 @@ const useStyles = makeStyles(() =>
 );
 
 export const Header = () => {
+  const { isLoggedIn } = useContext(
+    AppContext,
+  ) as appContextType;
+  
   const classes = useStyles();
   const navigate = useNavigate();
   
@@ -61,8 +67,6 @@ export const Header = () => {
     setAnchorElUser(null);
   };
 
-  const isLogin = window.location.pathname === "/";
-
   const triggerMenuClick = async (setting: string) => {
     if (setting === "Logout") {
       await authService.logout();
@@ -74,7 +78,7 @@ export const Header = () => {
 
   return (
     <>
-      {!isLogin && (
+      {isLoggedIn ? (
           <AppBar position="static" className={classes.customHeader}>
             <div className={classes.container}>
               <Toolbar disableGutters>
@@ -184,7 +188,7 @@ export const Header = () => {
               </Toolbar>
             </div>
           </AppBar>
-      )}
+      ) : null}
     </>
   );
 };

@@ -8,18 +8,19 @@ import { Sidebar } from "./Components/common-components/sidebar";
 import { BreadcrumbNavigator } from "./Components/common-components/breadcrumbs";
 import { SupportUsers } from "./Components/support-users";
 import { Modules } from "./Components/modules";
+import { AppContextProvider } from "./Context/AppContext";
 
 function App() {
-  const isLogin = window.location.pathname.includes('/login');
 
   return (
     <BrowserRouter>
+    <AppContextProvider>
       <div className="App">
-        {!isLogin && <Header />}
+        <Header />
         <div className="flex-container">
-          {!isLogin && <Sidebar />}
+          <Sidebar />
           <div className="content-container">
-            {!isLogin && <BreadcrumbNavigator />}
+            <BreadcrumbNavigator />
               <Routes>
                 {/* <Route path="/" element={<Login />} /> */}
                 {/* <Route index element={<Login />} /> */}
@@ -31,6 +32,7 @@ function App() {
           </div>
         </div>
       </div>
+      </AppContextProvider>
     </BrowserRouter>
   );
 }

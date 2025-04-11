@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useContext } from "react";
 import Typography from "@mui/material/Typography";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Link from "@mui/material/Link";
 import CONSTANTS from "../../../Config/Constants";
 import HomeTwoToneIcon from "@mui/icons-material/HomeTwoTone";
+import { appContextType } from "../../../types";
+import { AppContext } from "../../../Context/AppContext";
 
 interface IBreaadCrumb {
   title: string;
@@ -12,8 +14,11 @@ interface IBreaadCrumb {
 }
 
 export const BreadcrumbNavigator: React.FC = () => {
-  const isLogin = window.location.pathname.includes('/login');
-  const config = !isLogin ? CONSTANTS.BREADCRUMBSCONFIG.filter(
+      const { isLoggedIn } = useContext(
+        AppContext,
+      ) as appContextType;
+
+  const config = !isLoggedIn ? CONSTANTS.BREADCRUMBSCONFIG.filter(
     (item) => item.path === window.location.pathname
   ).map(
     (item) =>
@@ -23,7 +28,7 @@ export const BreadcrumbNavigator: React.FC = () => {
   )[0]: [];
 
   return (
-    !isLogin ? <Breadcrumbs aria-label="breadcrumb">
+    isLoggedIn ? <Breadcrumbs aria-label="breadcrumb">
       {config.map((item: IBreaadCrumb, index: number) =>
         item.state === "active" ? (
           <Typography key={index} sx={{ color: "text.primary" }}>
