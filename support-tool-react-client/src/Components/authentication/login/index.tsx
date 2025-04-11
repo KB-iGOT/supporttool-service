@@ -70,6 +70,7 @@ export const Login: React.FC = () => {
     try{
       const response = await authService.auth({ username: fields.username, password: fields.password });
       if(response.status === 200){
+        localStorage.setItem('userId', response.userId);
         setIsLoggedIn(true);
         navigate("/home");
       }else{

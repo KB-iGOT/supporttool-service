@@ -6,7 +6,6 @@ const { logger } = require('@project-sunbird/logger');
 
 const getKeyCloakClient = (config, store) => {
   const keycloak = new Keycloak({ store: store || memoryStore }, config);
-  console.log("in keycloak client");
   keycloak.authenticated = authenticated;
   keycloak.deauthenticated = deauthenticated;
   return keycloak
@@ -22,14 +21,11 @@ const deauthenticated = function (request) {
   }
 }
 const authenticated = function (request, next) {
-    console.log(request);
   try {
-    console.log("in try");
     var userId = request.kauth.grant.access_token.content.sub.split(':');
     request.session.userId = userId[userId.length - 1];
     next(null, 'loggedin');
   } catch (err) {
-    console.log('userId conversation error', request.kauth.grant.access_token.content.sub, err);
     next(err, null);
   }
 }

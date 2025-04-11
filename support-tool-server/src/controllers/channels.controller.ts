@@ -1,13 +1,59 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
 import { RequestHandler } from "express";
-import axios from 'axios';
+import request from 'request';
+import { userSession } from "../helpers/authHelper";
 
-// 🚀 **Get All Users**
 export const fetchChannel: RequestHandler = async (
     req: Request,
     res: Response
   ) => {
-    const data = req.body;
-    console.log(req.session);
-  };
+    const header = req.headers;
+    const userId = header['x-user-id'];
+
+    const { session } = await userSession(userId);
+
+    const {id} = req.params;
+
+    try {
+        var options = {
+            method: 'GET',
+            url: `https://portal.dev.karmayogibharat.net/api/channel/v1/read/${id}`,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': process.env.AUTHORIZATION,
+                'x-authenticated-user-token': session.session_data.token.trim(),
+            },
+            json: true
+        }
+    
+        request(options, function (error, response, body) {
+            if (error != null) {
+                console.error("❌ Error fetching users:", error);
+                res
+                    .status(500)
+                    .json({ message: "Internal server error", error: error.message });
+                
+            } else {
+                if (!error && body) {
+                    
+                    if (body) {
+                        res.status(200).send({ status: 200, message: 'Channel fetched successfully', channels: body });
+                    } else {
+                        
+                        res.status(500).send({ status: 500, message: 'Internal server error' });
+
+                    }
+
+                } else {
+                    
+                    res.status(500).send({ status: 500, message: 'Internal server error' });
+                }
+            }
+        });
+    } catch (error) {
+        console.error("❌ Error fetching users:", error);
+        res
+            .status(500)
+            .json({ message: "Internal server error", error });
+    }
+};

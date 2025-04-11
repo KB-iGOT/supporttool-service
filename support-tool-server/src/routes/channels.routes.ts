@@ -6,6 +6,6 @@ import {
 const router = express.Router();
 
 // Define routes
-router.get("/", fetchChannel); // Get all users
+router.get("/:id", fetchChannel); // Get all users
 
 export default router;
