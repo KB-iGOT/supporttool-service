@@ -1,5 +1,4 @@
 import axios from "axios";
-
 import env from "../Config/env";
 // Base URL (Change according to your backend server)
 const API_BASE_URL = env.apiBaseUrl;
@@ -16,10 +15,16 @@ const apiClient = axios.create({
 });
 
 // API Service for Modules
-export const channelsService = {
+export const usersService = {
+    
+
+
   // Fetch all Modules
-  fetchChannel: async (id: string) => {
-    const response = await apiClient.get(`/channels/${id}`);
+  getUsers: async (request: any) => {
+
+console.log('API URLddddddddd:', env.apiBaseUrl);
+    
+    const response = await apiClient.post("/users", request);
     return response.data;
   }
 };

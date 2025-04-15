@@ -1,3 +1,13 @@
+// export const Forms = () => {
+//     return (
+//         <div>
+//             <h1>Forms</h1>
+//             <p>Forms content goes here.</p>         
+//         </div>
+//     );
+// }
+
+
 
 import * as React from "react";
 import Table from "@mui/material/Table";
@@ -9,7 +19,6 @@ import TableRow from "@mui/material/TableRow";
 import TablePagination from '@mui/material/TablePagination';
 import Paper from "@mui/material/Paper";
 import { useEffect, useState, useRef } from "react";
-import { contentsService } from "../../services/contents.service";
 import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -19,20 +28,23 @@ import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
-import { Content, Facets } from "../../types/contents";
+import { User, UserProfile } from "../../types/users";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { FormControl, TextField, Typography } from "@mui/material";
-
+import { usersService } from "../../services/users.service";
+import ClearIcon from "@mui/icons-material/Clear";
 
 const filterConfig = {
   courseCategory: 'multi',
   resourceCategory: 'multi'
 } as const;
 
-export const Contents = () => {
-  const [contents, setContents] = useState<Content[]>([]);
-  const [contentsCount, setContentsCount] = useState<number>(0);
-  const [facets, setFacets] = useState<Facets[]>([]);
+const FACETS_LIST = ["rootOrgName"]
+
+export const Forms = () => {
+  const [forms, setForms] = useState<UserProfile[]>([]);
+  const [usersCount, setUsersCount] = useState<number>(0);
+  const [facets, setFacets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState<{
     message: string;
@@ -60,7 +72,7 @@ export const Contents = () => {
   const handleSearchKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
       setPage(0); // Reset to first page when searching
-      fetchContents(0, rowsPerPage, searchQuery, selectedFilters, false);
+      fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false);
     }
   };
 
@@ -69,13 +81,13 @@ export const Contents = () => {
     // Reset to first page when filters change
     setPage(0);
     // Call API with new filters but don't update facets
-    fetchContents(0, rowsPerPage, searchQuery, filters, false);
+    fetchUsers(0, rowsPerPage, searchQuery, filters, false);
   };
 
   const handleToastClose = () =>
     setToasts({ message: "", open: false, severity: undefined });
 
-  const fetchContents = async (
+  const fetchUsers = async (
     pageNumber = 0, 
     pageSize = 10, 
     query = "", 
@@ -86,37 +98,34 @@ export const Contents = () => {
     try {
       // Create the request payload with pagination parameters and filters
       const requestPayload = {
-        locale: ["en"],
-        request: {
-          limit: pageSize,
-          offset: pageNumber * pageSize,
-          query: query,
-          facets: ["courseCategory", "resourceCategory"],
-          filters: {
-            status: ["Live"],
-            ...buildFilterPayload(filters)
-          },
-          sort_by: {
-            lastUpdatedOn: "desc"
-          }
-        }
-      };
+            "request": {
+                "fields": [],
+                facets: FACETS_LIST,
+                "limit": pageSize, 
+                query: query,
+                filters: {
+                    status: 1,
+                    ...buildFilterPayload(filters)
+                  },
+                "offset": pageNumber * pageSize,
+            }
+        };
       
-      const data = await contentsService.getContent(requestPayload);
+      const data = await usersService.getUsers(requestPayload);
       if (data.result) {
-        setContents(data.result.content || []);
-        setContentsCount(data.result.count || 0);
+        setForms(data.result.response.content || []);
+        setUsersCount(data.result.response.count || 0);
         
         // Only update facets on initial load or when explicitly requested
         if (updateFacets) {
-          setFacets(data.result.facets);
+          setFacets(data.result.response.facets);
           initialLoadComplete.current = true;
         }
       }
     } catch (error) {
-      console.error("Error fetching contents:", error);
+      console.error("Error fetching forms:", error);
       setToasts({
-        message: "Failed to load contents",
+        message: "Failed to load forms",
         open: true,
         severity: "error",
       });
@@ -141,14 +150,15 @@ export const Contents = () => {
   // Pagination handlers
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
-    fetchContents(newPage, rowsPerPage, searchQuery, selectedFilters, false);
+    fetchUsers(newPage, rowsPerPage, searchQuery, selectedFilters, false);
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
+    debugger
     setRowsPerPage(newRowsPerPage);
     setPage(0); // Reset to first page when changing rows per page
-    fetchContents(0, newRowsPerPage, searchQuery, selectedFilters, false);
+    fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false);
   };
 
   // Handle drawer close - don't fetch data again as filters are applied via handleFilterChange
@@ -159,7 +169,7 @@ export const Contents = () => {
   useEffect(() => {
     // Initial load - update facets
     try {
-      fetchContents(page, rowsPerPage, searchQuery, selectedFilters, true);
+      fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, true);
     } catch (error) {
       console.error("Error in initial data fetch:", error);
       setLoading(false);
@@ -174,14 +184,14 @@ export const Contents = () => {
         <>
           <Box display="flex" alignItems={"center"} justifyContent="space-between" mb={2}>
             <div>
-                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
-                <Typography variant="body2">Contents Data goes here.</Typography>                
+                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Forms</Typography>
+                <Typography variant="body2">Forms Data goes here.</Typography>                
             </div>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
             >
-              Add new content
+              Add new user
             </Button>
           </Box>
 
@@ -191,9 +201,9 @@ export const Contents = () => {
                   <TextField
                     autoComplete="off"
                     margin="dense"
-                    id="searchContent"
-                    name="searchContent"
-                    label="Search Content"
+                    id="searchUsers"
+                    name="searchUsers"
+                    label="Search Users"
                     type="text"
                     fullWidth
                     variant="filled"
@@ -201,6 +211,21 @@ export const Contents = () => {
                     onChange={handleSearchChange}
                     onKeyPress={handleSearchKeyPress}
                     color="primary"
+                    InputProps={{
+                        endAdornment: searchQuery ? (
+                          <IconButton
+                            aria-label="clear search"
+                            onClick={() => {
+                              setSearchQuery("");
+                              setPage(0);
+                              fetchUsers(0, rowsPerPage, "", selectedFilters, false);
+                            }}
+                            edge="end"
+                          >
+                            <ClearIcon />
+                          </IconButton>
+                        ) : null,
+                      }}
                     sx={{
                       backgroundColor: "white",
                       borderRadius: "4px",
@@ -248,31 +273,31 @@ export const Contents = () => {
               />
           </div>
           
-          {contents && contents.length > 0 ? (
+          {forms && forms.length > 0 ? (
             <>
               <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                   <TableHead>
                     <TableRow>
                       <TableCell>Name</TableCell>
-                      <TableCell>Primary Category</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Creator</TableCell>
+                      <TableCell>Org name</TableCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Status</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {contents && contents.map((row) => (
+                    {forms && forms.map((row) => (
                       <TableRow
                         key={row.identifier}
                         sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                       >
                         <TableCell component="th" scope="row">
-                          {row.name}
+                          {row.firstName}
                         </TableCell>
-                        <TableCell>{row.primaryCategory}</TableCell>
-                        <TableCell>{new Date(row.createdOn).toLocaleDateString()}</TableCell>
-                        <TableCell>{row.creator}</TableCell>
+                        <TableCell>{row.rootOrgName}</TableCell>
+                        <TableCell>{row?.profileDetails?.personalDetails?.primaryEmail || '-'}</TableCell>
+                        <TableCell>{row?.profileDetails?.profileStatus || '-'}</TableCell>
                         <TableCell align="right">
                           <IconButton
                             aria-label="edit"
@@ -299,7 +324,7 @@ export const Contents = () => {
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25, 50, 100]}
                 component="div"
-                count={contentsCount}
+                count={usersCount}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -308,7 +333,7 @@ export const Contents = () => {
             </>
           ) : (
             <Alert severity="info">
-              No contents available. Create one by clicking on add new content.
+              No forms available. Create one by clicking on add new user.
             </Alert>
           )}
           <Snackbar

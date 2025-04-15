@@ -9,3 +9,13 @@ export interface Content {
 export interface GetContents {
     content: Content
 }
+
+export interface Facets {
+  values: FacetsValues[];
+  name: string;
+} 
+
+export interface FacetsValues {
+  count: number;
+  name: string;
+} 

@@ -3,6 +3,8 @@ const BREADCRUMBSCONFIG = [
   { path: "/support-users", type: "SupportUsers" },
   { path: "/modules", type: "Modules" },
   { path: "/contents", type: "Contents" },
+  { path: "/users", type: "Users" },
+  { path: "/forms", type: "Forms" },
 ];
 
 const BREADCRUMBVALUES = {
@@ -21,6 +23,14 @@ const BREADCRUMBVALUES = {
   Contents: [
     { title: "", link: "/home", state: "inactive" },
     { title: "Contents", link: "#", state: "active" },
+  ],
+  Users: [
+    { title: "", link: "/home", state: "inactive" },
+    { title: "Users", link: "#", state: "active" },
+  ],
+  Forms: [
+    { title: "", link: "/home", state: "inactive" },
+    { title: "Forms", link: "#", state: "active" },
   ],
 };
 

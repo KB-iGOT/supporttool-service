@@ -1,7 +1,8 @@
 import axios from "axios";
 
+import env from "../Config/env";
 // Base URL (Change according to your backend server)
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = env.apiBaseUrl;
 
 const userId = localStorage.getItem("userId");
 

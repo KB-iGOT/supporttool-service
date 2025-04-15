@@ -15,6 +15,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import moduleRoutes from './routes/modules.routes';
 import channelsRoutes from './routes/channels.routes';
 import ContentsRoutes  from "./routes/contents.routes";
+import UsersRoutes from "./routes/users.routes";
 
 const pgsession = PgSession(session);
 
@@ -115,6 +116,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/modules", moduleRoutes);
 app.use("/channels", channelsRoutes);
 app.use("/contents", ContentsRoutes);
+app.use("/users", UsersRoutes);
 
 
 app.get('*', (req, res) => {
