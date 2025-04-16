@@ -15,6 +15,7 @@
 npm-debug.log
 yarn-error.log
 
+/support-tool-react-client/.env
 /support-tool-server/.env
 # IDEs and editors
 .idea/

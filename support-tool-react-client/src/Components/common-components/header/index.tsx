@@ -68,6 +68,7 @@ export const Header = () => {
   };
 
   const triggerMenuClick = async (setting: string) => {
+    console.log(setting);
     if (setting === "Logout") {
       await authService.logout();
       setIsLoggedIn(false);

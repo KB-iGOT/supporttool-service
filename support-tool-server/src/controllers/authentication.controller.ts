@@ -31,7 +31,7 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
                 token: JSON.parse(response.body).access_token 
             };
             await pool.query(
-                'INSERT INTO sessions (user_id, session_data) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET session_data = $2',
+                'INSERT INTO sessions (sid, user_id, session_data) VALUES ($1, $1, $2) ON CONFLICT (user_id) DO UPDATE SET session_data = $2',
                 [users.rows[0].userId, JSON.stringify(sessionData)]
             );
             res
@@ -47,11 +47,12 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
 export const logout = (req: any, res: any) => {
     const userId = req.session.userId;
     req.session.destroy(async (err: any) => {
+      console.log(err);
         if (err) {
             return res.status(500).send({ status: 500, message: 'Internal server error' });
         }
         try {
-            await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+            await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]); // Ensure the column name matches your database schema
             res.status(200).send({ status: 200, message: 'User logged out successfully' });
         } catch (error) {
             res.status(500).send({ status: 500, message: 'Failed to delete session from database' });

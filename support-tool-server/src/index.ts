@@ -33,13 +33,33 @@ app.use(
       store: new pgsession({
           pool,
           tableName: "sessions",
+          createTableIfMissing: true, // Automatically create the table if it doesn't exist
+          schemaName: "public", // Specify schema if needed
       }),
       secret: "f4be817d-845f-4057-b72c-96f48896502f",
       resave: false,
       saveUninitialized: false,
-      cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
+      cookie: { maxAge: 24 * 60 * 60 * 1000 }
   })
 );
+
+// Ensure the sessions table has the required structure
+const createSessionsTable = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid varchar NOT NULL COLLATE "default" PRIMARY KEY,
+        user_id VARCHAR(50),
+        session_data JSON NOT NULL,
+        expire timestamp(6) NOT NULL
+      );
+    `);
+    console.log("✅ Sessions table is ready!");
+  } catch (error) {
+    console.error("❌ Error creating sessions table:", error);
+  }
+};
+createSessionsTable();
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
@@ -61,18 +81,6 @@ app.use(function (req, res, next) {
 
 // app.use(morgan('combined', { stream: logger.stream }));
 
-// Example usage of express-validator in a route
-app.post('/example-route', [
-  check('username').isEmail(),
-  check('password').isLength({ min: 5 })
-], (req: any, res: any) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  res.send('Success');
-});
-
 
 // 🚀 **Create users table if not exists**
 const createTable = async () => {
@@ -90,18 +98,6 @@ const createTable = async () => {
             );
         `);
     console.log("✅ Users table is ready!");
-//     await pool.query(`
-//       CREATE TABLE IF NOT EXISTS modules (
-//           id SERIAL PRIMARY KEY,
-//           "name" VARCHAR(50) UNIQUE NOT NULL,
-//           "url" VARCHAR(100) UNIQUE NOT NULL,
-//           "isVisible" boolean NOT NULL,
-//           roles TEXT[] NOT NULL,
-//           isAdminModule boolean NOT NULL,
-//           isRootModule boolean  NOT NULL,
-//       );
-//   `);
-// console.log("✅ modules table is ready!");
   } catch (error) {
     console.error("❌ Error creating table:", error);
   }
@@ -110,17 +106,17 @@ createTable();
 
 require('./routes/clientRoutes.js')(app, isAuthenticated);
 
-app.use('/auth', authRoutes);
-app.use("/support-users", supportUserRoutes);
-app.use("/dashboard", dashboardRoutes);
-app.use("/modules", moduleRoutes);
-app.use("/channels", channelsRoutes);
-app.use("/contents", ContentsRoutes);
-app.use("/users", UsersRoutes);
+app.use('/api/auth', authRoutes);
+app.use("/api/support-users", isAuthenticated, supportUserRoutes);
+app.use("/api/dashboard",isAuthenticated, dashboardRoutes);
+app.use("/api/modules",isAuthenticated, moduleRoutes);
+app.use("/api/channels",isAuthenticated, channelsRoutes);
+app.use("/api/contents",isAuthenticated, ContentsRoutes);
+app.use("/api/users",isAuthenticated, UsersRoutes);
 
 
 app.get('*', (req, res) => {
-  res.redirect("/content");
+  res.redirect("/login");
 });
 
 app.use(function(err: any, req: any, res: any, next: any) {

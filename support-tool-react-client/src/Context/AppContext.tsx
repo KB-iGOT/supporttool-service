@@ -13,7 +13,15 @@ import { appContextType } from '../types';
     children,
   }) => {
     const [loading, setLoading] = useState<boolean>(false);
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);   
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+      const storedValue = localStorage.getItem('isLoggedIn');
+      return storedValue ? JSON.parse(storedValue) : false;
+    });
+
+    const updateIsLoggedIn = (value: boolean) => {
+      setIsLoggedIn(value);
+      localStorage.setItem('isLoggedIn', JSON.stringify(value));
+    };
 
   return (
     <AppContext.Provider
@@ -21,7 +29,7 @@ import { appContextType } from '../types';
         loading,
         setLoading,
         isLoggedIn,
-        setIsLoggedIn
+        setIsLoggedIn: updateIsLoggedIn
       }}
     >
       {children}

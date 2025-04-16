@@ -1,6 +1,17 @@
-export const isAuthenticated = (req: { session: { user: any; }; }, res: { status: (arg0: number) => { (): any; new(): any; json: { (arg0: { error: string; }): any; new(): any; }; }; }, next: () => void) => {
-    if (!req.session.user) {
-        return res.status(403).json({ error: "Unauthorized" });
-    }
-    next();
+import "express-session";
+import { Request, Response, NextFunction } from "express";
+
+declare module "express-session" {
+  interface SessionData {
+    user?: any; // Add the user property to the session
+  }
+}
+import { RequestHandler } from "express";
+
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (req.session && req.session.user) {
+    return next();
+  } else {
+    res.status(401).json({ message: "Unauthorized" });
+  }
 };
