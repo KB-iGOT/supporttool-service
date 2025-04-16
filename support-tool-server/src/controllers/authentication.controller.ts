@@ -30,9 +30,11 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
                 userName: username, 
                 token: JSON.parse(response.body).access_token 
             };
+            const expireTime = new Date();
+            expireTime.setHours(expireTime.getHours() + 24);
             await pool.query(
-                'INSERT INTO sessions (sid, user_id, session_data) VALUES ($1, $1, $2) ON CONFLICT (user_id) DO UPDATE SET session_data = $2',
-                [users.rows[0].userId, JSON.stringify(sessionData)]
+                'INSERT INTO sessions (sid, user_id, session_data, expire) VALUES ($1, $1, $2, $3) ON CONFLICT (user_id) DO UPDATE SET session_data = $2, expire = $3',
+                [users.rows[0].userId, JSON.stringify(sessionData), expireTime]
             );
             res
             .status(200)

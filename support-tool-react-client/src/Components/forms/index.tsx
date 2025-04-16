@@ -1,14 +1,3 @@
-// export const Forms = () => {
-//     return (
-//         <div>
-//             <h1>Forms</h1>
-//             <p>Forms content goes here.</p>         
-//         </div>
-//     );
-// }
-
-
-
 import * as React from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -31,8 +20,8 @@ import Snackbar from "@mui/material/Snackbar";
 import { User, UserProfile } from "../../types/users";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { FormControl, TextField, Typography } from "@mui/material";
-import { usersService } from "../../services/users.service";
 import ClearIcon from "@mui/icons-material/Clear";
+import { formsService } from "../../services/forms.service";
 
 const filterConfig = {
   courseCategory: 'multi',
@@ -111,7 +100,7 @@ export const Forms = () => {
             }
         };
       
-      const data = await usersService.getUsers(requestPayload);
+      const data = await formsService.getForms(requestPayload);
       if (data.result) {
         setForms(data.result.response.content || []);
         setUsersCount(data.result.response.count || 0);

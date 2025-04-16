@@ -16,6 +16,8 @@ import moduleRoutes from './routes/modules.routes';
 import channelsRoutes from './routes/channels.routes';
 import ContentsRoutes  from "./routes/contents.routes";
 import UsersRoutes from "./routes/users.routes";
+import FormsRoutes from "./routes/forms.routes";
+import SystemSettingsRoutes from "./routes/systems-settings.routes";
 
 const pgsession = PgSession(session);
 
@@ -107,13 +109,15 @@ createTable();
 require('./routes/clientRoutes.js')(app, isAuthenticated);
 
 app.use('/api/auth', authRoutes);
-app.use("/api/support-users", isAuthenticated, supportUserRoutes);
-app.use("/api/dashboard",isAuthenticated, dashboardRoutes);
-app.use("/api/modules",isAuthenticated, moduleRoutes);
-app.use("/api/channels",isAuthenticated, channelsRoutes);
-app.use("/api/contents",isAuthenticated, ContentsRoutes);
-app.use("/api/users",isAuthenticated, UsersRoutes);
+app.use("/api/support-users", supportUserRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/modules", moduleRoutes);
+app.use("/api/channels", channelsRoutes);
+app.use("/api/contents", ContentsRoutes);
+app.use("/api/users", UsersRoutes);
+app.use("/api/forms", FormsRoutes);
 
+app.use("/api/system/settings", SystemSettingsRoutes);
 
 app.get('*', (req, res) => {
   res.redirect("/login");

@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
 import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
 
-export const getUsers: RequestHandler = async (
+export const getForms: RequestHandler = async (
     req: Request,
     res: Response
 ) => {
@@ -15,7 +14,7 @@ export const getUsers: RequestHandler = async (
         try {
             const response = await axios({
                 method: 'POST',
-                url: `${process.env.KONG_API_URL}/api/private/user/v1/search`,
+                url: `${process.env.KONG_API_URL}/apis/v1/form/list`,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
