@@ -14,7 +14,7 @@ import { Contents } from "./Components/contents";
 import { Users } from "./Components/users";
 import { Forms } from "./Components/forms";
 import { ListSystemSettings } from "./Components/system-settings/list";
-import { Editor } from "./Components/system-settings/editor";
+import { Edit } from "./Components/system-settings/edit";
 import { SystemSettings } from "./Components/system-settings";
 
 function App() {
@@ -39,7 +39,7 @@ function App() {
                 <Route path="/forms" element={<ProtectedRoute><Forms /></ProtectedRoute>} />
                 <Route path="/system-settings" element={<ProtectedRoute><SystemSettings /></ProtectedRoute>} >
                   <Route index element={<ListSystemSettings />} />
-                  <Route path="edit/:id" element={<Editor />} />
+                  <Route path="edit/:id" element={<Edit />} />
                 </Route>
               </Routes>
           </div>
