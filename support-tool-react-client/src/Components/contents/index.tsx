@@ -164,6 +164,7 @@ export const Contents = () => {
       console.error("Error in initial data fetch:", error);
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run only once on mount
 
   return (

@@ -17,7 +17,7 @@ import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
-import { User, UserProfile } from "../../types/users";
+import { UserProfile } from "../../types/users";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { FormControl, TextField, Typography } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -163,6 +163,7 @@ export const Forms = () => {
       console.error("Error in initial data fetch:", error);
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run only once on mount
 
   return (

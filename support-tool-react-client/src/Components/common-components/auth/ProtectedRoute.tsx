@@ -13,8 +13,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           AppContext,
         ) as appContextType;
 
-        console.log(isLoggedIn);
-
   // If the user is not logged in, redirect to the login page
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;

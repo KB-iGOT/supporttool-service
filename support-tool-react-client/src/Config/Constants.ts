@@ -5,6 +5,7 @@ const BREADCRUMBSCONFIG = [
   { path: "/contents", type: "Contents" },
   { path: "/users", type: "Users" },
   { path: "/forms", type: "Forms" },
+  { path: "/system-settings", type: "SystemSettings" },
 ];
 
 const BREADCRUMBVALUES = {
@@ -31,6 +32,10 @@ const BREADCRUMBVALUES = {
   Forms: [
     { title: "", link: "/home", state: "inactive" },
     { title: "Forms", link: "#", state: "active" },
+  ],
+  SystemSettings: [
+    { title: "", link: "/home", state: "inactive" },
+    { title: "System Settings", link: "#", state: "active" },
   ],
 };
 

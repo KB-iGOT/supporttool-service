@@ -127,7 +127,6 @@ export const updateConfig: RequestHandler = async (
     const userId = header['x-user-id'];
     try {
         const { session } = await userSession(userId);
-        console.log(req.body);
         try {
             const response = await axios({
                 method: 'POST',
@@ -137,13 +136,13 @@ export const updateConfig: RequestHandler = async (
                     'Authorization': process.env.AUTHORIZATION,
                     'x-authenticated-user-token': session.session_data.token.trim(),
                 },
-                data: req.body,
+                data: JSON.stringify(req.body),
 
 
             });
 
             // If successful
-            // res.status(200).send(response.data )
+            res.status(200).send({...response.data} );
         } catch (error) {
             console.error("❌ Error fetching contents:", error);
             

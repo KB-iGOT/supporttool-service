@@ -2,7 +2,6 @@ import React, { useContext } from "react";
 import Typography from "@mui/material/Typography";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import Link from "@mui/material/Link";
-import CONSTANTS from "../../../Config/Constants";
 import HomeTwoToneIcon from "@mui/icons-material/HomeTwoTone";
 import { appContextType } from "../../../types";
 import { AppContext } from "../../../Context/AppContext";
@@ -19,21 +18,18 @@ export const BreadcrumbNavigator: React.FC = () => {
   // Use useLocation hook to get current path and trigger re-render on route change
   const location = useLocation();
 
-  // Get breadcrumb config based on current path from location
-  const config = isLoggedIn
-    ? CONSTANTS.BREADCRUMBSCONFIG.filter(
-        (item) => item.path === location.pathname
-      ).map(
-        (item) =>
-          CONSTANTS.BREADCRUMBVALUES[
-            item.type as keyof typeof CONSTANTS.BREADCRUMBVALUES
-          ]
-      )[0]
-    : [];
-
-  // For debugging - remove this in production
-  console.log("Current path:", location.pathname);
-  console.log("Breadcrumb config:", config);
+  // Construct breadcrumbs dynamically based on the URL
+  const pathSegments = location.pathname
+    .split("/")
+    .filter((segment) => segment);
+  const config = pathSegments.map((segment, index) => {
+    const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
+    return {
+      title: segment.charAt(0).toUpperCase() + segment.slice(1),
+      link: path,
+      state: index === pathSegments.length - 1 ? "active" : "inactive",
+    };
+  });
 
   if (!isLoggedIn) {
     return null;
@@ -41,34 +37,28 @@ export const BreadcrumbNavigator: React.FC = () => {
 
   return (
     <Breadcrumbs aria-label="breadcrumb">
-      {config  && config.map((item: IBreaadCrumb, index: number) =>
-        item.state === "active" ? (
-          <Typography key={index} sx={{ color: "text.primary" }}>
-            {item.title}
-          </Typography>
-        ) : item.title !== "" ? (
-          // Use RouterLink instead of href for client-side navigation
-          <Link
-            key={index}
-            underline="hover"
-            color="inherit"
-            component={RouterLink}
-            to={item.link}
-          >
-            {item.title}
-          </Link>
-        ) : (
-          <Link
-            key={index}
-            underline="hover"
-            color="inherit"
-            component={RouterLink}
-            to={item.link}
-          >
-            <HomeTwoToneIcon />
-          </Link>
-        )
-      )}
+      <Link underline="hover" color="inherit" component={RouterLink} to="/home">
+        <HomeTwoToneIcon />
+      </Link>
+      {config &&
+        config.map((item: IBreaadCrumb, index: number) =>
+          item.state === "active" ? (
+            <Typography key={index} sx={{ color: "text.primary" }}>
+              {item.title}
+            </Typography>
+          ) : (
+            // Use RouterLink instead of href for client-side navigation
+            <Link
+              key={index}
+              underline="hover"
+              color="inherit"
+              component={RouterLink}
+              to={item.link}
+            >
+              {item.title}
+            </Link>
+          )
+        )}
     </Breadcrumbs>
   );
 };

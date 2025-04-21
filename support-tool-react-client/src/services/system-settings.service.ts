@@ -32,8 +32,7 @@ export const systemSettingsService = {
         return response.data;
   },
   updateConfig: async (request: any) => {
-    console.log('API URLddddddddd:', request);
-        const response = await apiClient.post("/system/settings/update", request);
-        return request;
+        const response: any = await apiClient.post("/system/settings/update", request);
+        return response.data;
   }
 };

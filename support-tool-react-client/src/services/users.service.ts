@@ -22,7 +22,6 @@ export const usersService = {
   // Fetch all Modules
   getUsers: async (request: any) => {
 
-console.log('API URLddddddddd:', env.apiBaseUrl);
     
     const response = await apiClient.post("/users", request);
     return response.data;

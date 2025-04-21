@@ -49,7 +49,6 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
 export const logout = (req: any, res: any) => {
     const userId = req.session.userId;
     req.session.destroy(async (err: any) => {
-      console.log(err);
         if (err) {
             return res.status(500).send({ status: 500, message: 'Internal server error' });
         }

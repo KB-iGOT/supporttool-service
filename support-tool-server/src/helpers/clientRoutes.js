@@ -61,8 +61,7 @@ module.exports = (app, isAuthenticated) => {
     next()
   })
   
-  app.all(['/home'],isAuthenticated,(req,res)=>{
-    console.log('in here');
+  app.all(['/home', '/contents', '/users', '/modules', '/support-users', '/system-settings', '/system-settings/edit/:id'], isAuthenticated, (req, res) => {
     res.render(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.html'));
   });
 

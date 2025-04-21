@@ -11,7 +11,6 @@ import Paper from "@mui/material/Paper";
 import { useEffect, useState, useMemo } from "react";
 import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
-import DeleteIcon from "@mui/icons-material/Delete";
 import PencilIcon from "@mui/icons-material/Edit";
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
@@ -200,13 +199,6 @@ export const ListSystemSettings = () => {
                             onClick={() => navigate(`/system-settings/edit/${row.id}`)}  
                           >
                             <PencilIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            aria-label="delete"
-                            size="small"
-                            onClick={() => {}}
-                          >
-                            <DeleteIcon fontSize="small" />
                           </IconButton>
                         </TableCell>
                       </TableRow>

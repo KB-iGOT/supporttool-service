@@ -9,16 +9,19 @@ body {
   display: flex;
 }
 
-.sidebar-collapsed .content-container {
-  width: calc(100% - 80px);
-}
-
 .content-container {
   padding: 1rem 2rem 2rem;
   width: calc(100% - 254px);
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
+  margin-top: 68.5px;
+  margin-left: 254px;
+}
+
+.sidebar-collapsed .content-container {
+  width: calc(100% - 80px);
+  margin-left: 80px;
 }
 
 .dialog-content-container {
