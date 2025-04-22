@@ -16,6 +16,7 @@ import { Forms } from "./Components/forms";
 import { ListSystemSettings } from "./Components/system-settings/list";
 import { Edit } from "./Components/system-settings/edit";
 import { SystemSettings } from "./Components/system-settings";
+import { Create } from "./Components/system-settings/create";
 
 function App() {
 
@@ -40,6 +41,7 @@ function App() {
                 <Route path="/system-settings" element={<ProtectedRoute><SystemSettings /></ProtectedRoute>} >
                   <Route index element={<ListSystemSettings />} />
                   <Route path="edit/:id" element={<Edit />} />
+                  <Route path="create" element={<Create />} />
                 </Route>
               </Routes>
           </div>

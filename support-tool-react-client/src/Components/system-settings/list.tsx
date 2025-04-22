@@ -15,10 +15,11 @@ import PencilIcon from "@mui/icons-material/Edit";
 import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
-import { FormControl, TextField, Typography } from "@mui/material";
+import { Button, FormControl, TextField, Typography } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
 import { systemSettingsService } from "../../services/system-settings.service";
 import { Outlet, useNavigate } from "react-router-dom";
+import AddIcon from "@mui/icons-material/Add";
 
 // Interface for system settings item
 interface SystemSetting {
@@ -124,6 +125,14 @@ export const ListSystemSettings = () => {
                 <Typography variant="h4" component="h1" sx={{ margin: 0 }}>System settings</Typography>
                 <Typography variant="body2">System settings for the application</Typography>                
             </div>
+
+            <Button
+              variant="contained"
+              onClick={() => navigate("/system-settings/create")}
+              startIcon={<AddIcon />}
+            >
+              Add new System Settings
+            </Button>
           </Box>
 
           <div className="bg-gray-100 p-4">

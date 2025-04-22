@@ -25,5 +25,18 @@ export const usersService = {
     
     const response = await apiClient.post("/users", request);
     return response.data;
-  }
+  },
+  updateUser: async (userId: string, updatedFields: any) => {
+    // Construct the request payload as expected by your API
+    const requestPayload = {
+      request: {
+        userId,
+        ...updatedFields
+      }
+    };
+    debugger
+    const response = {}
+    // await apiClient.patch(`/users/${userId}`, requestPayload);
+    return response;
+  },
 };

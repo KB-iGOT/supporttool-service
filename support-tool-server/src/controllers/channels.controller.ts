@@ -17,7 +17,7 @@ export const fetchChannel: RequestHandler = async (
     try {
         var options = {
             method: 'GET',
-            url: `https://portal.dev.karmayogibharat.net/api/channel/v1/read/${id}`,
+            url: `${process.env.KONG_API_URL}/api/channel/v1/read/${id}`,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.AUTHORIZATION,

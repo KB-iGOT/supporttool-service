@@ -86,19 +86,11 @@ export const Forms = () => {
     setLoading(true);
     try {
       // Create the request payload with pagination parameters and filters
-      const requestPayload = {
-            "request": {
-                "fields": [],
-                facets: FACETS_LIST,
-                "limit": pageSize, 
-                query: query,
-                filters: {
-                    status: 1,
-                    ...buildFilterPayload(filters)
-                  },
-                "offset": pageNumber * pageSize,
-            }
-        };
+      const requestPayload ={
+        "request": {
+            "rootOrgId": "01397282245867929648"
+        }
+    };
       
       const data = await formsService.getForms(requestPayload);
       if (data.result) {

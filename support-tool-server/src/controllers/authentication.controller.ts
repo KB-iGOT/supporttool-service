@@ -5,7 +5,7 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
     const {username, password} = req.body;
     const options = {
         'method': 'POST',
-        'url': 'https://portal.dev.karmayogibharat.net/auth/realms/sunbird/protocol/openid-connect/token',
+        'url': `${process.env.KONG_API_URL}/auth/realms/sunbird/protocol/openid-connect/token`,
         'headers': {
           'Content-Type': 'application/x-www-form-urlencoded'
         },

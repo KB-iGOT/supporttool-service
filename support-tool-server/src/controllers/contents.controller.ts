@@ -15,7 +15,7 @@ export const getContents: RequestHandler = async (
         try {
             const response = await axios({
                 method: 'POST',
-                url: `https://portal.dev.karmayogibharat.net/api/content/v1/search`,
+                url: `${process.env.KONG_API_URL}/api/content/v1/search`,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
