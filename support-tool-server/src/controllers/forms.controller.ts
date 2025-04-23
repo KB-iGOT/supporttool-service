@@ -14,7 +14,7 @@ export const getForms: RequestHandler = async (
     try {
             const response = await axios({
                 method: 'POST',
-                url: `${process.env.KONG_API_URL}/apis/v1/form/list`,
+                url: `${process.env.KONG_API_URL}/api/data/v1/form/list`,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
