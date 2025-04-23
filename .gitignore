@@ -12,6 +12,7 @@
 /support-tool-angular-client/node_modules
 /support-tool-server/node_modules
 /support-tool-server/.env
+/support-tool-server/dist
 npm-debug.log
 yarn-error.log
 

@@ -38,6 +38,7 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.7.5",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",

@@ -18,6 +18,7 @@ import ContentsRoutes  from "./routes/contents.routes";
 import UsersRoutes from "./routes/users.routes";
 import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
+import clientRoutes from "./helpers/clientRoutes";
 
 
 const app = express();
@@ -127,7 +128,7 @@ const createTable = async () => {
 };
 createTable();
 
-require('./routes/clientRoutes.js')(app, isAuthenticated);
+clientRoutes(app, isAuthenticated);
 
 app.use('/api/auth', authRoutes);
 app.use("/api/support-users", supportUserRoutes);
