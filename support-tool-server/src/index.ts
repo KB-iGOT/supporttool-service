@@ -5,6 +5,7 @@ import http from "http";
 import session from 'express-session';
 import { check, validationResult } from 'express-validator';
 import pool from "./config/database";
+import logger from "./utils/logger";
 
 import connectPgSimple from "connect-pg-simple";
 import {isAuthenticated} from './helpers/sessionValidator';
@@ -78,9 +79,9 @@ const createSessionsTable = async () => {
         userId varchar
       );
     `);
-    console.log("✅ Sessions table is ready!");
+    logger.info("✅ Sessions table is ready!");
   } catch (error) {
-    console.error("❌ Error creating sessions table:", error);
+    logger.error(`❌ Error creating sessions table: ${error}`);
   }
 };
 createSessionsTable();
@@ -121,9 +122,9 @@ const createTable = async () => {
                 updated_at TIMESTAMP DEFAULT now()
             );
         `);
-    console.log("✅ Users table is ready!");
+    logger.info("✅ Users table is ready!");
   } catch (error) {
-    console.error("❌ Error creating table:", error);
+    logger.error(`❌ Error creating table: ${error}`);
   }
 };
 createTable();
@@ -145,26 +146,13 @@ app.get('*', (req, res) => {
   res.redirect("/login");
 });
 
-// app.use(function(err: any, req: any, res: any, next: any) {
-//   // set locals, only providing error in development
-//   res.locals.message = err.message;
-//   res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-//   // add this line to include winston logging
-//   // winston.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-
-//   // render the error page
-//   res.status(err.status || 500);
-//   res.json({'error':err.message});
-// });
-
 const port = process.env.PORT || '5000';
 
 // Set port
 app.set('port', port);
 
 const server = http.createServer(app);
-server.listen(port, () =>   console.log(`🚀 Server running on http://localhost:${port}`));
+server.listen(port, () =>   logger.info(`🚀 Server running on http://localhost:${port}`));
 
 // Exposing an app
 module.exports = app;
