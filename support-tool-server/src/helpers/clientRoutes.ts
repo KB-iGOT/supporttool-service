@@ -75,7 +75,7 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
       '/*.html',
     ],
     compression(),
-    (req: Request, res: Response, next: NextFunction) => {
+    (_req: Request, res: Response, next: NextFunction) => {
       res.setHeader('Cache-Control', `public, max-age=${oneDayMS * 30}`);
       res.setHeader('Expires', new Date(Date.now() + oneDayMS * 30).toUTCString());
       next();
@@ -88,7 +88,7 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
   app.use('/dist', express.static(buildPath, { extensions: ['ejs'], index: false }));
 
   // Image caching
-  app.get('/assets/images/*', (req: Request, res: Response, next: NextFunction) => {
+  app.get('/assets/images/*', (_req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Cache-Control', `public, max-age=${oneDayMS}`);
     res.setHeader('Expires', new Date(Date.now() + oneDayMS).toUTCString());
     next();
@@ -118,6 +118,6 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
 };
 
 // Render index page
-const renderDefaultIndexPage = (req: Request, res: Response): void => {
-  res.render(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'));
+const renderDefaultIndexPage = (_req: Request, res: Response): void => {
+  res.sendFile(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.html'));
 };
