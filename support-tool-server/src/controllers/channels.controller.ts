@@ -7,11 +7,6 @@ export const fetchChannel: RequestHandler = async (
     req: Request,
     res: Response
   ) => {
-    const header = req.headers;
-    const uid = header['x-user-id'];
-
-    const { session } = await userSession(uid);
-
     const {id} = req.params;
 
     try {
@@ -21,7 +16,7 @@ export const fetchChannel: RequestHandler = async (
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.AUTHORIZATION,
-                'x-authenticated-user-token': session.sess.user.token.trim(),
+                'x-authenticated-user-token': req.session.user.token.trim(),
             },
             json: true
         }

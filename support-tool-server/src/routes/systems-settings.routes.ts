@@ -1,12 +1,17 @@
 import express from "express";
 
-import { getConfig, getList, updateConfig } from "../controllers/system-settings.controller";
+import {
+  getConfig,
+  getList,
+  updateConfig,
+} from "../controllers/system-settings.controller";
+import { userSession } from "../helpers/authHelper";
 
 const SystemSettingsRoutes = express.Router();
 
 // Define your routes here
-SystemSettingsRoutes.get("/", getList);
-SystemSettingsRoutes.get("/:id", getConfig);
-SystemSettingsRoutes.post("/update", updateConfig);
+SystemSettingsRoutes.route("/").get(userSession, getList);
+SystemSettingsRoutes.route("/:id").get(userSession, getConfig);
+SystemSettingsRoutes.route("/").post(userSession, updateConfig);
 
-export default SystemSettingsRoutes ;
+export default SystemSettingsRoutes;

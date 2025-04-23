@@ -7,10 +7,7 @@ export const getForms: RequestHandler = async (
     req: Request,
     res: Response
 ) => {
-    const header = req.headers;
-    const uid = header['x-user-id'];
-    try {
-        const { session } = await userSession(uid);
+
     try {
             const response = await axios({
                 method: 'POST',
@@ -18,7 +15,7 @@ export const getForms: RequestHandler = async (
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
-                    'x-authenticated-user-token': session.sess.user.token.trim(),
+                    'x-authenticated-user-token': req.session.user.token.trim(),
                 },
 
                 data: req.body, // Send the request body from client
@@ -52,11 +49,4 @@ export const getForms: RequestHandler = async (
                 });
             }
         }
-    } catch (error: any) {
-        console.error("❌ Error getting user session:", error);
-        res.status(500).json({ 
-            message: "Failed to authenticate user session", 
-            error: error.message 
-        });
-    }
 };
