@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { systemSettingsService } from "../../services/system-settings.service";
 import {
@@ -8,28 +8,26 @@ import {
   Button,
   Paper,
   Tooltip,
-  Snackbar,
-  Alert,
   TextField,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SaveIcon from "@mui/icons-material/Save";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import { JsonEditor } from "../common-components/json-editor/json-editor";
+import { AppContext } from "../../Context/AppContext";
+import { appContextType } from "../../types";
 
 export const Edit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+    const { setNotification } = useContext(
+      AppContext,
+    ) as appContextType;
   const [input, setInput] = useState<string>("");
   const [configData, setConfigData] = useState<any>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isJsonValue, setIsJsonValue] = useState<boolean>(true);
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info";
-  }>({ open: false, message: "", severity: "info" });
   const editorRef = useRef<any>(null);
 
   const getConfigData = async () => {
@@ -185,10 +183,6 @@ export const Edit = () => {
     }
   };
 
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
-  };
-
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
   };
@@ -339,22 +333,6 @@ export const Edit = () => {
           />
         )}
       </Box>
-
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={5000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={handleCloseNotification}
-          severity={notification.severity}
-          variant="filled"
-          elevation={6}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

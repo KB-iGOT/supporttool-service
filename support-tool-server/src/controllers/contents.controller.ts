@@ -9,17 +9,17 @@ export const getContents: RequestHandler = async (
     res: Response
 ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const uid = header['x-user-id'];
     try {
-        const { session } = await userSession(userId);
+        const { session } = await userSession(uid);
         try {
             const response = await axios({
                 method: 'POST',
-                url: `https://portal.dev.karmayogibharat.net/api/content/v1/search`,
+                url: `${process.env.KONG_API_URL}api/content/v1/search`,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
-                    'x-authenticated-user-token': session.session_data.token.trim(),
+                    'x-authenticated-user-token': session.sess.user.token.trim(),
                 },
 
                 data: req.body, // Send the request body from client

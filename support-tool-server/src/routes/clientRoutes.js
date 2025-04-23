@@ -27,11 +27,6 @@ const setZipConfig = (req, res, type, encoding, dist = '../../../support-tool-re
         return true
     } else {
       pathMap[req.path + type] = 'notExist';
-      logger.info({msg:'zip file not exist' ,
-      additionalInfo: {
-        url: req.url,
-        type: type
-      }})
       return false;
     }
 }
@@ -74,8 +69,7 @@ module.exports = (app, isAuthenticated) => {
     let session = req.session;
     if(session.user){
       res.cookie("user",session.user);
-      res.cookie("uid",session.user.id);
-      res.sendFile(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'));
+      res.render(path.join(__dirname, '../../../support-tool-react-client/build/', 'index.ejs'));
     }
   });
 

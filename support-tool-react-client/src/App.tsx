@@ -16,6 +16,7 @@ import { Forms } from "./Components/forms";
 import { ListSystemSettings } from "./Components/system-settings/list";
 import { Edit } from "./Components/system-settings/edit";
 import { SystemSettings } from "./Components/system-settings";
+import { Notification } from "./Components/common-components/notifications";
 
 function App() {
 
@@ -45,6 +46,7 @@ function App() {
           </div>
         </div>
       </div>
+      <Notification />
       </AppContextProvider>
     </BrowserRouter>
   );

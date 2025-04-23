@@ -9,9 +9,9 @@ export const getUsers: RequestHandler = async (
     res: Response
 ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const uid = header['x-user-id'];
     try {
-        const { session } = await userSession(userId);
+        const { session } = await userSession(uid);
         try {
             const response = await axios({
                 method: 'POST',
@@ -19,7 +19,7 @@ export const getUsers: RequestHandler = async (
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
-                    'x-authenticated-user-token': session.session_data.token.trim(),
+                    'x-authenticated-user-token': session.sess.user.token.trim(),
                 },
 
                 data: req.body, // Send the request body from client

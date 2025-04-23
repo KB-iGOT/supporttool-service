@@ -6,7 +6,7 @@ import session from 'express-session';
 import { check, validationResult } from 'express-validator';
 import pool from "./config/database";
 
-import PgSession from "connect-pg-simple";
+import connectPgSimple from "connect-pg-simple";
 import {isAuthenticated} from './helpers/sessionValidator';
 
 import authRoutes from './routes/authentication.routes';
@@ -19,9 +19,6 @@ import UsersRoutes from "./routes/users.routes";
 import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
 
-const pgsession = PgSession(session);
-
-
 
 const app = express();
 app.use(bodyParser.json());
@@ -30,18 +27,42 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 
+const PgSession = connectPgSimple(session);
+const pgPool = pool;
+
+const store = new PgSession({ pool: pgPool, tableName: 'sessions' });
+
+// Monkey-patch the set() method to also update token/user_id
+const originalSet = store.set.bind(store);
+store.set = (sid: any, sess: any, callback: (arg0: unknown) => void) => {
+  originalSet(sid, sess, async (err: any) => {
+    if (err) return callback?.(err);
+
+    const token = sess.user.token || null;
+    const userId = sess.user.id || null;
+
+    try {
+      await pgPool.query(
+        'UPDATE sessions SET token = $1, user_id = $2 WHERE sid = $3',
+        [token, userId, sid]
+      );
+      callback?.(null);
+    } catch (dbErr) {
+      console.error('Failed to sync token/userId:', dbErr);
+      callback?.(dbErr);
+    }
+  });
+};
+
 app.use(
   session({
-      store: new pgsession({
-          pool,
-          tableName: "sessions",
-          createTableIfMissing: true, // Automatically create the table if it doesn't exist
-          schemaName: "public", // Specify schema if needed
-      }),
-      secret: "f4be817d-845f-4057-b72c-96f48896502f",
-      resave: false,
-      saveUninitialized: false,
-      cookie: { maxAge: 24 * 60 * 60 * 1000 }
+    store,
+    secret: 'f4be817d-845f-4057-b72c-96f48896502f',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: false,
+      secure: false, maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
@@ -51,9 +72,9 @@ const createSessionsTable = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sessions (
         sid varchar NOT NULL COLLATE "default" PRIMARY KEY,
-        user_id VARCHAR(50),
-        session_data JSON NOT NULL,
-        expire timestamp(6) NOT NULL
+        expire timestamp(6) NOT NULL,
+        sess JSON NOT NULL,
+        userId varchar
       );
     `);
     console.log("✅ Sessions table is ready!");
@@ -123,18 +144,18 @@ app.get('*', (req, res) => {
   res.redirect("/login");
 });
 
-app.use(function(err: any, req: any, res: any, next: any) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+// app.use(function(err: any, req: any, res: any, next: any) {
+//   // set locals, only providing error in development
+//   res.locals.message = err.message;
+//   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // add this line to include winston logging
-  // winston.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+//   // add this line to include winston logging
+//   // winston.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
 
-  // render the error page
-  res.status(err.status || 500);
-  res.json({'error':err.message});
-});
+//   // render the error page
+//   res.status(err.status || 500);
+//   res.json({'error':err.message});
+// });
 
 const port = process.env.PORT || '5000';
 

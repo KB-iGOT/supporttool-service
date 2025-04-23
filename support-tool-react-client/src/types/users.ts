@@ -18,8 +18,6 @@ export interface ICreateUser {
   roles: string | undefined;
 }
 
-
-
 export interface UserProfile {
   webPages: string | null;
   maskedPhone: string | null;

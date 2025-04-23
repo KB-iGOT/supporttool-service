@@ -10,8 +10,8 @@ import { RequestHandler } from "express";
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
   if (req.session && req.session.user) {
-    return next();
+    next();
   } else {
-    res.status(401).json({ message: "Unauthorized" });
+    res.redirect("/login"); // Redirect to login page if not authenticated
   }
 };

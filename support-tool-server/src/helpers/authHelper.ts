@@ -4,8 +4,7 @@ import { RequestHandler } from "express";
 
 export const userSession = async (
     req: string | string[] | undefined
-  ) => {
-
+  ) => {    
     try {
         const result = await pool.query('SELECT * FROM sessions WHERE user_id = $1', [req]);
         if (result.rows.length > 0) {

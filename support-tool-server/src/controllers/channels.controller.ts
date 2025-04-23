@@ -8,20 +8,20 @@ export const fetchChannel: RequestHandler = async (
     res: Response
   ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const uid = header['x-user-id'];
 
-    const { session } = await userSession(userId);
+    const { session } = await userSession(uid);
 
     const {id} = req.params;
 
     try {
         var options = {
             method: 'GET',
-            url: `https://portal.dev.karmayogibharat.net/api/channel/v1/read/${id}`,
+            url: `${process.env.KONG_API_URL}api/channel/v1/read/${id}`,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.AUTHORIZATION,
-                'x-authenticated-user-token': session.session_data.token.trim(),
+                'x-authenticated-user-token': session.sess.user.token.trim(),
             },
             json: true
         }

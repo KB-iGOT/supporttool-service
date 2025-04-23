@@ -9,9 +9,10 @@ export const getList: RequestHandler = async (
     res: Response
 ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const sid = header['x-sid'];
+
     try {
-        const { session } = await userSession(userId);
+        const { session } = await userSession(sid);
         try {
             const response = await axios({
                 method: 'GET',
@@ -66,9 +67,9 @@ export const getConfig: RequestHandler = async (
     res: Response
 ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const sid = header['x-sid'];
     try {
-        const { session } = await userSession(userId);
+        const { session } = await userSession(sid);
         try {
             const response = await axios({
                 method: 'GET',
@@ -124,9 +125,9 @@ export const updateConfig: RequestHandler = async (
     res: Response
 ) => {
     const header = req.headers;
-    const userId = header['x-user-id'];
+    const uid = header['x-user-id'];
     try {
-        const { session } = await userSession(userId);
+        const { session } = await userSession(uid);
         try {
             const response = await axios({
                 method: 'POST',
@@ -134,7 +135,7 @@ export const updateConfig: RequestHandler = async (
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
-                    'x-authenticated-user-token': session.session_data.token.trim(),
+                    'x-authenticated-user-token': session.sess.user.token.trim(),
                 },
                 data: JSON.stringify(req.body),
 
