@@ -31,7 +31,7 @@ function App() {
           <div className="content-container">
             <BreadcrumbNavigator />
               <Routes>
-                <Route path="/" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/support-users" element={<ProtectedRoute><SupportUsers /></ProtectedRoute>} />

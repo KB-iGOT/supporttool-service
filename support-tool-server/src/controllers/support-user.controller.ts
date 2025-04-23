@@ -6,7 +6,7 @@ import { RequestHandler } from "express";
 export const createSupportUser: RequestHandler = async (req: any, res: any) => {
   try {
     const { userId, userName, firstName, lastName, roles } = req.body;
-
+console.log("🚀 Creating user with data:", req.body);
     if (!userId || !userName || !firstName || !lastName || !roles) {
       return res.status(400).json({ message: "All fields are required!" });
     }
@@ -14,7 +14,7 @@ export const createSupportUser: RequestHandler = async (req: any, res: any) => {
     const result = await pool.query(
       `INSERT INTO users ("userId", "userName", "firstName", "lastName", roles) 
              VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, userName, firstName, lastName, roles]
+      [userId, userName, firstName, lastName, `{${roles}}`]
     );
 
     res
@@ -39,7 +39,7 @@ export const updateSupportUser: RequestHandler = async (req: any, res: any) => {
 
     const result = await pool.query(
       `UPDATE users SET "userName" = $2, "firstName" = $3, "lastName" = $4, roles = $5 WHERE "userId" = $1 RETURNING *`,
-      [userId, userName, firstName, lastName, roles]
+      [userId, userName, firstName, lastName, `{${roles}}`]
     );
 
     if (result.rowCount === 0) {
