@@ -10,6 +10,7 @@ export const userSession = async (
     try {
         const result = await pool.query('SELECT * FROM sessions WHERE user_id = $1', [userId]);
         if (result.rows.length > 0) {
+            req.user = result.rows[0];
             next();
         } else {
             res.redirect("/login");

@@ -3,7 +3,7 @@ import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
 
-export const getUsers: RequestHandler = async (req: Request, res: Response) => {
+export const getUsers: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "POST",
@@ -11,7 +11,7 @@ export const getUsers: RequestHandler = async (req: Request, res: Response) => {
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.session.user.token.trim(),
+        "x-authenticated-user-token": req.user.token.trim(),
       },
 
       data: req.body, // Send the request body from client
@@ -48,7 +48,7 @@ export const getUsers: RequestHandler = async (req: Request, res: Response) => {
 };
 
 export const updateUser: RequestHandler = async (
-  req: Request,
+  req: any,
   res: Response
 ) => {
   const targetUserId = req.params.userId;
@@ -69,7 +69,7 @@ export const updateUser: RequestHandler = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.session.user.token.trim(),
+        "x-authenticated-user-token": req.user.token.trim(),
       },
       data: {
         request: {

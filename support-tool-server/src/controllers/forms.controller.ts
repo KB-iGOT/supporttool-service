@@ -4,7 +4,7 @@ import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
 
 export const getForms: RequestHandler = async (
-    req: Request,
+    req: any,
     res: Response
 ) => {
 
@@ -15,7 +15,7 @@ export const getForms: RequestHandler = async (
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': process.env.AUTHORIZATION,
-                    'x-authenticated-user-token': req.session.user.token.trim(),
+                    'x-authenticated-user-token': req.user.token.trim(),
                 },
 
                 data: req.body, // Send the request body from client

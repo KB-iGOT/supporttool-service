@@ -4,7 +4,7 @@ import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
 
-export const getList: RequestHandler = async (req: Request, res: Response) => {
+export const getList: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "GET",
@@ -12,7 +12,7 @@ export const getList: RequestHandler = async (req: Request, res: Response) => {
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.session.user.token.trim(),
+        "x-authenticated-user-token": req.user.token.trim(),
       },
     });
 
