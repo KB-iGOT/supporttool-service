@@ -7,6 +7,7 @@ const API_BASE_URL = env.apiBaseUrl;
 // Create an Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -20,7 +21,12 @@ export const authService = {
     return response.data;
   },
   logout: async () => {
-    const response = await apiClient.post("/auth/logout");
-    return response.data;
+    try {
+      const response = await apiClient.post("/auth/logout");
+      return response.data;
+    } catch (error) {
+      console.error("Logout failed:", error);
+      throw error;
+    }
   }
 };
