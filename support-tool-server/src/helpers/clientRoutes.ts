@@ -104,6 +104,7 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
       '/support-users',
       '/system-settings',
       '/system-settings/edit/:id',
+      '/organisations'
     ],
     isAuthenticated,
     (req: Request, res: Response) => {

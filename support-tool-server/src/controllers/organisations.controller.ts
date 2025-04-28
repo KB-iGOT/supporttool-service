@@ -39,11 +39,7 @@ export const fetchOrganisations: RequestHandler = async (
           if (body) {
             res
               .status(200)
-              .send({
-                status: 200,
-                message: "Organisations fetched successfully",
-                channels: body,
-              });
+              .send(body);
           } else {
             res
               .status(500)

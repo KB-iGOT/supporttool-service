@@ -17,21 +17,22 @@ import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { Button, FormControl, TextField, Typography } from "@mui/material";
 import ClearIcon from "@mui/icons-material/Clear";
-import { systemSettingsService } from "../../services/system-settings.service";
+import { organisationService } from "../../services/organisations.service";
 import { Outlet, useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 
-// Interface for system settings item
-interface SystemSetting {
+interface IOrg {
   id: string;
-  field: string;
-  value: string;
+  orgName: string;
+  channel: string;
+  slug: string;
 }
 
 export const OrganisationList = () => {
   // Store all settings data from API
+  console.log("OrganisationList");
   const navigate = useNavigate();
-  const [allSettings, setAllSettings] = useState<SystemSetting[]>([]);
+  const [orgsList, setOrgsList] = useState<IOrg[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState<{
@@ -49,16 +50,17 @@ export const OrganisationList = () => {
   // Use memoized filtered data based on search query
   const filteredSettings = useMemo(() => {
     if (!searchQuery.trim()) {
-      return allSettings;
+      return orgsList;
     }
     
     const query = searchQuery.toLowerCase();
-    return allSettings.filter(setting => 
-      setting.field.toLowerCase().includes(query) || 
+    return orgsList.filter(setting => 
+      setting.orgName.toLowerCase().includes(query) || 
       setting.id.toLowerCase().includes(query) ||
-      (setting.value && setting.value.toLowerCase().includes(query))
+      (setting.channel.toLowerCase().includes(query) || 
+      setting.slug.toLowerCase().includes(query))
     );
-  }, [allSettings, searchQuery]);
+  }, [orgsList, searchQuery]);
 
   // Current page data (pagination slice of filtered data)
   const currentPageData = useMemo(() => {
@@ -78,14 +80,14 @@ export const OrganisationList = () => {
   const fetchSystemSettings = async () => {
     setLoading(true);
     try {
-      const data = await systemSettingsService.getList();
-      if (data.result && data.result.response) {
-        setAllSettings(data.result.response);
+      const data = await organisationService.fetchOrganisations();
+      if (data.result && data.result.response.count > 0) {
+        setOrgsList(data.result.response.content);
       }
     } catch (error) {
-      console.error("Error fetching system settings:", error);
+      console.error("Error fetching organisations:", error);
       setToasts({
-        message: "Failed to load system settings",
+        message: "Failed to load organisations",
         open: true,
         severity: "error",
       });
@@ -122,8 +124,8 @@ export const OrganisationList = () => {
         <>
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
             <div>
-                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>System settings</Typography>
-                <Typography variant="body2">System settings for the application</Typography>                
+                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Organisations</Typography>
+                <Typography variant="body2">List of organisations onboarded in the platform.</Typography>                
             </div>
 
             <Button
@@ -131,7 +133,7 @@ export const OrganisationList = () => {
               onClick={() => navigate("/system-settings/create")}
               startIcon={<AddIcon />}
             >
-              Add new System Settings
+              Add new Organisation
             </Button>
           </Box>
 
@@ -183,11 +185,13 @@ export const OrganisationList = () => {
           {filteredSettings.length > 0 ? (
             <>
               <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 650 }} aria-label="system settings table">
+                <Table sx={{ minWidth: 650 }} aria-label="Organisation table">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Field</TableCell>
+                      <TableCell>Org Name</TableCell>
                       <TableCell>ID</TableCell>
+                      <TableCell>Channel</TableCell>
+                      <TableCell>Slug</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -198,9 +202,11 @@ export const OrganisationList = () => {
                         sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                       >
                         <TableCell component="th" scope="row">
-                          {row.field}
+                          {row.orgName}
                         </TableCell>
                         <TableCell>{row.id}</TableCell>
+                        <TableCell>{row.channel}</TableCell>
+                        <TableCell>{row.slug}</TableCell>
                         <TableCell align="right">
                           <IconButton
                             aria-label="edit"
@@ -229,7 +235,7 @@ export const OrganisationList = () => {
             </>
           ) : (
             <Alert severity="info">
-              No system settings found matching your search criteria.
+              No organisation found matching your search criteria.
             </Alert>
           )}
           <Snackbar

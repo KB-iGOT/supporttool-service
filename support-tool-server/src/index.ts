@@ -19,6 +19,7 @@ import ContentsRoutes  from "./routes/contents.routes";
 import UsersRoutes from "./routes/users.routes";
 import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
+import organisationsRoutes from "./routes/organisations.routes";
 import clientRoutes from "./helpers/clientRoutes";
 
 
@@ -142,6 +143,7 @@ app.use("/api/channels", channelsRoutes);
 app.use("/api/contents", ContentsRoutes);
 app.use("/api/users", UsersRoutes);
 app.use("/api/forms", FormsRoutes);
+app.use("/api/org", organisationsRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
 
