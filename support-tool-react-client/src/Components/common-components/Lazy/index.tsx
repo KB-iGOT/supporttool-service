@@ -1,6 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import ProtectedRoute from "../auth/ProtectedRoute";
+import { Organisations } from "../../organisation";
+import { OrganisationList } from "../../organisation/list";
 
 const Home = lazy(() =>
   import("../../home/index").then((module) => ({
@@ -131,6 +133,16 @@ const LazyApp = () => {
             <Route index element={<ListSystemSettings />} />
             <Route path="edit/:id" element={<Edit />} />
             <Route path="create" element={<Create />} />
+          </Route>
+          <Route
+            path="/organisations"
+            element={
+              <ProtectedRoute>
+                <Organisations />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<OrganisationList />} />
           </Route>
         </Routes>
       </Suspense>
