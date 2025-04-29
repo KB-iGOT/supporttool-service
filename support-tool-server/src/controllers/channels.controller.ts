@@ -4,7 +4,7 @@ import request from 'request';
 import { userSession } from "../helpers/authHelper";
 
 export const fetchChannel: RequestHandler = async (
-    req: Request,
+    req: any,
     res: Response
   ) => {
     const {id} = req.params;
@@ -16,7 +16,7 @@ export const fetchChannel: RequestHandler = async (
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.AUTHORIZATION,
-                'x-authenticated-user-token': req.session.user.token.trim(),
+                'x-authenticated-user-token': req.user.token.trim(),
             },
             json: true
         }

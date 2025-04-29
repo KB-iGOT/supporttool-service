@@ -21,6 +21,7 @@ import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
 import organisationsRoutes from "./routes/organisations.routes";
 import clientRoutes from "./helpers/clientRoutes";
+// import { connectCassandra } from "./utils/cassandra";
 
 
 const app = express();
@@ -88,7 +89,6 @@ const createSessionsTable = async () => {
     logger.error(`❌ Error creating sessions table: ${error}`);
   }
 };
-createSessionsTable();
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
@@ -131,7 +131,6 @@ const createTable = async () => {
     logger.error(`❌ Error creating table: ${error}`);
   }
 };
-createTable();
 
 clientRoutes(app, isAuthenticated);
 
@@ -157,7 +156,23 @@ const port = process.env.PORT || '5000';
 app.set('port', port);
 
 const server = http.createServer(app);
-server.listen(port, () =>   logger.info(`🚀 Server running on http://localhost:${port}`));
+const startServer = async () => {
+  try {
+    // Wait for database connections
+    await createTable();
+    await createSessionsTable();
+    // await connectCassandra();
+    
+    // Start the server
+    server.listen(port, () => {
+      logger.info(`🚀 Server running on http://localhost:${port}`);
+    });
+  } catch (error) {
+    logger.error(`❌ Failed to start server: ${error}`);
+    process.exit(1); // Exit with error code
+  }
+};
+startServer();
 
 // Exposing an app
 module.exports = app;

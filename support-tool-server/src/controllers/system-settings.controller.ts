@@ -47,7 +47,7 @@ export const getList: RequestHandler = async (req: any, res: Response) => {
 };
 
 export const getConfig: RequestHandler = async (
-  req: Request,
+  req: any,
   res: Response
 ) => {
   try {
@@ -57,7 +57,7 @@ export const getConfig: RequestHandler = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.session.user.token.trim(),
+        "x-authenticated-user-token": req.user.token.trim(),
       },
     });
 
@@ -92,7 +92,7 @@ export const getConfig: RequestHandler = async (
 };
 
 export const updateConfig: RequestHandler = async (
-  req: Request,
+  req: any,
   res: Response
 ) => {
   try {
@@ -102,7 +102,7 @@ export const updateConfig: RequestHandler = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.session.user.token.trim(),
+        "x-authenticated-user-token": req.user.token.trim(),
       },
       data: JSON.stringify(req.body),
     });
