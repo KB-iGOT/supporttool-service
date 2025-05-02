@@ -29,8 +29,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
+
 app.use(cors({
-  origin: 'http://localhost:3000',   // <-- exactly your frontend URL
+  origin: (origin, callback) => {
+    const allowedOrigins = ['https://support.uat.karmayogibharat.net','http://localhost:3000']; // Add your allowed origins here
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true                  // <-- allow cookies, auth headers
 }));
 
@@ -92,7 +100,11 @@ const createSessionsTable = async () => {
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  const allowedOrigins = ['https://support.uat.karmayogibharat.net','http://localhost:3000'];  // Add your allowed origins here
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
