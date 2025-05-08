@@ -58,7 +58,8 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
           maxAge: 24 * 60 * 60 * 1000, 
           sameSite: 'lax', 
         });
-        res.cookie("user",req.session.user);
+        logger.info("Session data: " + JSON.stringify(sessionData));
+        res.cookie("user",sessionData);
 
         res.status(200).send({
           status: 200,
