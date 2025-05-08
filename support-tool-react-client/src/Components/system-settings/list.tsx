@@ -114,6 +114,15 @@ export const ListSystemSettings = () => {
     fetchSystemSettings();
   }, []); // Empty dependency array to run only once on mount
 
+  const editConfig = (row: SystemSetting) => {
+    if(row.id === 'cadreConfig'  ) {
+      navigate(`/system-settings/cadre-edit/${row.id}`)
+
+    } else {
+      navigate(`/system-settings/edit/${row.id}`)
+    }
+  }
+
   return (
     <>
       {loading ? (
@@ -205,7 +214,7 @@ export const ListSystemSettings = () => {
                           <IconButton
                             aria-label="edit"
                             size="small"
-                            onClick={() => navigate(`/system-settings/edit/${row.id}`)}  
+                            onClick={() => editConfig(row) }  
                           >
                             <PencilIcon fontSize="small" />
                           </IconButton>

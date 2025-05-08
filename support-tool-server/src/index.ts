@@ -29,8 +29,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
+
 app.use(cors({
-  origin: 'http://localhost:3000',   // <-- exactly your frontend URL
+  origin: (origin, callback) => {
+    const allowedOrigins = ['https://support.uat.karmayogibharat.net',`http://${process.env.HOST}:3000`]; // Add your allowed origins here
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true                  // <-- allow cookies, auth headers
 }));
 
@@ -92,7 +100,11 @@ const createSessionsTable = async () => {
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  const allowedOrigins = ['https://support.uat.karmayogibharat.net',`http://${process.env.HOST}:3000`]  // Add your allowed origins here
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -109,7 +121,6 @@ app.use(function (req, res, next) {
 });
 
 // app.use(morgan('combined', { stream: logger.stream }));
-
 
 // 🚀 **Create users table if not exists**
 const createTable = async () => {
@@ -150,10 +161,13 @@ app.get('*', (req, res) => {
   res.redirect("/login");
 });
 
-const port = process.env.PORT || '5000';
+
+const port = parseInt(process.env.PORT || '5000', 10); // Ensure port is a number
+
 
 // Set port
 app.set('port', port);
+
 
 const server = http.createServer(app);
 const startServer = async () => {
@@ -162,10 +176,11 @@ const startServer = async () => {
     await createTable();
     await createSessionsTable();
     // await connectCassandra();
-    
+
     // Start the server
-    server.listen(port, () => {
-      logger.info(`🚀 Server running on http://localhost:${port}`);
+    const host = process.env.HOST || '192.168.1.100'; // Replace with your desired IP
+    server.listen(port, host, () => {
+      logger.info(`🚀 Server running on http://${host}:${port}`);
     });
   } catch (error) {
     logger.error(`❌ Failed to start server: ${error}`);
@@ -173,6 +188,7 @@ const startServer = async () => {
   }
 };
 startServer();
+ 
 
 // Exposing an app
 module.exports = app;

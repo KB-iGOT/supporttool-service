@@ -55,6 +55,13 @@ const Edit = lazy(() =>
     default: module.Edit,
   }))
 );
+
+const CadreEdit = lazy(() =>
+  import("../../system-settings/cadre-edit").then((module) => ({
+    default: module.CadreEdit,
+  }))
+);
+
 const Create = lazy(() =>
   import("../../system-settings/create").then((module) => ({
     default: module.Create,
@@ -133,6 +140,7 @@ const LazyApp = () => {
             <Route index element={<ListSystemSettings />} />
             <Route path="edit/:id" element={<Edit />} />
             <Route path="create" element={<Create />} />
+            <Route path="cadre-edit/:id" element={<CadreEdit />} />
           </Route>
           <Route
             path="/organisations"
