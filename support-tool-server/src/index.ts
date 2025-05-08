@@ -134,17 +134,17 @@ const createTable = async () => {
 
 clientRoutes(app, isAuthenticated);
 
-app.use('/api/auth', authRoutes);
-app.use("/api/support-users", supportUserRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/modules", moduleRoutes);
-app.use("/api/channels", channelsRoutes);
-app.use("/api/contents", ContentsRoutes);
-app.use("/api/users", UsersRoutes);
-app.use("/api/forms", FormsRoutes);
-app.use("/api/org", organisationsRoutes);
+app.use('/v1/auth', authRoutes);
+app.use("/v1/support-users", supportUserRoutes);
+app.use("/v1/dashboard", dashboardRoutes);
+app.use("/v1/modules", moduleRoutes);
+app.use("/v1/channels", channelsRoutes);
+app.use("/v1/contents", ContentsRoutes);
+app.use("/v1/users", UsersRoutes);
+app.use("/v1/forms", FormsRoutes);
+app.use("/v1/org", organisationsRoutes);
 
-app.use("/api/system/settings", SystemSettingsRoutes);
+app.use("/v1/system/settings", SystemSettingsRoutes);
 
 app.get('*', (req, res) => {
   res.redirect("/login");

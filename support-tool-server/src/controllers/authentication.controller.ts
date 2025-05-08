@@ -1,5 +1,6 @@
 import request from "request";
 import pool from "../config/database";
+import logger from "../utils/logger";
 
 export const authenticateKeycloakUser = (req: any, res: any) => {
   const { username, password } = req.body;
@@ -49,7 +50,8 @@ export const authenticateKeycloakUser = (req: any, res: any) => {
 
       req.session.user = sessionData;
       req.session.save((err: any) => {
-        if (err) return res.status(500).send("Session save failed");
+        logger.error("Session error: " + JSON.stringify(err));
+        if (err) return res.status(500).send({message: "Session save failed", err});
         res.cookie('userId', req.session.user.id, {
           httpOnly: false,       
           secure: false,        
