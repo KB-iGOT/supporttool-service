@@ -29,16 +29,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
-
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = ['https://support.uat.karmayogibharat.net',`http://${process.env.HOST}:3000`]; // Add your allowed origins here
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: process.env.HOST+":"+process.env.PORT,   // <-- exactly your frontend URL
   credentials: true                  // <-- allow cookies, auth headers
 }));
 
@@ -100,11 +92,7 @@ const createSessionsTable = async () => {
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
-  const allowedOrigins = ['https://support.uat.karmayogibharat.net',`http://${process.env.HOST}:3000`]  // Add your allowed origins here
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
+  res.setHeader('Access-Control-Allow-Origin', process.env.HOST+":"+process.env.PORT);
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -121,6 +109,7 @@ app.use(function (req, res, next) {
 });
 
 // app.use(morgan('combined', { stream: logger.stream }));
+
 
 // 🚀 **Create users table if not exists**
 const createTable = async () => {
@@ -145,29 +134,26 @@ const createTable = async () => {
 
 clientRoutes(app, isAuthenticated);
 
-app.use('/v1/auth', authRoutes);
-app.use("/v1/support-users", supportUserRoutes);
-app.use("/v1/dashboard", dashboardRoutes);
-app.use("/v1/modules", moduleRoutes);
-app.use("/v1/channels", channelsRoutes);
-app.use("/v1/contents", ContentsRoutes);
-app.use("/v1/users", UsersRoutes);
-app.use("/v1/forms", FormsRoutes);
-app.use("/v1/org", organisationsRoutes);
+app.use('/api/auth', authRoutes);
+app.use("/api/support-users", supportUserRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/modules", moduleRoutes);
+app.use("/api/channels", channelsRoutes);
+app.use("/api/contents", ContentsRoutes);
+app.use("/api/users", UsersRoutes);
+app.use("/api/forms", FormsRoutes);
+app.use("/api/org", organisationsRoutes);
 
-app.use("/v1/system/settings", SystemSettingsRoutes);
+app.use("/api/system/settings", SystemSettingsRoutes);
 
 app.get('*', (req, res) => {
   res.redirect("/login");
 });
 
-
-const port = parseInt(process.env.PORT || '5000', 10); // Ensure port is a number
-
+const port = process.env.PORT || '5000';
 
 // Set port
 app.set('port', port);
-
 
 const server = http.createServer(app);
 const startServer = async () => {
@@ -176,11 +162,10 @@ const startServer = async () => {
     await createTable();
     await createSessionsTable();
     // await connectCassandra();
-
+    
     // Start the server
-    const host = process.env.HOST || '192.168.1.100'; // Replace with your desired IP
-    server.listen(port, host, () => {
-      logger.info(`🚀 Server running on http://${host}:${port}`);
+    server.listen(port, () => {
+      logger.info(`🚀 Server running on http://localhost:${port}`);
     });
   } catch (error) {
     logger.error(`❌ Failed to start server: ${error}`);
@@ -188,7 +173,6 @@ const startServer = async () => {
   }
 };
 startServer();
- 
 
 // Exposing an app
 module.exports = app;
