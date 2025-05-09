@@ -2,74 +2,115 @@ import request from "request";
 import pool from "../config/database";
 import logger from "../utils/logger";
 
-export const authenticateKeycloakUser = (req: any, res: any) => {
-  const { username, password } = req.body;
-  const options = {
-    method: "POST",
-    url: `${process.env.KONG_API_URL}auth/realms/sunbird/protocol/openid-connect/token`,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    form: {
-      client_id: process.env.KEYCLOAK_CLIENT_ID,
-      password: password,
-      grant_type: "password",
-      username: username,
-      client_secret: process.env.KEYCLOAK_CLIENT_SECRET,
-    },
-  };
-  try {
-    request(options, async function (error, response) {
-      if (error) throw new Error(error);
-      const users: any = await pool.query(
-        'SELECT * FROM users WHERE "userName" = $1',
-        [username]
-      );
-      if (users.rows.length === 0) {
-        res.status(401).send({ message: "Invalid username or password" });
-        return;
+const getUserFromDB = async (username: string) => {
+  const users = await pool.query(
+    'SELECT * FROM users WHERE "userName" = $1',
+    [username]
+  );
+  return users.rows[0];
+};
+
+const authenticateWithKeycloak = (username: string, password: string) => {
+  return new Promise((resolve, reject) => {
+    const options = {
+      method: "POST",
+      url: `${process.env.KONG_API_URL}auth/realms/sunbird/protocol/openid-connect/token`,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      form: {
+        client_id: process.env.KEYCLOAK_CLIENT_ID,
+        password: password,
+        grant_type: "password",
+        username: username,
+        client_secret: process.env.KEYCLOAK_CLIENT_SECRET,
+      },
+    };
+
+    request(options, (error, response) => {
+      if (error) {
+        return reject(error);
       }
-
-      if (!users.rows[0]?.userId) {
-        res.status(500).send({
-          status: 500,
-          message: "User ID is missing in the database record",
-        });
-        return;
+      const responseBody = JSON.parse(response.body);
+      if (responseBody.error) {
+        return reject(new Error(responseBody.error));
       }
-      
-      const sessionData = {
-        id: users.rows[0].userId,
-        userName: username,
-        name:
-          users.rows[0].firstName +
-          (users.rows[0].lastName ? " " + users.rows[0].lastName : ""),
-        token: JSON.parse(response.body).access_token,
-        roles: users.rows[0].roles,
-      };
-
-      req.session.user = sessionData;
-      req.session.save((err: any) => {
-        logger.error("Session error: " + JSON.stringify(err));
-        if (err) return res.status(500).send({message: "Session save failed", err});
-        res.cookie('userId', req.session.user.id, {
-          httpOnly: false,       
-          secure: false,        
-          maxAge: 24 * 60 * 60 * 1000, 
-          sameSite: 'lax', 
-        });
-        logger.info("Session data: " + JSON.stringify(sessionData));
-        res.cookie("user",sessionData);
-
-        res.status(200).send({
-          status: 200,
-          message: "User authenticated successfully",
-          userId: users.rows[0].userId,
-        });
-      });
+      resolve(responseBody.access_token);
     });
-  } catch (er) {
-    res.status(500).send({ status: 500, message: "Internal server error" });
+  });
+};
+
+const createSessionData = (user: any, token: string) => {
+  return {
+    id: user.userId,
+    userName: user.userName,
+    name: user.firstName + (user.lastName ? " " + user.lastName : ""),
+    token: token,
+    roles: user.roles,
+  };
+};
+
+const saveSession = (req: any, sessionData: any) => {
+  return new Promise((resolve, reject) => {
+    req.session.user = sessionData;
+    req.session.save((err: any) => {
+      if (err) {
+        logger.error("Session error: " + JSON.stringify(err));
+        return reject(err);
+      }
+      resolve(true);
+    });
+  });
+};
+
+export const authenticateKeycloakUser = async (req: any, res: any) => {
+  try {
+    const { username, password } = req.body;
+    logger.info("Received authentication request for username: " + username);
+
+    // Step 1: Check if user exists in the database
+    logger.info("Checking if user exists in the database...");
+    const user = await getUserFromDB(username);
+    if (!user) {
+      logger.warn("User not found in the database: " + username);
+      return res.status(401).send({ message: "Given username does not have access to support tool. Kindly contact SUPPORT ADMIN for the access." });
+    }
+    logger.info("User found in the database: " + username);
+
+    // Step 2: Authenticate user with Keycloak
+    logger.info("Authenticating user with Keycloak...");
+    const token: any = await authenticateWithKeycloak(username, password);
+    if (!token) {
+      logger.warn("Authentication failed with Keycloak for username: " + username);
+      return res.status(401).send({
+        message: "Authentication failed with Keycloak. Please check your credentials.",
+      });
+    }
+    logger.info("Authentication successful with Keycloak for username: " + username);
+
+    // Step 3: Set session and cookies
+    const sessionData = createSessionData(user, token);
+    logger.info("Saving session data...");
+    await saveSession(req, sessionData);
+
+    logger.info("Setting cookies for the user...");
+    res.cookie("userId", sessionData.id, {
+      httpOnly: false,
+      secure: false,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+    });
+    res.cookie("user", sessionData);
+
+    logger.info("Authentication process completed successfully for username: " + username);
+    res.status(200).send({
+      status: 200,
+      message: "User authenticated successfully",
+      userId: sessionData.id,
+    });
+  } catch (error: any) {
+    logger.error("Authentication error: " + error.message);
+    res.status(500).send({ status: 500, message: "Internal server error", error });
   }
 };
 

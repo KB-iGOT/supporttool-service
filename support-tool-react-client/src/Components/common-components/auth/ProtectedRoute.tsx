@@ -12,9 +12,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isLoggedIn } = useContext(
           AppContext,
         ) as appContextType;
+  
+  const isAuthenticated = localStorage.getItem("isLoggedIn");
 
   // If the user is not logged in, redirect to the login page
-  if (!isLoggedIn) {
+  if (!isLoggedIn && !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
