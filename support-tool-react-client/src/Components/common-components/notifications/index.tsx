@@ -12,7 +12,7 @@ export const Notification = () => {
   const handleCloseNotification = () => {
     setNotification({ ...notification, open: false });
   };
-
+  
   return (
     <Snackbar
       open={notification.open}
