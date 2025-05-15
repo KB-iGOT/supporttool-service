@@ -17,21 +17,18 @@ const apiClient = axios.create({
 });
 
 // API Service for Modules
-export const organisationService = {
+export const domainService = {
   // Fetch all Modules
-  fetchOrganisations: async () => {
-    const response = await apiClient.get(`/org`);
+  fetchDomains: async () => {
+    const response = await apiClient.get(`/domains`);
     return response.data;
   },
-  fetchOrganisationByName: async (orgName:string) => {
-    
-    const response = await apiClient.get(`/org/`+ orgName);
+  addDomain: async (requestPayload: any) => {
+    const response = await apiClient.post(`/domains/add`,requestPayload);
     return response.data;
   },
-
-  deleteOrganisationById: async (orgId:number) => {
-    
-    const response = await apiClient.get(`/org/delete/`+ orgId);
-    return response.data;
-  }
+    deleteDomain: async (domainName: string) => {
+        const response = await apiClient.get(`/domains/delete/${domainName}`);
+        return response.data;
+    },
 };

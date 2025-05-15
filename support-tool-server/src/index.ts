@@ -21,7 +21,8 @@ import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
 import organisationsRoutes from "./routes/organisations.routes";
 import clientRoutes from "./helpers/clientRoutes";
-// import { connectCassandra } from "./utils/cassandra";
+import { connectCassandra } from "./utils/cassandra";
+import domainRoutes from "./routes/domains.routes";
 
 
 const app = express();
@@ -30,12 +31,24 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
 app.use(cors({
-  origin: process.env.HOST+":"+process.env.PORT,   // <-- exactly your frontend URL
+  origin: [process.env.HOST+":"+process.env.PORT , 'http://localhost:3000'],   // <-- exactly your frontend URL
   credentials: true                  // <-- allow cookies, auth headers
 }));
 
 const PgSession = connectPgSimple(session);
 const pgPool = pool;
+// let postgressPool;
+// (async () => {
+//   try {
+//     postgressPool =  connectPostgres;
+//     // Test the connection with your specific query
+//     const result = await postgressPool.query('select * from org_hierarchy_v4');
+//     console.log(result)
+//     console.log('PostgreSQL connection successful, org_hierarchy_v4 table accessible');
+//   } catch (error) {
+//     console.error('Failed to connect to PostgreSQL or access org_hierarchy_v4 table:', error);
+//   }
+// })();
 
 const store = new PgSession({ pool: pgPool, tableName: 'sessions' });
 
@@ -92,7 +105,7 @@ const createSessionsTable = async () => {
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', process.env.HOST+":"+process.env.PORT);
+  res.setHeader('Access-Control-Allow-Origin', [process.env.HOST+":"+process.env.PORT ,'http://localhost:3000']);
 
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -143,6 +156,7 @@ app.use("/api/contents", ContentsRoutes);
 app.use("/api/users", UsersRoutes);
 app.use("/api/forms", FormsRoutes);
 app.use("/api/org", organisationsRoutes);
+app.use("/api/domains", domainRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
 
@@ -161,8 +175,8 @@ const startServer = async () => {
     // Wait for database connections
     await createTable();
     await createSessionsTable();
-    // await connectCassandra();
-    
+    await connectCassandra();
+
     // Start the server
     server.listen(port, () => {
       logger.info(`🚀 Server running on http://localhost:${port}`);

@@ -17,6 +17,8 @@ interface DynamicFormDialogProps {
   fields: FieldDefinition[];
   initialData: FormData;
   onSubmit: (data: FormData) => void;
+  title?: string;
+  submitButtonText?: string;
 }
 
 export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
@@ -25,6 +27,8 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
   fields,
   initialData,
   onSubmit,
+  title,
+  submitButtonText
 }) => {
   const [formData, setFormData] = useState<FormData>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -73,11 +77,11 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
     }
   };
 
-  const sortedFields = [...fields].sort((a, b) => a.order - b.order);
+  const sortedFields = [...fields].sort((a: any, b: any) => a.order - b.order);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Dynamic Form</DialogTitle>
+      <DialogTitle>{title ? title :'Dynamic Form'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
           {sortedFields.map((field) => (
@@ -93,7 +97,7 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">Submit</Button>
+        <Button onClick={handleSubmit} variant="contained">{submitButtonText ? submitButtonText : 'Submit'}</Button>
       </DialogActions>
     </Dialog>
   );

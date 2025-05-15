@@ -47,6 +47,7 @@ const sampleFields: FieldDefinition[] = [
     optional: false,
     selected: true,
     order: 1,
+    placeholder: 'Enter first name',
     fieldPath: 'profileDetails.personalDetails.firstname',
     validation: {
       minLength: 2,

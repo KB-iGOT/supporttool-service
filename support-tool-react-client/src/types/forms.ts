@@ -4,16 +4,16 @@ export interface FieldDefinition {
     displayName: string;
     fieldType: 'text' | 'dropdown';
     optional: boolean;
-    selected: boolean;
-    order: number;
+    selected?: boolean;
+    order?: number;
     fieldPath?: string;
-
-  validation?: {
-    minLength?: number;
-    maxLength?: number;
-    pattern?: string;
-    errorMessage?: string;
-  };
+    placeholder: string;
+    validation?: {
+      minLength?: number;
+      maxLength?: number;
+      pattern?: string;
+      errorMessage?: string;
+    };
   }
   
   export interface FormData {

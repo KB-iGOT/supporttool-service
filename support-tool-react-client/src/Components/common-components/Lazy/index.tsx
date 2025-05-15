@@ -68,6 +68,18 @@ const Create = lazy(() =>
   }))
 );
 
+const DeleteOrg = lazy(() =>
+  import("../../delete-org-hierarchy").then((module) => ({
+    default: module.DeleteOrg,
+  }))
+);
+
+const Domains = lazy(() =>
+  import("../../domain").then((module) => ({
+    default: module.Domain,
+  }))
+);
+
 const LazyApp = () => {
   return (
       <Suspense fallback={<div>Loading route...</div>}>
@@ -150,8 +162,25 @@ const LazyApp = () => {
               </ProtectedRoute>
             }
           >
+            
             <Route index element={<OrganisationList />} />
           </Route>
+          <Route
+            path="/org-delete"
+            element={
+              <ProtectedRoute>
+                <DeleteOrg />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/domain"
+            element={
+              <ProtectedRoute>
+                <Domains />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Suspense>
   );

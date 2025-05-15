@@ -37,6 +37,7 @@ export const JsonEditor = (props: {
   input: any; 
   onChange: any; 
   onEditorMount?: (editor: any) => void;
+  customOptions?: any;
 }) => {
   const { input, onChange, onEditorMount } = props;
   const classes = editorStyles();
@@ -133,7 +134,7 @@ export const JsonEditor = (props: {
         language="json"
         value={formattedInput}
         onMount={handleEditorDidMount}
-        options={{
+        options={ props.customOptions && Object.keys(props.customOptions).length > 0 ? props.customOptions : {
           wordWrap: 'on',
           formatOnPaste: true,
           formatOnType: false,
@@ -151,6 +152,7 @@ export const JsonEditor = (props: {
           foldingStrategy: 'auto',
           renderLineHighlight: 'all',
           automaticLayout: true, // Try enabling automatic layout again
+          
         }}
         onChange={(value) => {
           if (onChange && value !== undefined) {

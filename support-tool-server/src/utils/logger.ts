@@ -14,7 +14,7 @@ const getLogDirForToday = (): string => {
   return logDir;
 };
 
-const createLoggerForLevel = (level: 'info' | 'warn' | 'error') => {
+const createLoggerForLevel = (level: 'info' | 'warn' | 'error' | 'debug') => {
     return winston.createLogger({
       level,
       format: winston.format.combine(
@@ -48,12 +48,14 @@ const createLoggerForLevel = (level: 'info' | 'warn' | 'error') => {
 const infoLogger = createLoggerForLevel('info');
 const warnLogger = createLoggerForLevel('warn');
 const errorLogger = createLoggerForLevel('error');
+const debugLogger = createLoggerForLevel('debug');
 
 // Expose a unified logger interface
 const logger = {
   info: (msg: string) => infoLogger.info(msg),
   warn: (msg: string) => warnLogger.warn(msg),
   error: (msg: string) => errorLogger.error(msg),
+  debug: (msg: string) => debugLogger.debug(msg),
 };
 
 export default logger;

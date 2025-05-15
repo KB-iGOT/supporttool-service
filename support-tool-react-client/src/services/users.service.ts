@@ -35,7 +35,7 @@ export const usersService = {
         ...updatedFields
       }
     };
-    debugger
+    
     const response = {}
     // await apiClient.patch(`/users/${userId}`, requestPayload);
     return response;

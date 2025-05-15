@@ -8,6 +8,8 @@ export const userSession = async (
     const header = req.headers;
     const userId = header['x-user-id'];
     try {
+
+    console.log("Fetching user session...", userId);
         const result = await pool.query('SELECT * FROM sessions WHERE user_id = $1', [userId]);
         if (result.rows.length > 0) {
             req.user = result.rows[0];

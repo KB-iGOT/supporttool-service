@@ -136,7 +136,7 @@ export const Forms = () => {
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
-    debugger
+    
     setRowsPerPage(newRowsPerPage);
     setPage(0); // Reset to first page when changing rows per page
     fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false);
