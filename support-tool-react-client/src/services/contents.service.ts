@@ -23,5 +23,24 @@ export const contentsService = {
     
     const response = await apiClient.post("/contents", request);
     return response.data;
+  },
+  retireContent: async (contentId: string) => {
+
+    try {
+    const response = await apiClient.get(`/contents/retire/${contentId}`);
+    return response.data;
+    } catch (error) {
+      console.error("Error retiring content:", error);
+      throw error;
+    }
+  },
+  privateContentCreate: async (contentData: any) => {
+    try {
+      const response = await apiClient.post("/contents/private/create", contentData);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating private content:", error);
+      throw error;
+    }
   }
 };

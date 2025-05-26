@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -21,13 +20,14 @@ import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { Content, Facets } from "../../types/contents";
 import { FilterDrawer } from "./../common-components/filter-drawer";
-import { FormControl, TextField, Typography } from "@mui/material";
-
+import { FormControl, TextField, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from "@mui/material";
+import { EllipsisCell } from "../common-components/ellipsis-cell/ellipsis-cell";
 
 const filterConfig = {
   courseCategory: 'multi',
   resourceCategory: 'multi'
 } as const;
+
 
 export const Contents = () => {
   const [contents, setContents] = useState<Content[]>([]);
@@ -47,6 +47,10 @@ export const Contents = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
   
   // Use ref to track if initial load is complete
   const initialLoadComplete = useRef(false);
@@ -74,6 +78,50 @@ export const Contents = () => {
 
   const handleToastClose = () =>
     setToasts({ message: "", open: false, severity: undefined });
+
+  // Handle opening the delete confirmation dialog
+  const handleDeleteClick = (content: Content) => {
+    setContentToDelete(content);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle closing the delete confirmation dialog
+  const handleDeleteClose = () => {
+    setDeleteDialogOpen(false);
+    setContentToDelete(null);
+  };
+
+  // Handle confirming content deletion
+  const handleDeleteConfirm = async () => {
+    if (!contentToDelete) return;
+    
+    setLoading(true);
+    try {
+      // Call the retire API
+      await contentsService.retireContent(contentToDelete.identifier);
+      
+      // Show success message
+      setToasts({
+        message: `Content "${contentToDelete.name}" has been retired successfully.`,
+        open: true,
+        severity: "success"
+      });
+      
+      // Refresh the content list
+      fetchContents(page, rowsPerPage, searchQuery, selectedFilters, false);
+    } catch (error) {
+      console.error("Error retiring content:", error);
+      setToasts({
+        message: "Failed to retire content. Please try again.",
+        open: true,
+        severity: "error"
+      });
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+      setContentToDelete(null);
+    }
+  };
 
   const fetchContents = async (
     pageNumber = 0, 
@@ -251,15 +299,15 @@ export const Contents = () => {
           
           {contents && contents.length > 0 ? (
             <>
-              <TableContainer component={Paper}>
+                         <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Primary Category</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Creator</TableCell>
-                      <TableCell align="right">Actions</TableCell>
+                      <TableCell sx={{ maxWidth: 250 }}>Name</TableCell>
+                      <TableCell sx={{ maxWidth: 150 }}>Primary Category</TableCell>
+                      <TableCell sx={{ maxWidth: 120 }}>Created On</TableCell>
+                      <TableCell sx={{ maxWidth: 150 }}>Creator</TableCell>
+                      <TableCell align="right" sx={{ width: 120 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -268,13 +316,42 @@ export const Contents = () => {
                         key={row.identifier}
                         sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                       >
-                        <TableCell component="th" scope="row">
-                          {row.name}
+                        <TableCell 
+                          component="th" 
+                          scope="row"
+                          sx={{ 
+                            maxWidth: 250,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                           <EllipsisCell text={row.name} maxWidth={250} />
                         </TableCell>
-                        <TableCell>{row.primaryCategory}</TableCell>
-                        <TableCell>{new Date(row.createdOn).toLocaleDateString()}</TableCell>
-                        <TableCell>{row.creator}</TableCell>
-                        <TableCell align="right">
+                        <TableCell 
+                          sx={{ 
+                            maxWidth: 150,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {row.primaryCategory}
+                        </TableCell>
+                        <TableCell sx={{ maxWidth: 120 }}>
+                          {new Date(row.createdOn).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell 
+                          sx={{ 
+                            maxWidth: 150,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {row.creator}
+                        </TableCell>
+                        <TableCell align="right" sx={{ width: 120 }}>
                           <IconButton
                             aria-label="edit"
                             size="small"
@@ -285,7 +362,8 @@ export const Contents = () => {
                           <IconButton
                             aria-label="delete"
                             size="small"
-                            onClick={() => {}}
+                            onClick={() => handleDeleteClick(row)}
+                            color="error"
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -312,6 +390,39 @@ export const Contents = () => {
               No contents available. Create one by clicking on add new content.
             </Alert>
           )}
+          
+          {/* Delete Confirmation Dialog */}
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={handleDeleteClose}
+            aria-labelledby="alert-dialog-title"
+            aria-describedby="alert-dialog-description"
+          >
+            <DialogTitle id="alert-dialog-title">
+              Retire Content
+            </DialogTitle>
+            <DialogContent>
+              <DialogContentText id="alert-dialog-description">
+                Are you sure you want to retire "{contentToDelete?.name}"? 
+                This action will make the content unavailable to users.
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleDeleteClose} disabled={loading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDeleteConfirm} 
+                color="error" 
+                variant="contained" 
+                autoFocus
+                disabled={loading}
+              >
+                {loading ? "Retiring..." : "Yes, Retire"}
+              </Button>
+            </DialogActions>
+          </Dialog>
+          
           <Snackbar
             anchorOrigin={{ vertical: "top", horizontal: "right" }}
             open={toasts.open}

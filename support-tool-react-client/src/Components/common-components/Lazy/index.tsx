@@ -80,6 +80,12 @@ const Domains = lazy(() =>
   }))
 );
 
+const UploadContents = lazy(() =>
+  import("../../upload-contents").then((module) => ({
+    default: module.UploadContents,
+  }))
+);
+
 const LazyApp = () => {
   return (
       <Suspense fallback={<div>Loading route...</div>}>
@@ -180,7 +186,15 @@ const LazyApp = () => {
                 <Domains />
               </ProtectedRoute>
             }
-          />
+          /> 
+          <Route
+          path="/upload-contents"
+          element={
+            <ProtectedRoute>
+              <UploadContents />
+            </ProtectedRoute>
+          }
+        />
         </Routes>
       </Suspense>
   );

@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import bodyParser from "body-parser";
 import http from "http";
 import session from 'express-session';
@@ -30,10 +29,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.json());
-app.use(cors({
-  origin: [process.env.HOST+":"+process.env.PORT , 'http://localhost:3000'],   // <-- exactly your frontend URL
-  credentials: true                  // <-- allow cookies, auth headers
-}));
+
 
 const PgSession = connectPgSimple(session);
 const pgPool = pool;
@@ -105,13 +101,17 @@ const createSessionsTable = async () => {
 
 app.use(function (req, res, next) {
   // Website you wish to allow to connect
-  res.setHeader('Access-Control-Allow-Origin', [process.env.HOST+":"+process.env.PORT ,'http://localhost:3000']);
-
+  const origin = req.headers.referer || req.headers.origin;
+  if (origin) {
+    // Remove trailing slash from origin if present
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    res.setHeader('Access-Control-Allow-Origin', normalizedOrigin);
+  }
   // Request methods you wish to allow
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
   // Request headers you wish to allow
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-authenticated-user-token, authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-authenticated-user-token, x-user-id,authorization');
 
   // Set to true if you need the website to include cookies in the requests sent
   // to the API (e.g. in case you use sessions)

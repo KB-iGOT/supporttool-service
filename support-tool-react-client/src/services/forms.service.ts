@@ -18,13 +18,22 @@ const apiClient = axios.create({
 // API Service for Modules
 export const formsService = {
     
-
-
-  // Fetch all Modules
-  getForms: async (request: any) => {
-
-    
-    const response = await apiClient.post("/forms", request);
+  getFormsFacets: async () => {
+    const response = await apiClient.get("/forms/facets");
     return response.data;
-  }
+  },
+  getFormReadData: async (request: any) => {
+    debugger
+    const response = await apiClient.post(`/forms/read`, request);
+    return response.data;
+  },
+  updateFormData: async (request: any) => {
+    const response = await apiClient.post(`/forms/update`, request);
+    return response.data;
+  },
+  createFormData: async (request: any) => {
+    debugger
+    const response = await apiClient.post(`/forms/create`, request);
+    return response.data;
+  },
 };

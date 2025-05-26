@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { appContextType } from "../../../types";
 import { AppContext } from "../../../Context/AppContext";
 import Grid from "@mui/material/Grid";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const useStyles = makeStyles(() =>
   createStyles({
@@ -37,6 +38,9 @@ const useStyles = makeStyles(() =>
         width: "50%",
         margin: "2rem auto",
         border: "1px solid #ddd"
+    },
+    buttonProgress: {
+      marginLeft: "10px"
     }
   })
 );
@@ -44,10 +48,11 @@ const useStyles = makeStyles(() =>
 export const Login: React.FC = () => {
   const classes = useStyles();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
-    const { setIsLoggedIn, setNotification } = useContext(
-      AppContext,
-    ) as appContextType;
+  const { setIsLoggedIn, setNotification } = useContext(
+    AppContext,
+  ) as appContextType;
     
   const [fields, setFields] = useState<{username: string; password: string}>({
     username: "",
@@ -55,26 +60,55 @@ export const Login: React.FC = () => {
   });
 
   const submitForm = async() => {
-    try{
-      const response = await authService.auth({ username: fields.username, password: fields.password });
-      if(response.status === 200){
-        console.log(response);
+    if (!fields.username || !fields.password) {
+      setNotification({
+        open: true,
+        message: "Please enter both username and password",
+        severity: "error",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const response = await authService.auth({ 
+        username: fields.username, 
+        password: fields.password 
+      });
+      
+      if (response && response.status === 200) {
+        console.log("Login successful:", response);
         localStorage.setItem("userId", response.userId);
         setIsLoggedIn(true);
         navigate("/home");
-      }else{
+      } else {
+        console.error("Login failed:", response);
         setNotification({
           open: true,
-          message: response.message,
+          message: response?.message || "Login failed. Please try again.",
           severity: "error",
         });
       }
-    }catch(err: any){
-      setNotification({
-        open: true,
-        message: err.response.data.message,
-        severity: "error",
-      });
+    } catch (err: any) {
+      console.error("Login error:", err);
+      
+      // Handle different types of errors
+      if (err.message === "Network Error") {
+        setNotification({
+          open: true,
+          message: "Unable to connect to the server. Please check if the server is running.",
+          severity: "error",
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: err?.response?.data?.message || err?.message || "An unexpected error occurred",
+          severity: "error",
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -88,11 +122,14 @@ export const Login: React.FC = () => {
         </Grid>
         <Grid item xs={12} lg={6}>
           <Box mb={2}>
-            <TextField label="E-mail" variant="outlined" fullWidth value={
-              fields.username
-            } onChange={(e)=> 
-            setFields({...fields, username: e.target.value})
-            } />
+            <TextField 
+              label="E-mail" 
+              variant="outlined" 
+              fullWidth 
+              value={fields.username}
+              onChange={(e) => setFields({...fields, username: e.target.value})} 
+              disabled={isLoading}
+            />
           </Box>
           <Box mb={2}>
             <TextField
@@ -101,8 +138,10 @@ export const Login: React.FC = () => {
               variant="outlined"
               required
               fullWidth
+              type="password"
               value={fields.password}
               onChange={(e) => setFields({...fields, password: e.target.value})}
+              disabled={isLoading}
             />
           </Box>
           <Box mb={2}>
@@ -114,7 +153,14 @@ export const Login: React.FC = () => {
             </FormGroup>
           </Box>
           <Box mb={2}>
-            <Button variant="contained" disabled={!fields.username && !fields.password} onClick={submitForm}>Sign in</Button>
+            <Button 
+              variant="contained" 
+              disabled={isLoading || (!fields.username || !fields.password)} 
+              onClick={submitForm}
+            >
+              Sign in
+              {isLoading && <CircularProgress size={20} className={classes.buttonProgress} />}
+            </Button>
           </Box>
         </Grid>
       </Grid>

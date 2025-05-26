@@ -16,7 +16,7 @@ export async function connectCassandra() {
         return cassandraClient;
     } catch (error) {
         console.error('Cassandra connection error:', error);
-        throw error;
+        return error;
     }
 }
 
