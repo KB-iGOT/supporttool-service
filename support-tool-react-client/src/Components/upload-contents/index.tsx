@@ -30,6 +30,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InsertLinkIcon from '@mui/icons-material/InsertLink';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import axios from 'axios';
+import { contentsService } from '../../services/contents.service';
 
 // Define types for content creation
 interface ContentRequest {
@@ -55,21 +56,9 @@ interface ContentRequest {
 
 // Define types for API responses
 interface ContentCreateResponse {
-  id: string;
-  ver: string;
-  ts: string;
-  params: {
-    resmsgid: string;
-    msgid: string;
-    status: string;
-    err?: string;
-    errmsg?: string;
-  };
-  responseCode: string;
-  result: {
     identifier: string;
     versionKey: string;
-  };
+    node_id: string;
 }
 
 interface ContentUploadResponse {
@@ -230,14 +219,15 @@ export const UploadContents = () => {
     setError(null);
     
     try {
-      const response = await axios.post('/api/private/content/v3/create', {
+      let requestData = {
         request: {
           content: contentData
         }
-      });
+      }
+      const response = await contentsService.privateContentCreate(requestData);
       
-      if (response.status === 200 && response.data) {
-        setCreateResponse(response.data);
+      if (response.responseCode === 'OK' && response.result) {
+        setCreateResponse(response.result);
         setSuccess('Content created successfully! Now you can upload a file.');
         setSnackbarOpen(true);
         setActiveStep(1);
@@ -254,7 +244,7 @@ export const UploadContents = () => {
   };
 
   const handleUploadContent = async () => {
-    if (!selectedFile || !createResponse?.result?.identifier) {
+    if (!selectedFile || !createResponse?.identifier) {
       setError('Please select a file to upload and ensure content was created successfully');
       setSnackbarOpen(true);
       return;
@@ -265,14 +255,11 @@ export const UploadContents = () => {
     
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('data', selectedFile);
       
-      const contentId = createResponse.result.identifier;
-      const response = await axios.post(`/api/private/content/v3/upload/${contentId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const contentId = createResponse?.identifier;
+      const response = await contentsService.privateContentUpload(formData, contentId);
+      
       
       if (response.status === 200 && response.data) {
         setUploadResponse(response.data);
@@ -305,7 +292,7 @@ export const UploadContents = () => {
       const updateData = {
         request: {
           content: {
-            identifier: createResponse.result.identifier,
+            identifier: createResponse?.identifier,
             artifactUrl: uploadResponse.result.artifactUrl,
             versionKey: uploadResponse.result.versionKey,
             redirectUrl: contentData.redirectUrl
@@ -359,9 +346,13 @@ export const UploadContents = () => {
     });
     setSelectedFile(null);
     setPreviewUrl(null);
-    setCreateResponse(null);
+    setCreateResponse({
+      "identifier": "do_114321610581745664111",
+      "node_id": "do_114321610581745664111",
+      "versionKey": "1748243479296"
+  });
     setUploadResponse(null);
-    setActiveStep(0);
+    setActiveStep(1);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -555,7 +546,7 @@ export const UploadContents = () => {
 
   // Render File Upload Form
   const renderFileUploadForm = () => {
-    if (!createResponse?.result?.identifier) {
+    if (!createResponse?.identifier) {
       return (
         <Alert severity="error" sx={{ mt: 2 }}>
           Content creation is required before uploading. Please go back and create content first.
@@ -567,7 +558,7 @@ export const UploadContents = () => {
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Content created successfully! Content ID: {createResponse.result.identifier}
+            Content created successfully! Content ID: {createResponse?.identifier}
           </Alert>
         </Grid>
         
@@ -663,7 +654,7 @@ export const UploadContents = () => {
               <Typography><strong>Primary Category:</strong> {contentData.primaryCategory}</Typography>
               <Typography><strong>MIME Type:</strong> {contentData.mimeType}</Typography>
               <Typography><strong>Created By:</strong> {contentData.createdBy}</Typography>
-              <Typography><strong>Content ID:</strong> {createResponse?.result?.identifier}</Typography>
+              <Typography><strong>Content ID:</strong> {createResponse?.identifier}</Typography>
               
               <Divider sx={{ my: 2 }} />
               

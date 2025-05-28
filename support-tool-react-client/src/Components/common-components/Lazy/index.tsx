@@ -85,7 +85,21 @@ const UploadContents = lazy(() =>
     default: module.UploadContents,
   }))
 );
-
+const NonLoggedInPage = lazy(() =>
+  import("../../non-logged-in-page").then((module) => ({
+    default: module.NonLoggedInPage,
+  }))
+);
+const AnnouncementSection = lazy(() =>
+  import("../../non-logged-in-page/announcement-section").then((module) => ({
+    default: module.AnnouncementSection,
+  }))
+);
+const ModuleCards = lazy(() =>
+  import("../../non-logged-in-page/module-cards").then((module) => ({
+    default: module.ModuleCards,
+  }))
+);
 const LazyApp = () => {
   return (
       <Suspense fallback={<div>Loading route...</div>}>
@@ -195,6 +209,17 @@ const LazyApp = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+            path="/non-logged-in-page"
+            element={
+              <ProtectedRoute>
+                <NonLoggedInPage />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ModuleCards />} />
+            <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
+          </Route>
         </Routes>
       </Suspense>
   );

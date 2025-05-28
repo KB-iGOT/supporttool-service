@@ -7,11 +7,14 @@ import {
   CardContent, 
   LinearProgress, 
   Typography, 
-  Alert,
-  Divider
+  Alert, 
+  Divider,
+  Snackbar
 } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formsService } from "../../services/forms.service";
 import { JsonEditor } from "../common-components/json-editor/json-editor";
 import { FormFilter, FormFilterData } from "./form-filter";
@@ -32,6 +35,11 @@ export const Forms = () => {
   
   // Create form mode state
   const [createMode, setCreateMode] = useState<boolean>(false);
+  
+  // JSON validation state
+  const [jsonValid, setJsonValid] = useState<boolean>(true);
+  const [jsonValidationMessage, setJsonValidationMessage] = useState<string>("");
+  const [showValidationMessage, setShowValidationMessage] = useState<boolean>(false);
   
   // Load form data on component mount
   useEffect(() => {
@@ -62,9 +70,43 @@ export const Forms = () => {
     }
   };
 
+  // Validate JSON data
+  const validateJson = (jsonData: any): boolean => {
+    // Check if JSON data exists
+    if (!jsonData) {
+      setJsonValidationMessage("JSON data is required and cannot be empty.");
+      setJsonValid(false);
+      setShowValidationMessage(true);
+      return false;
+    }
+    
+    // Check if JSON data is an object
+    if (typeof jsonData !== 'object') {
+      setJsonValidationMessage("JSON data must be a valid object.");
+      setJsonValid(false);
+      setShowValidationMessage(true);
+      return false;
+    }
+    
+    // Check if JSON data is empty object
+    if (Object.keys(jsonData).length === 0) {
+      setJsonValidationMessage("JSON data cannot be an empty object.");
+      setJsonValid(false);
+      setShowValidationMessage(true);
+      return false;
+    }
+    
+    // If we reach here, JSON is valid
+    setJsonValid(true);
+    setJsonValidationMessage("JSON is valid!");
+    return true;
+  };
+
   // Handle form data changes in the JSON editor
   const handleFormDataChange = (newData: any) => {
     setFormData(newData);
+    // Validate JSON on every change but don't show message yet
+    validateJson(newData);
   };
 
   // Fetch form data based on selected filters
@@ -93,7 +135,10 @@ export const Forms = () => {
         let data = response.result.formData && response.result.formData.data || {};
         if(typeof data === "string") {
           try { 
-            setFormData(JSON.parse(data));
+            const parsedData = JSON.parse(data);
+            setFormData(parsedData);
+            // Validate JSON
+            validateJson(parsedData);
             // Increment the key to force re-render of the JsonEditor
             setJsonEditorKey(prev => prev + 1);
             // Set form as loaded
@@ -104,6 +149,8 @@ export const Forms = () => {
           }
         } else {
           setFormData(data);
+          // Validate JSON
+          validateJson(data);
           // Increment the key to force re-render of the JsonEditor
           setJsonEditorKey(prev => prev + 1);
           // Set form as loaded
@@ -131,11 +178,25 @@ export const Forms = () => {
     // Clear active filter to prevent saving with incorrect filters
     // We don't actually clear the UI filter values because they're managed by the FormFilter component
     setActiveFilter(null);
+    
+    // Reset validation state
+    setJsonValid(true);
+    setJsonValidationMessage("");
   };
   
   // Save existing form data
   const handleSaveExistingForm = async () => {
-    if (!formData || !activeFilter) return;
+    if (!formData || !activeFilter) {
+      setJsonValidationMessage("No form data to save");
+      setJsonValid(false);
+      setShowValidationMessage(true);
+      return;
+    }
+    
+    // Validate JSON before saving
+    if (!validateJson(formData)) {
+      return;
+    }
     
     setLoading(true);
     try {
@@ -150,7 +211,9 @@ export const Forms = () => {
       });
       
       if (response?.status === 200) {
-        alert("Form data saved successfully!");
+        setJsonValidationMessage("Form data saved successfully!");
+        setJsonValid(true);
+        setShowValidationMessage(true);
       } else {
         setError("Failed to save form data: " + (response?.message || "Unknown error"));
       }
@@ -164,6 +227,11 @@ export const Forms = () => {
   
   // Save new form data (from create form component)
   const handleSaveNewForm = async (formMetadata: FormFilterData, jsonData: any) => {
+    // Validate JSON before saving
+    if (!validateJson(jsonData)) {
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await formsService.createFormData({
@@ -177,7 +245,9 @@ export const Forms = () => {
       });
       
       if (response?.status === 200) {
-        alert("Form created successfully!");
+        setJsonValidationMessage("Form created successfully!");
+        setJsonValid(true);
+        setShowValidationMessage(true);
         // Exit create mode and refresh form list
         setCreateMode(false);
         fetchFormData();
@@ -198,11 +268,18 @@ export const Forms = () => {
     setFormLoaded(false);
     setActiveFilter(null);
     setFormData(null);
+    setJsonValid(true);
+    setJsonValidationMessage("");
   };
   
   // Exit create form mode
   const handleExitCreateMode = () => {
     setCreateMode(false);
+  };
+  
+  // Handle close of validation message
+  const handleCloseValidationMessage = () => {
+    setShowValidationMessage(false);
   };
   
   if (loading && !formLoaded) {
@@ -275,17 +352,39 @@ export const Forms = () => {
       {formData !== null && (
         <Card elevation={2} sx={{ mt: 4 }}>
           <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h5">Form Configuration Editor</Typography>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                onClick={handleSaveExistingForm}
-                disabled={loading}
-                startIcon={<SaveIcon />}
-              >
-                Save Configuration
-              </Button>
+              <Box display="flex" alignItems="center">
+                {/* JSON validation indicator */}
+                {formData !== null && (
+                  <Box 
+                    component="span" 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mr: 2,
+                      color: jsonValid ? 'success.main' : 'warning.main'
+                    }}
+                  >
+                    {jsonValid ? 
+                      <CheckCircleIcon color="success" sx={{ mr: 0.5 }} /> : 
+                      <WarningIcon color="warning" sx={{ mr: 0.5 }} />
+                    }
+                    <Typography variant="body2">
+                      {jsonValid ? "Valid JSON" : "Invalid JSON"}
+                    </Typography>
+                  </Box>
+                )}
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleSaveExistingForm}
+                  disabled={loading || !jsonValid}
+                  startIcon={<SaveIcon />}
+                >
+                  Save Configuration
+                </Button>
+              </Box>
             </Box>
             
             {/* Use key to force re-render when formData changes */}
@@ -323,6 +422,22 @@ export const Forms = () => {
           </Alert>
         </Box>
       )}
+      
+      {/* Validation message snackbar */}
+      <Snackbar 
+        open={showValidationMessage} 
+        autoHideDuration={6000} 
+        onClose={handleCloseValidationMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseValidationMessage} 
+          severity={jsonValid ? "success" : "warning"} 
+          sx={{ width: '100%' }}
+        >
+          {jsonValidationMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

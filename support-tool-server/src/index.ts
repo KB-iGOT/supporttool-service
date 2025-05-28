@@ -22,6 +22,7 @@ import organisationsRoutes from "./routes/organisations.routes";
 import clientRoutes from "./helpers/clientRoutes";
 import { connectCassandra } from "./utils/cassandra";
 import domainRoutes from "./routes/domains.routes";
+import privateRoutes from "./routes/private.routes";
 
 
 const app = express();
@@ -157,6 +158,7 @@ app.use("/api/users", UsersRoutes);
 app.use("/api/forms", FormsRoutes);
 app.use("/api/org", organisationsRoutes);
 app.use("/api/domains", domainRoutes);
+app.use("/api/private", privateRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
 

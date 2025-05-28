@@ -42,5 +42,24 @@ export const contentsService = {
       console.error("Error creating private content:", error);
       throw error;
     }
+  },
+
+  privateContentUpload: async (contentData: any, contentId:string) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/contents/private/upload/${contentId}`, 
+        contentData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'x-user-id': userId ?? '',
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating private content:", error);
+      throw error;
+    }
   }
 };

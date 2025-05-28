@@ -23,7 +23,7 @@ export const formsService = {
     return response.data;
   },
   getFormReadData: async (request: any) => {
-    debugger
+    
     const response = await apiClient.post(`/forms/read`, request);
     return response.data;
   },
@@ -32,7 +32,7 @@ export const formsService = {
     return response.data;
   },
   createFormData: async (request: any) => {
-    debugger
+    
     const response = await apiClient.post(`/forms/create`, request);
     return response.data;
   },
