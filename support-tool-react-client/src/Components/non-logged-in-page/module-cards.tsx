@@ -5,7 +5,7 @@ export const ModuleCards = () => {
     const navigate = useNavigate();
     const modules = [
         { name: "News Letter", url: "/non-logged-in-page/news" },
-        { name: "Photo Gallery", url: "/user-management" },
+        { name: "Photo Gallery", url: "/non-logged-in-page/gallery" },
         { name: "Careers", url: "/non-logged-in-page/career" },
         { name: "Tenders", url: "/non-logged-in-page/tender" },
         { name: "Notifications", url: "/non-logged-in-page/notification" }

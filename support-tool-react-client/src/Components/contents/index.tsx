@@ -352,13 +352,13 @@ export const Contents = () => {
                           {row.creator}
                         </TableCell>
                         <TableCell align="right" sx={{ width: 120 }}>
-                          <IconButton
+                          {/* <IconButton
                             aria-label="edit"
                             size="small"
                             onClick={() => {}}  
                           >
                             <PencilIcon fontSize="small" />
-                          </IconButton>
+                          </IconButton> */}
                           <IconButton
                             aria-label="delete"
                             size="small"

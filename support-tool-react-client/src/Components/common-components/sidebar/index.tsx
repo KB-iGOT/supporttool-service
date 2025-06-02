@@ -25,7 +25,7 @@ export const Sidebar = () => {
       AppContext,
     ) as appContextType;
   const classes = useStyles();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
