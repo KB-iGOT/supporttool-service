@@ -24,11 +24,16 @@ export const domainService = {
     return response.data;
   },
   addDomain: async (requestPayload: any) => {
-    const response = await apiClient.post(`/domains/add`,requestPayload);
+    try {
+      const response = await apiClient.post(`/domains/add`,requestPayload);
+    return response.data;
+    } catch (error) {
+      console.error("Error in addDomain service:", error);
+      throw error; // Propagate error to be handled by component
+    }
+  },
+  deleteDomain: async (domainName: string) => {
+    const response = await apiClient.get(`/domains/delete/${domainName}`);
     return response.data;
   },
-    deleteDomain: async (domainName: string) => {
-        const response = await apiClient.get(`/domains/delete/${domainName}`);
-        return response.data;
-    },
 };

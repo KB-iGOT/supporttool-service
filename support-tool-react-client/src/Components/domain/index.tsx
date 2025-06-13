@@ -23,17 +23,14 @@ import {
   Typography,
   AlertColor,
   TextField,
-  InputAdornment
+  InputAdornment,
+  FormHelperText
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
-import { DynamicFormDialog } from "../common-components/dynamic-form-dialog/DynamicFormDialog";
-import { FieldDefinition, FormData as CustomFormData } from "../../types/forms";
-import axios from "axios";
-import env from "../../Config/env";
+import { FormData as CustomFormData } from "../../types/forms";
 import { domainService } from "../../services/domain.service";
-import { request } from "http";
 
 interface Domain {
   id: string;
@@ -53,27 +50,15 @@ export const Domain = () => {
     severity: "success" as AlertColor,
   });
   const [openDialog, setOpenDialog] = useState(false);
-  const [openFormDialog, setOpenFormDialog] = useState(false);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
   const [domainToDelete, setDomainToDelete] = useState<Domain | null>(null);
+  
+  // New state for the domain form
+  const [domainInput, setDomainInput] = useState("");
+  const [domainInputError, setDomainInputError] = useState("");
 
-  const formFields: any[] = [
-    // {
-    //   name: "contextType",
-    //   displayName: "Context Type",
-    //   fieldType: "text",
-    //   optional: true,
-    //   placeholder: "Enter context type",
-    //   identifier: 'contextType',
-    // },
-    {
-      name: "contextName",
-      displayName: "Context Name",
-      fieldType: "text",
-      optional: true,
-      placeholder: "Enter context name",
-      identifier: 'contextName',
-    }
-  ];
+  // Domain validation pattern for domain names like yahoo.co.in, gmail.com
+  const domainNamePattern = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 
   // Filter domains based on search query
   const filteredDomains = useMemo(() => {
@@ -148,8 +133,6 @@ export const Domain = () => {
     
     setLoading(true);
     try {
-      
-
       const response = await domainService.deleteDomain(domainToDelete.contextName);
       setSnackbar({
         open: true,
@@ -173,13 +156,38 @@ export const Domain = () => {
     }
   };
 
-  const handleAddDomain = async (formData: CustomFormData) => {
+  // Handle domain input change
+  const handleDomainInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDomainInput(value);
+    
+    // Validate domain as user types
+    if (!value) {
+      setDomainInputError("Domain name is required");
+    } else if (!domainNamePattern.test(value)) {
+      setDomainInputError("Please enter a valid domain name (e.g., yahoo.com, gmail.com)");
+    } else {
+      setDomainInputError("");
+    }
+  };
+
+  // Handle add domain submission
+  const handleAddDomainSubmit = async () => {
+    // Validate domain before submitting
+    if (!domainInput) {
+      setDomainInputError("Domain name is required");
+      return;
+    }
+    
+    if (!domainNamePattern.test(domainInput)) {
+      setDomainInputError("Please enter a valid domain name (e.g., yahoo.com, gmail.com)");
+      return;
+    }
     
     setLoading(true);
     try {
-        let requestPayload = {
-            request: formData
-        }
+      const formData = { contextName: domainInput };
+      const requestPayload = { request: formData };
 
       const response = await domainService.addDomain(requestPayload);
       if(response) {
@@ -188,25 +196,52 @@ export const Domain = () => {
       
       setSnackbar({
         open: true,
-        message: "Domain added successfully",
+        message: `Domain '${domainInput}' added successfully`,
         severity: "success",
       });
       
       // Refresh the data and return to first page
       setPage(0);
       fetchDomains();
-      return true; // Indicate success to close the dialog
-    } catch (error) {
+      
+      // Close dialog and reset form
+      setOpenAddDialog(false);
+      setDomainInput("");
+      setDomainInputError("");
+    } catch (error: any) {
       console.error("Error adding domain:", error);
-      setSnackbar({
-        open: true,
-        message: "Failed to add domain",
-        severity: "error",
-      });
-      return false; // Indicate failure to keep dialog open
+      
+      // Check for conflict status (409) which indicates duplicate domain
+      if (error.response && error.response.status === 409) {
+        setDomainInputError(`Domain '${domainInput}' already exists`);
+        setSnackbar({
+          open: true,
+          message: `Domain '${domainInput}' already exists`,
+          severity: "error",
+        });
+      } else {
+        // Generic error message for other errors
+        setSnackbar({
+          open: true,
+          message: error.response?.data?.message || "Failed to add domain",
+          severity: "error",
+        });
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenAddDialog = () => {
+    setOpenAddDialog(true);
+    setDomainInput("");
+    setDomainInputError("");
+  };
+
+  const handleCloseAddDialog = () => {
+    setOpenAddDialog(false);
+    setDomainInput("");
+    setDomainInputError("");
   };
 
   const handleCloseSnackbar = () => {
@@ -221,7 +256,7 @@ export const Domain = () => {
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => setOpenFormDialog(true)}
+          onClick={handleOpenAddDialog}
         >
           Add Domain
         </Button>
@@ -322,16 +357,44 @@ export const Domain = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dynamic Form Dialog for Adding Domain */}
-      <DynamicFormDialog
-        open={openFormDialog}
-        onClose={() => setOpenFormDialog(false)}
-        title="Add New Domain"
-        fields={formFields}
-        initialData={{}}
-        onSubmit={handleAddDomain}
-        submitButtonText="Add Domain"
-      />
+      {/* Custom Add Domain Dialog */}
+      <Dialog
+        open={openAddDialog}
+        onClose={handleCloseAddDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Add New Domain</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Domain Name"
+              placeholder="Enter domain name (e.g., yahoo.com, gmail.com)"
+              value={domainInput}
+              onChange={handleDomainInputChange}
+              error={!!domainInputError}
+              helperText={domainInputError}
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+              variant="outlined"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAddDialog}>Cancel</Button>
+          <Button 
+            onClick={handleAddDomainSubmit} 
+            variant="contained"
+            disabled={!domainInput || !!domainInputError || loading}
+          >
+            Add Domain
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

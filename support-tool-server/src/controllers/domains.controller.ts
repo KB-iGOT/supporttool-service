@@ -78,6 +78,25 @@ export const addDomain: RequestHandler = async (
       return;
     }
     
+    // First, check if the domain already exists
+    const checkQuery = 'SELECT contextname FROM sunbird.master_data WHERE contexttype = ? AND contextname = ? ALLOW FILTERING';
+    
+    const checkResult = await cassandraClient.execute(
+      checkQuery,
+      [contextType, contextName.trim()],
+      { prepare: true }
+    );
+    
+    // If rows are returned, the domain already exists
+    if (checkResult.rows.length > 0) {
+      res.status(409).json({
+        status: 409,
+        message: `Domain "${contextName}" already exists`,
+        error: "Duplicate domain"
+      });
+      return;
+    }
+    
     const currentTimestamp = new Date();
     
     // Prepare the query with parameterization to prevent injection
@@ -138,10 +157,6 @@ export const deleteDomain: RequestHandler = async (
       return;
     }
     
-
-    
-    
-   
     // Prepare the delete query
     const deleteQuery = 'DELETE FROM sunbird.master_data WHERE contextname = ? and contexttype = ?';
     
@@ -156,8 +171,7 @@ export const deleteDomain: RequestHandler = async (
         contextName:domainName
       }
     });
-      } catch (error) {
-    
+  } catch (error) {
     res.status(500).json({
       status: 500,
       message: "Internal server error while deleting domain",

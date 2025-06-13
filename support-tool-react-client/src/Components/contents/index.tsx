@@ -226,12 +226,12 @@ export const Contents = () => {
                 <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
                 <Typography variant="body2">Contents Data goes here.</Typography>                
             </div>
-            <Button
+            {/* <Button
               variant="contained"
               startIcon={<AddIcon />}
             >
               Add new content
-            </Button>
+            </Button> */}
           </Box>
 
           <div className="bg-gray-100 p-4">
