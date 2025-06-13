@@ -11,8 +11,8 @@ export const decodeCookie = (cookie: string) => {
 
   try {
     const parsed = JSON.parse(jsonString);
-    const { name, id: userId, roles, token, userName } = parsed;
-    return { name, userId, roles, token, userName };
+    const { name, id: userId, roles, token, userName,email } = parsed;
+    return { name, userId, roles, token, userName, email };
   } catch (error) {
     console.error("Invalid JSON cookie", error);
     return null;

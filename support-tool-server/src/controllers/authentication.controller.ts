@@ -2,15 +2,36 @@ import request from "request";
 import pool from "../config/database";
 import logger from "../utils/logger";
 
-const getUserFromDB = async (username: string) => {
-  const users = await pool.query(
-    'SELECT * FROM users WHERE "userName" = $1',
-    [username]
+const getUserFromDB = async (email: string) => {
+  let users = await pool.query(
+    'SELECT * FROM users WHERE "email" = $1',
+    [email]
   );
+  let roles = [];
+  if( users.rows && users.rows[0] && users.rows[0] .id) {
+    const userId = users.rows[0].id;
+
+    const userRoles = await pool.query(
+      `SELECT 
+    r.id AS role_id,
+    r.name AS role_name
+FROM 
+    roles r
+WHERE 
+    r.id = ANY(
+        SELECT unnest(role_ids) 
+        FROM user_roles 
+        WHERE user_id = $1)`,
+      [userId]
+    );
+    console.log("userRoles", userRoles.rows);
+     users.rows[0]["roles"] = userRoles?.rows?.length ? userRoles?.rows: [];
+  }
+  console.log("users", users,users.rows[0]);
   return users.rows[0];
 };
 
-const authenticateWithKeycloak = (username: string, password: string) => {
+const authenticateWithKeycloak = (email: string, password: string) => {
   return new Promise((resolve, reject) => {
     const options = {
       method: "POST",
@@ -22,7 +43,7 @@ const authenticateWithKeycloak = (username: string, password: string) => {
         client_id: process.env.KEYCLOAK_CLIENT_ID,
         password: password,
         grant_type: "password",
-        username: username,
+        username: email,
         client_secret: process.env.KEYCLOAK_CLIENT_SECRET,
       },
     };
@@ -41,13 +62,16 @@ const authenticateWithKeycloak = (username: string, password: string) => {
 };
 
 const createSessionData = (user: any, token: string) => {
-  return {
+  let data =  {
     id: user.userId,
     userName: user.userName,
     name: user.firstName + (user.lastName ? " " + user.lastName : ""),
     token: token,
     roles: user.roles,
+    email: user.email,
   };
+  console.log("Session Data Created: ", data);
+  return data;
 };
 
 const saveSession = (req: any, sessionData: any) => {

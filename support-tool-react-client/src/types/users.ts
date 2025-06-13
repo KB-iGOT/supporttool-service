@@ -15,7 +15,8 @@ export interface ICreateUser {
   userName: string | undefined;
   firstName: string | undefined;
   lastName: string | undefined;
-  roles: string | undefined;
+  roles: any | undefined;
+  email?: string;
 }
 
 export interface UserProfile {

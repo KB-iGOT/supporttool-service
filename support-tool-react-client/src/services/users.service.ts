@@ -27,6 +27,10 @@ export const usersService = {
     const response = await apiClient.post("/users", request);
     return response.data;
   },
+  getUserByEmail:async (request: any) =>{
+    const response = await apiClient.post(`/users/email`, request);
+    return response.data;
+  },
   updateUser: async (userId: string, updatedFields: any) => {
     // Construct the request payload as expected by your API
     const requestPayload = {

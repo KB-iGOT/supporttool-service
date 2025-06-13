@@ -20,10 +20,12 @@ import Alert, { AlertColor } from "@mui/material/Alert";
 import CreateSupportUser from "./create";
 import { DeleteSupportUser } from "./delete";
 import Snackbar from "@mui/material/Snackbar";
+import { rolesService } from "../../services/roles.service";
 
 export const SupportUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
   const [toasts, setToasts] = useState<{
     message: string;
     open: boolean;
@@ -144,9 +146,27 @@ export const SupportUsers = () => {
       });
     }
   };
+  const getRoles = async () => {
+    try {
+      const rolesData = await rolesService.getRoles();
+      if (rolesData && rolesData.responseCode === "OK") {
+        setRoles(rolesData.roles || []);
+      } else {
+        throw new Error(rolesData?.responseMessage || "Failed to fetch roles");
+      }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setToasts({
+        message: "Failed to load roles",
+        open: true,
+        severity: "error",
+      });
+    }
+  };
 
   useEffect(() => {
     fetchUsers();
+    getRoles();
   }, []);
 
   return (
@@ -187,7 +207,11 @@ export const SupportUsers = () => {
                       </TableCell>
                       <TableCell>{row.userName}</TableCell>
                       <TableCell>{row.userId}</TableCell>
-                      <TableCell>{row.roles}</TableCell>
+                      <TableCell>
+                        {Array.isArray(row.roles)
+                          ? row.roles.map((role) => role.role_name).join(", ")
+                          : ""}
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton
                           aria-label="edit"
@@ -217,6 +241,7 @@ export const SupportUsers = () => {
           )}
           <CreateSupportUser
             open={createConfig}
+            rolesList={roles}
             handleClose={handleClose}
             handleSubmit={handleSubmit}
           />

@@ -79,6 +79,11 @@ const Domains = lazy(() =>
     default: module.Domain,
   }))
 );
+const Roles = lazy(() =>
+  import("../../roles").then((module) => ({
+    default: module.Roles,
+  }))
+);
 
 const UploadContents = lazy(() =>
   import("../../upload-contents").then((module) => ({
@@ -198,6 +203,14 @@ const LazyApp = () => {
             element={
               <ProtectedRoute>
                 <Domains />
+              </ProtectedRoute>
+            }
+          /> 
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute>
+                <Roles />
               </ProtectedRoute>
             }
           /> 

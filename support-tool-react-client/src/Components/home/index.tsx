@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
@@ -8,6 +8,8 @@ import { Grid2, LinearProgress } from "@mui/material";
 import { dashboardService } from "../../services/dashboard.service";
 import { Module } from "../../types/modules";
 import { useNavigate } from "react-router-dom";
+import { appContextType } from "../../types";
+import { AppContext } from "../../Context/AppContext";
 
 export const Home = () => {
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,9 @@ export const Home = () => {
     modules: [],
     adminModules: [],
   });
+  const {userRoles} =  useContext(
+      AppContext,
+    ) as appContextType;
 
   const navigate = useNavigate();
 

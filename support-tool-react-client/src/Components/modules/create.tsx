@@ -115,7 +115,7 @@ const CreateModule: React.FC<{
               disabled={open.edit}
             />
           </FormControl>
-          <FormControl fullWidth>
+          {/* <FormControl fullWidth>
             <InputLabel id="roles-label" required>
               Assign role
             </InputLabel>
@@ -131,7 +131,7 @@ const CreateModule: React.FC<{
               <MenuItem value="USER">USER</MenuItem>
               <MenuItem value="VIEWER">VIEWER</MenuItem>
             </Select>
-          </FormControl>
+          </FormControl> */}
           <FormControl fullWidth>
             <FormControlLabel
               control={

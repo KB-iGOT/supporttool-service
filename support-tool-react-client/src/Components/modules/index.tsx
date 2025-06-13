@@ -175,7 +175,7 @@ export const Modules = () => {
                   <TableRow>
                     <TableCell>Name</TableCell>
                     <TableCell>URL</TableCell>
-                    <TableCell>Roles</TableCell>
+                    {/* <TableCell>Roles</TableCell> */}
                     <TableCell>Is Visible</TableCell>
                     <TableCell>Is Admin Module</TableCell>
                     <TableCell>Is Root Module</TableCell>
@@ -192,7 +192,7 @@ export const Modules = () => {
                         {row.name}
                       </TableCell>
                       <TableCell>{row.url}</TableCell>
-                      <TableCell>{row.roles.toString()}</TableCell>
+                      {/* <TableCell>{row?.roles?.toString()}</TableCell> */}
                       <TableCell>{row.isVisible.toString()}</TableCell>
                       <TableCell>{row.isAdminModule.toString()}</TableCell>
                       <TableCell>{row.isRootModule.toString()}</TableCell>

@@ -5,16 +5,16 @@ import { RequestHandler } from "express";
 // 🚀 **Insert module into DB**
 export const createModule: RequestHandler = async (req: any, res: any) => {
   try {
-    const { name, url, isVisible, roles, isAdminModule, isRootModule } = req.body;
+    const { name, url, isVisible, isAdminModule, isRootModule } = req.body;
 
-    if (!name || !url || !roles) {
+    if (!name || !url ) {
       return res.status(400).json({ message: "All fields are required!" });
     }
 
     const result = await pool.query(
-      `INSERT INTO modules ("name", "url", "isVisible", "roles", "isAdminModule", "isRootModule")
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`, 
-      [name, url, isVisible, roles, isAdminModule, isRootModule]
+      `INSERT INTO modules ("name", "url", "isVisible", "isAdminModule", "isRootModule")
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`, 
+      [name, url, isVisible,  isAdminModule, isRootModule]
     );
 
     res

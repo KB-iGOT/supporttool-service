@@ -17,6 +17,7 @@ export type appContextType = {
     isLoggedIn: boolean;
     setIsLoggedIn: (loading: boolean) => void;
     user: IUserConfig | null;
+    userRoles: any | [];
     notification: INotification;
     setNotification: React.Dispatch<React.SetStateAction<INotification>>;
 }

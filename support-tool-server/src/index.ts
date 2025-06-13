@@ -23,6 +23,7 @@ import clientRoutes from "./helpers/clientRoutes";
 import { connectCassandra } from "./utils/cassandra";
 import domainRoutes from "./routes/domains.routes";
 import privateRoutes from "./routes/private.routes";
+import rolesRouter from "./routes/roles.routes";
 
 
 const app = express();
@@ -161,6 +162,7 @@ app.use("/api/domains", domainRoutes);
 app.use("/api/private", privateRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
+app.use("/api/roles", rolesRouter);
 
 app.get('*', (req, res) => {
   res.redirect("/login");
