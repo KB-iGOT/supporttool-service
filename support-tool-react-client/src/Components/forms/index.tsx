@@ -19,6 +19,8 @@ import { formsService } from "../../services/forms.service";
 import { JsonEditor } from "../common-components/json-editor/json-editor";
 import { FormFilter, FormFilterData } from "./form-filter";
 import { CreateForm } from "./create-form";
+import { appContextType } from "../../types";
+import { AppContext } from "../../Context/AppContext";
 
 export const Forms = () => {
   const [formsFilter, setFormsFilter] = useState<FormFilterData[]>([]);
@@ -41,6 +43,11 @@ export const Forms = () => {
   const [jsonValidationMessage, setJsonValidationMessage] = useState<string>("");
   const [showValidationMessage, setShowValidationMessage] = useState<boolean>(false);
   
+
+  // Get permissions from context
+  const { checkPermissions } = React.useContext(AppContext) as appContextType;
+  const permissions = checkPermissions();
+
   // Load form data on component mount
   useEffect(() => {
     fetchFormData();
@@ -319,7 +326,7 @@ export const Forms = () => {
           </Typography>
         </Box>
         
-        <Button 
+        {permissions.canWrite && (<Button 
           variant="contained" 
           color="primary"
           onClick={handleCreateForm}
@@ -327,7 +334,7 @@ export const Forms = () => {
           disabled={loading}
         >
           Create New Form
-        </Button>
+        </Button>)}
       </Box>
       
       {loading && (
@@ -375,7 +382,7 @@ export const Forms = () => {
                     </Typography>
                   </Box>
                 )}
-                <Button 
+                 {permissions.canWrite && (<Button 
                   variant="contained" 
                   color="primary" 
                   onClick={handleSaveExistingForm}
@@ -383,7 +390,7 @@ export const Forms = () => {
                   startIcon={<SaveIcon />}
                 >
                   Save Configuration
-                </Button>
+                </Button>)}
               </Box>
             </Box>
             

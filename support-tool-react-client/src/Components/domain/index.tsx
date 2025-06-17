@@ -31,6 +31,8 @@ import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import { FormData as CustomFormData } from "../../types/forms";
 import { domainService } from "../../services/domain.service";
+import { appContextType } from "../../types";
+import { AppContext } from "../../Context/AppContext";
 
 interface Domain {
   id: string;
@@ -101,7 +103,12 @@ export const Domain = () => {
     }
   };
 
+  const { checkPermissions } = React.useContext(
+    AppContext,
+  ) as appContextType;
+
   useEffect(() => {
+    const permissions = checkPermissions();
     fetchDomains();
   }, []); // Only fetch on initial mount
 
@@ -190,9 +197,9 @@ export const Domain = () => {
       const requestPayload = { request: formData };
 
       const response = await domainService.addDomain(requestPayload);
-      if(response) {
-        console.log("Domain added successfully:", response);
-      }
+      // if(response) {
+      //   console.log("Domain added successfully:", response);
+      // }
       
       setSnackbar({
         open: true,
@@ -252,14 +259,17 @@ export const Domain = () => {
     <Box sx={{ width: "100%", p: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h5">Domains</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAddDialog}
-        >
-          Add Domain
-        </Button>
+        {/* Only show Add Domain button if user has write permission */}
+        {checkPermissions().canWrite && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAddDialog}
+          >
+            Add Domain
+          </Button>
+        )}
       </Box>
       
       {/* Search field */}
@@ -289,7 +299,10 @@ export const Domain = () => {
               <TableRow>
                 <TableCell>Context Type</TableCell>
                 <TableCell>Context Name</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                {/* Only show Actions column if user has delete permission */}
+                {checkPermissions().canDelete && (
+                  <TableCell align="center">Actions</TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -297,20 +310,23 @@ export const Domain = () => {
                 <TableRow key={domain.id}>
                   <TableCell>{domain.contextType}</TableCell>
                   <TableCell>{domain.contextName}</TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDeleteClick(domain)}
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
+                  {/* Only show delete button if user has delete permission */}
+                  {checkPermissions().canDelete && (
+                    <TableCell align="center">
+                      <IconButton
+                        color="error"
+                        onClick={() => handleDeleteClick(domain)}
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {paginatedDomains.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
+                  <TableCell colSpan={checkPermissions().canDelete ? 3 : 2} align="center">
                     {searchQuery.trim() 
                       ? `No domains found matching "${searchQuery}"` 
                       : "No domains found"}

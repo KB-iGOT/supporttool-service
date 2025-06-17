@@ -22,6 +22,8 @@ import { Content, Facets } from "../../types/contents";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { FormControl, TextField, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from "@mui/material";
 import { EllipsisCell } from "../common-components/ellipsis-cell/ellipsis-cell";
+import { AppContext } from "../../Context/AppContext";
+import { appContextType } from "../../types";
 
 const filterConfig = {
   courseCategory: 'multi',
@@ -39,7 +41,15 @@ export const Contents = () => {
     open: boolean;
     severity: AlertColor | undefined;
   }>({ message: "", open: false, severity: undefined });
+
+    const { modulePermissions } = React.useContext(
+            AppContext,
+          ) as appContextType;
+    
   
+          const { checkPermissions } = React.useContext(
+            AppContext,
+          ) as appContextType;
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -206,10 +216,12 @@ export const Contents = () => {
 
   useEffect(() => {
     // Initial load - update facets
+    const permissions = checkPermissions();
+    // console.log("Current module permissions:", permissions);
     try {
       fetchContents(page, rowsPerPage, searchQuery, selectedFilters, true);
     } catch (error) {
-      console.error("Error in initial data fetch:", error);
+      // console.error("Error in initial data fetch:", error);
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,14 +371,18 @@ export const Contents = () => {
                           >
                             <PencilIcon fontSize="small" />
                           </IconButton> */}
-                          <IconButton
-                            aria-label="delete"
-                            size="small"
-                            onClick={() => handleDeleteClick(row)}
-                            color="error"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          {checkPermissions().canDelete && (
+                            <Tooltip title="Retire Content">
+                              <IconButton
+                                aria-label="delete"
+                                size="small"
+                                onClick={() => handleDeleteClick(row)}
+                                color="error"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

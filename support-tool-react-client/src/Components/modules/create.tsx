@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -42,13 +42,13 @@ const CreateModule: React.FC<{
     }
   };
 
-  useMemo(() => {
+  useEffect(() => {
     if (open.edit && open.module) {
       setFields({
         id: open.module.id,
         name: open.module.name,
         url: open.module.url,
-        roles: open.module.roles,
+        roles: open.module.roles || [],
         isVisible: open.module.isVisible,
         isAdminModule: open.module.isAdminModule,
         isRootModule: open.module.isRootModule,
@@ -56,8 +56,13 @@ const CreateModule: React.FC<{
     } else {
       setFields(DEFAULT.CREATE_MODULE);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const isFormValid = () => {
+    if (!fields.name) return false;
+    if (!open.edit && !fields.url) return false;
+    return true;
+  };
 
   return (
     <React.Fragment>
@@ -75,12 +80,13 @@ const CreateModule: React.FC<{
         }}
       >
         <DialogTitle className="padding-1-2">
-          {open.edit ? "Edit support user" : "Add new support user"}
+          {open.edit ? "Edit module" : "Add new module"}
         </DialogTitle>
         <DialogContent className="dialog-content-container">
           <DialogContentText>
-            Provide user's email. Please note that the user's email should be
-            available in the IGot system to add them here.
+            {open.edit 
+              ? "Update module details. URL cannot be changed after creation."
+              : "Create a new module by providing the details below."}
           </DialogContentText>
           <FormControl fullWidth>
             <TextField
@@ -96,13 +102,12 @@ const CreateModule: React.FC<{
               variant="outlined"
               value={fields.name}
               onChange={(e) => setFields({ ...fields, name: e.target.value })}
-              disabled={open.edit}
             />
           </FormControl>
           <FormControl fullWidth>
             <TextField
               autoComplete="off"
-              required
+              required={!open.edit}
               margin="dense"
               id="url"
               name="url"
@@ -113,31 +118,14 @@ const CreateModule: React.FC<{
               value={fields.url}
               onChange={(e) => setFields({ ...fields, url: e.target.value })}
               disabled={open.edit}
+              helperText={open.edit ? "URL cannot be changed after creation" : ""}
             />
           </FormControl>
-          {/* <FormControl fullWidth>
-            <InputLabel id="roles-label" required>
-              Assign role
-            </InputLabel>
-            <Select
-              labelId="roles-label"
-              id="roles"
-              value={fields.roles.toString()}
-              label="Assign role"
-              onChange={handleRoleChange}
-              required
-            >
-              <MenuItem value="ADMIN">ADMIN</MenuItem>
-              <MenuItem value="USER">USER</MenuItem>
-              <MenuItem value="VIEWER">VIEWER</MenuItem>
-            </Select>
-          </FormControl> */}
           <FormControl fullWidth>
             <FormControlLabel
               control={
                 <Switch
-                  defaultChecked
-                  checked={fields.isVisible}
+                  checked={!!fields.isVisible}
                   onChange={(e) => handleSwitchChange(e, 'isVisible')}
                   inputProps={{ "aria-label": "controlled" }}
                 />
@@ -146,11 +134,10 @@ const CreateModule: React.FC<{
             />
           </FormControl>
           <FormControl fullWidth>
-          <FormControlLabel
+            <FormControlLabel
               control={
                 <Switch
-                  defaultChecked
-                  checked={fields.isAdminModule}
+                  checked={!!fields.isAdminModule}
                   onChange={(e) => handleSwitchChange(e, 'isAdminModule')}
                   inputProps={{ "aria-label": "controlled" }}
                 />
@@ -159,11 +146,10 @@ const CreateModule: React.FC<{
             />
           </FormControl>
           <FormControl fullWidth>
-          <FormControlLabel
+            <FormControlLabel
               control={
                 <Switch
-                  defaultChecked
-                  checked={fields.isRootModule}
+                  checked={!!fields.isRootModule}
                   onChange={(e) => handleSwitchChange(e, 'isRootModule')}
                   inputProps={{ "aria-label": "controlled" }}
                 />
@@ -179,13 +165,9 @@ const CreateModule: React.FC<{
           <Button
             type="submit"
             variant="contained"
-            disabled={
-              !fields.name ||
-              !fields.url ||
-              !fields.roles
-            }
+            disabled={!isFormValid()}
           >
-            Add
+            {open.edit ? "Update" : "Add"}
           </Button>
         </DialogActions>
       </Dialog>

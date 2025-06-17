@@ -6,7 +6,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import LinearProgress from "@mui/material/LinearProgress";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -19,7 +19,10 @@ import CreateModule from "./create";
 import { DeleteModule } from "./delete";
 import Snackbar from "@mui/material/Snackbar";
 import { moduleService } from "../../services/modules.service";
-import {Module} from '../../types/modules';
+import { Module } from '../../types/modules';
+import { AppContext } from "../../Context/AppContext";
+import { appContextType } from "../../types";
+import Typography from "@mui/material/Typography";
 
 export const Modules = () => {
   const [modules, setModules] = useState<Module[]>([]);
@@ -38,6 +41,10 @@ export const Modules = () => {
     visible: boolean;
     module: Module | null;
   }>({ visible: false, module: null });
+
+  // Get permissions from context
+  const { checkPermissions } = useContext(AppContext) as appContextType;
+  const permissions = checkPermissions();
 
   const handleToastClose = () =>
     setToasts({ message: "", open: false, severity: undefined });
@@ -65,11 +72,26 @@ export const Modules = () => {
       setModules(data);
     } catch (error) {
       console.error("Error fetching modules:", error);
+      setToasts({
+        message: "Failed to fetch modules. Please try again later.",
+        open: true,
+        severity: "error",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleDelete = async (id: number) => {
+    if (!permissions.canDelete) {
+      setToasts({
+        message: "You don't have permission to delete modules",
+        open: true,
+        severity: "error",
+      });
+      return;
+    }
+
     try {
       const response = await moduleService.deleteModule(id);
       if (response.status === 204) {
@@ -97,6 +119,16 @@ export const Modules = () => {
   };
 
   const handleSubmit = async (fields: Module, type: string) => {
+    // Check permissions based on operation type
+    if ((type === "create" || type === "edit") && !permissions.canWrite) {
+      setToasts({
+        message: `You don't have permission to ${type === "create" ? "create" : "edit"} modules`,
+        open: true,
+        severity: "error",
+      });
+      return;
+    }
+
     try {
       if (type === "create") {
         const response = await moduleService.createModule(fields);
@@ -123,7 +155,7 @@ export const Modules = () => {
           );
           if (response.status === 200) {
             setToasts({
-              message: "Modules record updated successfully",
+              message: "Module record updated successfully",
               open: true,
               severity: "success",
             });
@@ -159,14 +191,18 @@ export const Modules = () => {
         <LinearProgress />
       ) : (
         <>
-          <Box display="flex" justifyContent="flex-end" mb={2}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleClickOpen}
-            >
-              Add new module
-            </Button>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h5">Modules</Typography>
+            {/* Only show Add button if user has write permission */}
+            {permissions.canWrite && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleClickOpen}
+              >
+                Add new module
+              </Button>
+            )}
           </Box>
           {modules.length > 0 ? (
             <TableContainer component={Paper}>
@@ -175,11 +211,13 @@ export const Modules = () => {
                   <TableRow>
                     <TableCell>Name</TableCell>
                     <TableCell>URL</TableCell>
-                    {/* <TableCell>Roles</TableCell> */}
                     <TableCell>Is Visible</TableCell>
                     <TableCell>Is Admin Module</TableCell>
                     <TableCell>Is Root Module</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    {/* Only show Actions column if user has edit/delete permission */}
+                    {(permissions.canWrite || permissions.canDelete) && (
+                      <TableCell align="right">Actions</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -192,26 +230,32 @@ export const Modules = () => {
                         {row.name}
                       </TableCell>
                       <TableCell>{row.url}</TableCell>
-                      {/* <TableCell>{row?.roles?.toString()}</TableCell> */}
                       <TableCell>{row.isVisible.toString()}</TableCell>
                       <TableCell>{row.isAdminModule.toString()}</TableCell>
                       <TableCell>{row.isRootModule.toString()}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          aria-label="edit"
-                          size="small"
-                          onClick={() => handleEditOpen(row)}
-                        >
-                          <PencilIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          aria-label="delete"
-                          size="small"
-                          onClick={() => handleDeleteOpen(row)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
+                      {/* Only show action buttons if user has permissions */}
+                      {(permissions.canWrite || permissions.canDelete) && (
+                        <TableCell align="right">
+                          {permissions.canWrite && (
+                            <IconButton
+                              aria-label="edit"
+                              size="small"
+                              onClick={() => handleEditOpen(row)}
+                            >
+                              <PencilIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canDelete && (
+                            <IconButton
+                              aria-label="delete"
+                              size="small"
+                              onClick={() => handleDeleteOpen(row)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -219,8 +263,7 @@ export const Modules = () => {
             </TableContainer>
           ) : (
             <Alert severity="info">
-              No modules available. Create one by clicking on add new
-              module.
+              No modules available. {permissions.canWrite ? "Create one by clicking on add new module." : ""}
             </Alert>
           )}
           <CreateModule

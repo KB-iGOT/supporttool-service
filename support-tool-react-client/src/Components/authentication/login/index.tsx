@@ -78,7 +78,6 @@ export const Login: React.FC = () => {
       });
       
       if (response && response.status === 200) {
-        console.log("Login successful:", response);
         localStorage.setItem("userId", response.userId);
         setIsLoggedIn(true);
         navigate("/home");

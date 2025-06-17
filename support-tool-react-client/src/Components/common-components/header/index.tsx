@@ -16,27 +16,37 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../../../Context/AppContext";
 import { appContextType } from "../../../types";
 
-const settings = ["Profile", "Account", "Dashboard", "Logout"];
+const settings = ["Logout"];
 
 const useStyles = makeStyles(() =>
   createStyles({
     logo: {
       width: "250px",
       height: "100%",
+      cursor: "pointer", // Add cursor pointer to indicate clickable
     },
-    container:{
-        padding: '0 2rem',
-        background: '#FFF'
+    container: {
+      padding: '0 2rem',
+      background: '#FFF'
     },
-    customHeader:{
-        background: '#FFFFFF',
-        '& .MuiToolbar-root': {
-          justifyContent: 'space-between',
-        },
-        '&.fixed':{
-          position: 'fixed !important',
-          zIndex: 1111
-        }
+    customHeader: {
+      background: '#FFFFFF',
+      '& .MuiToolbar-root': {
+        justifyContent: 'space-between',
+      },
+      '&.fixed': {
+        position: 'fixed !important',
+        zIndex: 1111
+      }
+    },
+    userInfo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    },
+    userName: {
+      fontWeight: 500,
+      color: '#333'
     }
   })
 );
@@ -66,76 +76,98 @@ export const Header = () => {
       await authService.logout();
       setIsLoggedIn(false);
       navigate("/login");
-    }else{
-
+    } else {
+      // Handle other settings if needed
     }
   }
+  
+  // Get User from context
+  const { user } = React.useContext(AppContext) as appContextType;
+
+  // Function to handle logo click
+  const handleLogoClick = () => {
+    navigate("/home");
+  };
 
   return (
     <>
       {isLoggedIn ? (
-          <AppBar position="static" className={`${classes.customHeader} fixed`}>
-            <div className={classes.container}>
-              <Toolbar disableGutters>
-                <img src={logo} alt="Logo" className={classes.logo} />
+        <AppBar position="static" className={`${classes.customHeader} fixed`}>
+          <div className={classes.container}>
+            <Toolbar disableGutters>
+              <img 
+                src={logo} 
+                alt="Logo" 
+                className={classes.logo} 
+                onClick={handleLogoClick}
+                role="button"
+                aria-label="Go to home page"
+              />
 
-                <AdbIcon sx={{ display: { xs: "flex", md: "none" }, mr: 1 }} />
-                <Typography
-                  variant="h5"
-                  noWrap
-                  component="a"
-                  href="#app-bar-with-responsive-menu"
-                  sx={{
-                    mr: 2,
-                    display: { xs: "flex", md: "none" },
-                    flexGrow: 1,
-                    fontFamily: "monospace",
-                    fontWeight: 700,
-                    letterSpacing: ".3rem",
-                    color: "inherit",
-                    textDecoration: "none",
-                  }}
-                >
-                  LOGO
-                </Typography>
-                <Box sx={{ flexGrow: 0 }}>
-                  <Tooltip title="Open settings">
+              <AdbIcon sx={{ display: { xs: "flex", md: "none" }, mr: 1 }} />
+              <Typography
+                variant="h5"
+                noWrap
+                component="a"
+                href="#app-bar-with-responsive-menu"
+                sx={{
+                  mr: 2,
+                  display: { xs: "flex", md: "none" },
+                  flexGrow: 1,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  letterSpacing: ".3rem",
+                  color: "inherit",
+                  textDecoration: "none",
+                }}
+              >
+                LOGO
+              </Typography>
+              <Box sx={{ flexGrow: 0 }}>
+                <Box className={classes.userInfo}>
+                  <Typography className={classes.userName} variant="body1">
+                    {user?.name || "User"}
+                  </Typography>
+                  <Tooltip title="Account settings">
                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                       <Avatar
-                        alt="Remy Sharp"
+                        alt={user?.name || "User Avatar"}
                         src="/static/images/avatar/2.jpg"
-                      />
+                        sx={{ bgcolor: 'primary.main' }}
+                      >
+                        {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
+                      </Avatar>
                     </IconButton>
                   </Tooltip>
-                  <Menu
-                    sx={{ mt: "45px" }}
-                    id="menu-appbar"
-                    anchorEl={anchorElUser}
-                    anchorOrigin={{
-                      vertical: "top",
-                      horizontal: "right",
-                    }}
-                    keepMounted
-                    transformOrigin={{
-                      vertical: "top",
-                      horizontal: "right",
-                    }}
-                    open={Boolean(anchorElUser)}
-                    onClose={handleCloseUserMenu}
-                  >
-                    {settings.map((setting) => (
-                      <MenuItem key={setting} onClick={() => triggerMenuClick(setting)} >
-                        <Typography sx={{ textAlign: "center" }}
-                        >
-                          {setting}
-                        </Typography>
-                      </MenuItem>
-                    ))}
-                  </Menu>
                 </Box>
-              </Toolbar>
-            </div>
-          </AppBar>
+                <Menu
+                  sx={{ mt: "45px" }}
+                  id="menu-appbar"
+                  anchorEl={anchorElUser}
+                  anchorOrigin={{
+                    vertical: "top",
+                    horizontal: "right",
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: "top",
+                    horizontal: "right",
+                  }}
+                  open={Boolean(anchorElUser)}
+                  onClose={handleCloseUserMenu}
+                >
+                  {settings.map((setting) => (
+                    <MenuItem key={setting} onClick={() => triggerMenuClick(setting)}>
+                      <Typography sx={{ textAlign: "center" }}>
+                        {setting}
+                      </Typography>
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </Box>
+            </Toolbar>
+          </div>
+        </AppBar>
       ) : null}
     </>
   );

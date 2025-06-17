@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -20,6 +19,8 @@ import ClearIcon from "@mui/icons-material/Clear";
 import { systemSettingsService } from "../../services/system-settings.service";
 import { Outlet, useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
+import { AppContext } from "../../Context/AppContext";
+import { appContextType } from "../../types";
 
 // Interface for system settings item
 interface SystemSetting {
@@ -45,6 +46,10 @@ export const ListSystemSettings = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Get permissions from context
+  const { checkPermissions } = React.useContext(AppContext) as appContextType;
+  const permissions = checkPermissions();
   
   // Use memoized filtered data based on search query
   const filteredSettings = useMemo(() => {
@@ -115,11 +120,19 @@ export const ListSystemSettings = () => {
   }, []); // Empty dependency array to run only once on mount
 
   const editConfig = (row: SystemSetting) => {
-    if(row.id === 'cadreConfig'  ) {
-      navigate(`/system-settings/cadre-edit/${row.id}`)
-
+    if (!permissions.canWrite) {
+      setToasts({
+        message: "You don't have permission to edit system settings",
+        open: true,
+        severity: "warning",
+      });
+      return;
+    }
+    
+    if(row.id === 'cadreConfig') {
+      navigate(`/system-settings/cadre-edit/${row.id}`);
     } else {
-      navigate(`/system-settings/edit/${row.id}`)
+      navigate(`/system-settings/edit/${row.id}`);
     }
   }
 
@@ -135,13 +148,15 @@ export const ListSystemSettings = () => {
                 <Typography variant="body2">System settings for the application</Typography>                
             </div>
 
-            <Button
-              variant="contained"
-              onClick={() => navigate("/system-settings/create")}
-              startIcon={<AddIcon />}
-            >
-              Add new System Settings
-            </Button>
+            {permissions.canWrite && (
+              <Button
+                variant="contained"
+                onClick={() => navigate("/system-settings/create")}
+                startIcon={<AddIcon />}
+              >
+                Add new System Settings
+              </Button>
+            )}
           </Box>
 
           <div className="bg-gray-100 p-4">
@@ -214,7 +229,12 @@ export const ListSystemSettings = () => {
                           <IconButton
                             aria-label="edit"
                             size="small"
-                            onClick={() => editConfig(row) }  
+                            onClick={() => editConfig(row)}
+                            disabled={!permissions.canWrite}
+                            sx={{
+                              opacity: permissions.canWrite ? 1 : 0.5,
+                              cursor: permissions.canWrite ? 'pointer' : 'not-allowed'
+                            }}
                           >
                             <PencilIcon fontSize="small" />
                           </IconButton>

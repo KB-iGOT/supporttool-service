@@ -20,8 +20,8 @@ export const createSupportUser: RequestHandler = async (req: any, res: any) => {
       
       // Insert user without userId (let database generate it)
       const userResult = await client.query(
-        `INSERT INTO users ("userId","userName", "firstName", "lastName", "email") 
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        `INSERT INTO users ("id","userId","userName", "firstName", "lastName", "email") 
+         VALUES ($1, $1, $2, $3, $4, $5) RETURNING *`,
         [userId, userName, firstName, lastName, email]
       );
       

@@ -7,7 +7,6 @@ const getUserFromDB = async (email: string) => {
     'SELECT * FROM users WHERE "email" = $1',
     [email]
   );
-  let roles = [];
   if( users.rows && users.rows[0] && users.rows[0] .id) {
     const userId = users.rows[0].id;
 
@@ -24,8 +23,31 @@ WHERE
         WHERE user_id = $1)`,
       [userId]
     );
+
+    const userRolePermission = await pool.query(
+      `SELECT
+    r.id AS role_id,
+    r.name AS role_name,
+    m.id AS module_id,
+    m.name AS module_name,
+    m.url AS module_url,
+    rp.can_read,
+    rp.can_write,
+    rp.can_delete
+FROM 
+    users u
+JOIN user_roles ur ON u.id = ur.user_id
+JOIN roles r ON r.id = ANY(ur.role_ids)
+JOIN role_permissions rp ON rp.role_id = r.id
+JOIN modules m ON m.id = rp.module_id
+WHERE
+    u.id = $1;`,
+      [userId]
+    );
     console.log("userRoles", userRoles.rows);
      users.rows[0]["roles"] = userRoles?.rows?.length ? userRoles?.rows: [];
+     console.log("userRoles", userRolePermission.rows);
+      users.rows[0]["rolePermissions"] = userRolePermission?.rows?.length ? userRolePermission?.rows: [];
   }
   console.log("users", users,users.rows[0]);
   return users.rows[0];
@@ -68,6 +90,7 @@ const createSessionData = (user: any, token: string) => {
     name: user.firstName + (user.lastName ? " " + user.lastName : ""),
     token: token,
     roles: user.roles,
+    rolePermissions: user.rolePermissions,
     email: user.email,
   };
   console.log("Session Data Created: ", data);
@@ -114,7 +137,7 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
 
     // Step 3: Set session and cookies
     const sessionData = createSessionData(user, token);
-    logger.info("Saving session data...");
+    logger.info("Saving session data..."+JSON.stringify(sessionData));
     await saveSession(req, sessionData);
 
     logger.info("Setting cookies for the user...");
@@ -124,8 +147,16 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: "lax",
     });
-    res.cookie("user", sessionData);
-
+    const cookieSafeData = {
+      id: sessionData.id,
+      userName: sessionData.userName,
+      name: sessionData.name,
+      email: sessionData.email,
+      roles: sessionData.roles,
+      rolePermissions: sessionData.rolePermissions
+      // Token is deliberately omitted here
+    };
+    res.cookie("user", cookieSafeData);
     logger.info("Authentication process completed successfully for username: " + username);
     res.status(200).send({
       status: 200,

@@ -5,7 +5,7 @@ export interface INotification {
   }
 
   export interface IUserConfig {
-    userId: string;
+        userId: string;
         userName?: string;
         name: string;
         token?: string;
@@ -19,5 +19,14 @@ export type appContextType = {
     user: IUserConfig | null;
     userRoles: any | [];
     notification: INotification;
+    modulePermissions: any;
     setNotification: React.Dispatch<React.SetStateAction<INotification>>;
+    checkPermissions: (path?: string) => {
+      canRead: boolean;
+      canWrite: boolean;
+      canDelete: boolean;
+      permissions: any;
+      basePath: string;
+    };
 }
+

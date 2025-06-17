@@ -30,7 +30,6 @@ interface IOrg {
 
 export const OrganisationList = () => {
   // Store all settings data from API
-  console.log("OrganisationList");
   const navigate = useNavigate();
   const [orgsList, setOrgsList] = useState<IOrg[]>([]);
   

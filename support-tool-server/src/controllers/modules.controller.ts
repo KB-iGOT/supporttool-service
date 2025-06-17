@@ -31,15 +31,15 @@ export const createModule: RequestHandler = async (req: any, res: any) => {
 // 🚀 **Update module in DB**
 export const updateModule: RequestHandler = async (req: any, res: any) => {
   try {
-    const { id, name, url, isVisible, roles, isAdminModule, isRootModule } = req.body;
+    const { id, name, url, isVisible, isAdminModule, isRootModule } = req.body;
 
-    if (!name || !url || !roles) {
+    if (!name || !url ) {
       return res.status(400).json({ message: "All fields are required!" });
     }
 
     const result = await pool.query(
-      `UPDATE modules SET "name" = $2, "url" = $3, "isVisible" = $4, "roles" = $5, "isAdminModule" = $6, "isRootModule" = $7 WHERE "id" = $1 RETURNING *`,
-      [id, name, url, isVisible, roles, isAdminModule, isRootModule]
+      `UPDATE modules SET "name" = $2, "url" = $3, "isVisible" = $4,  "isAdminModule" = $5, "isRootModule" = $6 WHERE "id" = $1 RETURNING *`,
+      [id, name, url, isVisible, isAdminModule, isRootModule]
     );
 
     if (result.rowCount === 0) {
