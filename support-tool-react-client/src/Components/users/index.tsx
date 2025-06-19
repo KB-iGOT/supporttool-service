@@ -18,12 +18,22 @@ import {
   Snackbar,
   FormControl,
   TextField,
-  Typography
+  Typography,
+  Select,
+  MenuItem,
+  InputLabel,
+  Grid,
+  InputAdornment,
+  SelectChangeEvent
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PencilIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import ClearIcon from "@mui/icons-material/Clear";
+import SearchIcon from "@mui/icons-material/Search";
+import PersonIcon from "@mui/icons-material/Person";
+import EmailIcon from "@mui/icons-material/Email";
+import PhoneIcon from "@mui/icons-material/Phone";
 import { UserProfile } from "../../types/users";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { usersService } from "../../services/users.service";
@@ -37,6 +47,41 @@ const filterConfig = {
   courseCategory: 'multi',
   resourceCategory: 'multi'
 } as const;
+
+// Search field type definitions
+type SearchFieldType = 'name' | 'email' | 'phone';
+
+interface SearchFieldConfig {
+  type: SearchFieldType;
+  label: string;
+  placeholder: string;
+  path: string;
+  icon: React.ReactNode;
+}
+
+const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
+  name: {
+    type: 'name',
+    label: 'Name',
+    placeholder: 'Enter user name',
+    path: 'profileDetails.personalDetails.firstname',
+    icon: <PersonIcon />
+  },
+  email: {
+    type: 'email',
+    label: 'Email',
+    placeholder: 'Enter user email',
+    path: 'profileDetails.personalDetails.primaryEmail',
+    icon: <EmailIcon />
+  },
+  phone: {
+    type: 'phone',
+    label: 'Phone Number',
+    placeholder: 'Enter user phone number',
+    path: 'profileDetails.personalDetails.mobile',
+    icon: <PhoneIcon />
+  }
+};
 
 const sampleFields: FieldDefinition[] = [
   {
@@ -55,6 +100,38 @@ const sampleFields: FieldDefinition[] = [
       pattern: '^[A-Za-z\\s]+$',
       errorMessage: 'Please enter a valid name (letters only)'
     }
+  },
+  {
+    identifier: 'email',
+    name: 'email',
+    displayName: 'Email',
+    fieldType: 'email',
+    optional: false,
+    selected: true,
+    order: 2,
+    placeholder: 'Enter email address',
+    fieldPath: 'profileDetails.personalDetails.primaryEmail',
+    validation: {
+      pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+      errorMessage: 'Please enter a valid email address'
+    }
+  },
+  {
+    identifier: 'phone',
+    name: 'phone',
+    displayName: 'Phone Number',
+    fieldType: 'tel',
+    optional: false,
+    selected: true,
+    order: 3,
+    placeholder: 'Enter phone number',
+    fieldPath: 'profileDetails.personalDetails.mobile',
+    validation: {
+      minLength: 10,
+      maxLength: 15,
+      pattern: '^\\+?[0-9]{10,15}$',
+      errorMessage: 'Please enter a valid phone number (10-15 digits, may include + prefix)'
+    }
   }
 ];
 
@@ -69,6 +146,7 @@ export const Users = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<SearchFieldType>('name');
   const [open, setOpen] = useState(false);
   const [modifiedFields, setModifiedFields] = useState<Record<string, any>>({});
   const [editUserData, setEditUserData] = useState<Record<string, any>>({});
@@ -91,28 +169,43 @@ export const Users = () => {
   ) => {
     setLoading(true);
     try {
+      // Build the filter object based on search type and query
+      let searchFilters = { ...filters };
+      
+      // Only add search filter if there's a query
+      if (query.trim()) {
+        const searchPath = searchFields[searchType].path;
+        searchFilters = {
+          ...searchFilters,
+          [searchPath]: [query.trim()]  // Wrap in array to match expected type
+        };
+      }
+      
       const requestPayload = {
         request: {
           fields: [],
           facets: FACETS_LIST,
-          limit: pageSize, 
-          query: query,
+          limit: pageSize,
           filters: {
             status: 1,
-            ...buildFilterPayload(filters)
+            ...buildFilterPayload(searchFilters)
           },
           offset: pageNumber * pageSize,
-        }
+        },
+        query: ""
       };
       
       const data = await usersService.getUsers(requestPayload);
       if (data.result) {
-        setUsers(data.result.response.content || []);
-        setUsersCount(data.result.response.count || 0);
+
         
         if (updateFacets) {
-          setFacets(data.result.response.facets);
+          setFacets(data.result.response.facets || []);
           initialLoadComplete.current = true;
+        } else {
+
+          setUsers(data.result.response.content || []);
+          setUsersCount(data.result.response.count || 0);
         }
       }
     } catch (error) {
@@ -128,11 +221,15 @@ export const Users = () => {
   };
 
   // Helper function to build filter payload
-  const buildFilterPayload = (filters: { [key: string]: string[] }) => {
-    const payload: { [key: string]: string[] } = {};
+  const buildFilterPayload = (filters: any) => {
+    const payload: any = {};
     
+    // Handle standard array-based filters
     Object.entries(filters).forEach(([filterName, values]) => {
-      if (values && values.length > 0) {
+      if (Array.isArray(values) && values.length > 0) {
+        payload[filterName] = values;
+      } else if (typeof values === 'string' && values) {
+        // Handle string-based filters (for search queries)
         payload[filterName] = values;
       }
     });
@@ -144,12 +241,22 @@ export const Users = () => {
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
+  
+  const handleSearchTypeChange = (event: SelectChangeEvent) => {
+    setSearchType(event.target.value as SearchFieldType);
+    // Clear search query when changing search type
+    setSearchQuery("");
+  };
 
   const handleSearchKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
-      setPage(0);
-      fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false);
+      handleSearch();
     }
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false);
   };
 
   const handleFilterChange = (filters: { [key: string]: string[] }) => {
@@ -277,7 +384,8 @@ export const Users = () => {
   // Effects
   useEffect(() => {
     try {
-      fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, true);
+      // Initial load - just get users without search query
+      fetchUsers(page, rowsPerPage, "", {}, true);
     } catch (error) {
       console.error("Error in initial data fetch:", error);
       setLoading(false);
@@ -288,111 +396,164 @@ export const Users = () => {
   // Render components
   return (
     <>
-      {loading ? (
-        <LinearProgress />
-      ) : (
-        <>
-          {/* Header Section */}
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-            <div>
-              <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Users</Typography>
-              <Typography variant="body2">User Data goes here.</Typography>                
-            </div>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-            >
-              Add new user
-            </Button>
-          </Box>
+      {loading && <LinearProgress />}
+      
+      <Box sx={{ position: 'relative' }}>
+        {/* Header Section */}
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+          <div>
+            <Typography variant="h4" component="h1" sx={{ margin: 0 }}>User Management</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Search for users by name, email, or phone number
+            </Typography>                
+          </div>
+          {/* <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            Add new user
+          </Button> */}
+        </Box>
 
-          {/* Search and Filter Section */}
-          <div className="bg-gray-100 p-4">
-            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
-              <FormControl sx={{ flexGrow: 1 }}>
-                <TextField
-                  autoComplete="off"
-                  margin="dense"
-                  id="searchUsers"
-                  name="searchUsers"
-                  label="Search Users"
-                  type="text"
-                  fullWidth
-                  variant="filled"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onKeyPress={handleSearchKeyPress}
-                  color="primary"
-                  InputProps={{
-                    endAdornment: searchQuery ? (
-                      <IconButton
-                        aria-label="clear search"
+        {/* Search Panel */}
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>Search Users</Typography>
+          
+          <Grid container spacing={2} alignItems="center">
+            {/* Search Type Dropdown */}
+            <Grid item xs={12} sm={3}>
+              <FormControl fullWidth>
+                <InputLabel id="search-type-label">Search By</InputLabel>
+                <Select
+                  labelId="search-type-label"
+                  id="search-type-select"
+                  value={searchType}
+                  label="Search By"
+                  onChange={handleSearchTypeChange}
+                >
+                  <MenuItem value="name">
+                    <Box display="flex" alignItems="center">
+                      <PersonIcon sx={{ mr: 1 }} /> Name
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="email">
+                    <Box display="flex" alignItems="center">
+                      <EmailIcon sx={{ mr: 1 }} /> Email
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="phone">
+                    <Box display="flex" alignItems="center">
+                      <PhoneIcon sx={{ mr: 1 }} /> Phone Number
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            {/* Search Text Field */}
+            <Grid item xs={12} sm={7}>
+              <TextField
+                fullWidth
+                label={searchFields[searchType].label}
+                placeholder={searchFields[searchType].placeholder}
+                variant="outlined"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      {searchFields[searchType].icon}
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery ? (
+                    <InputAdornment position="end">
+                      <IconButton 
+                        size="small" 
                         onClick={handleClearSearch}
-                        edge="end"
+                        aria-label="clear search"
                       >
                         <ClearIcon />
                       </IconButton>
-                    ) : null,
-                  }}
-                  sx={{
-                    backgroundColor: "white",
-                    borderRadius: "4px",
-                    '& .MuiFilledInput-root': {
-                      backgroundColor: "white",
-                      '&:hover': {
-                        backgroundColor: "white",
-                        opacity: 0.9
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: "white"
-                      }
-                    }
-                  }}
-                />
-              </FormControl>
-              <Button
-                variant="contained"
-                onClick={() => setIsDrawerOpen(true)}
-              >
-                Open Filters
-              </Button>
-            </Box>
+                    </InputAdornment>
+                  ) : null
+                }}
+              />
+            </Grid>
             
-            {/* Active Filters Display */}
-            {Object.keys(selectedFilters).length > 0 && (
-              <Box mt={2} p={2} bgcolor="white" borderRadius={1} boxShadow={1}>
-                <Typography variant="subtitle2" gutterBottom>Active Filters:</Typography>
-                {Object.entries(selectedFilters).map(([category, values]) => (
-                  values && values.length > 0 ? (
-                    <Box key={category} mb={1}>
-                      <strong>{category}:</strong> {values.join(", ")}
-                    </Box>
-                  ): null
-                ))}
+            {/* Search Button */}
+            <Grid item xs={12} sm={2}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleSearch}
+                startIcon={<SearchIcon />}
+                disabled={!searchQuery.trim()}
+              >
+                Search
+              </Button>
+            </Grid>
+            
+            {/* Filter Button */}
+            <Grid item xs={12}>
+              <Box display="flex" justifyContent="flex-end">
+                <Button
+                  variant="outlined"
+                  onClick={() => setIsDrawerOpen(true)}
+                >
+                  Advanced Filters
+                </Button>
               </Box>
-            )}
-
-            {/* Filter Drawer */}
-            <FilterDrawer
-              open={isDrawerOpen}
-              onClose={handleDrawerClose}
-              facets={facets}
-              filterConfig={filterConfig}
-              onFilterChange={handleFilterChange}
-              initialFilters={selectedFilters}
-            />
-          </div>
+            </Grid>
+          </Grid>
           
+          {/* Active Search Display */}
+          {searchQuery && (
+            <Box mt={2}>
+              <Alert severity="info">
+                Searching for {searchType}: <strong>{searchQuery}</strong>
+              </Alert>
+            </Box>
+          )}
+        </Paper>
+            
+        {/* Active Filters Display */}
+        {Object.keys(selectedFilters).length > 0 && (
+          <Box mt={2} p={2} mb={3} bgcolor="white" borderRadius={1} boxShadow={1}>
+            <Typography variant="subtitle2" gutterBottom>Active Filters:</Typography>
+            {Object.entries(selectedFilters).map(([category, values]) => (
+              values && values.length > 0 ? (
+                <Box key={category} mb={1}>
+                  <strong>{category}:</strong> {values.join(", ")}
+                </Box>
+              ) : null
+            ))}
+          </Box>
+        )}
+
+        {/* Filter Drawer */}
+        <FilterDrawer
+          open={isDrawerOpen}
+          onClose={handleDrawerClose}
+          facets={facets}
+          filterConfig={filterConfig}
+          onFilterChange={handleFilterChange}
+          initialFilters={selectedFilters}
+        />
+        
+        {/* Results Section */}
+        <Paper elevation={2}>
           {/* Users Table or Empty State */}
           {users && users.length > 0 ? (
             <>
-              <TableContainer component={Paper}>
+              <TableContainer>
                 <Table sx={{ minWidth: 650 }} aria-label="users table">
                   <TableHead>
                     <TableRow>
                       <TableCell>Name</TableCell>
-                      <TableCell>Org name</TableCell>
+                      <TableCell>Organization</TableCell>
                       <TableCell>Email</TableCell>
+                      <TableCell>Phone</TableCell>
                       <TableCell>Status</TableCell>
                       <TableCell align="right">Actions</TableCell>
                     </TableRow>
@@ -404,10 +565,11 @@ export const Users = () => {
                         sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                       >
                         <TableCell component="th" scope="row">
-                          {row.firstName}
+                          {row.firstName} {row.lastName || ''}
                         </TableCell>
-                        <TableCell>{row.rootOrgName}</TableCell>
+                        <TableCell>{row.rootOrgName || '-'}</TableCell>
                         <TableCell>{row?.profileDetails?.personalDetails?.primaryEmail || '-'}</TableCell>
+                        <TableCell>{row?.profileDetails?.personalDetails?.mobile || '-'}</TableCell>
                         <TableCell>{row?.profileDetails?.profileStatus || '-'}</TableCell>
                         <TableCell align="right">
                           <IconButton
@@ -442,24 +604,26 @@ export const Users = () => {
               />
             </>
           ) : (
-            <Alert severity="info">
-              No users available. Create one by clicking on add new user.
+            <Alert severity="info" sx={{ m: 2 }}>
+              {searchQuery 
+                ? "No users found matching your search criteria. Please try with different search parameters."
+                : "No users available. Create one by clicking on add new user."}
             </Alert>
           )}
-          
-          {/* Toast Notifications */}
-          <Snackbar
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-            open={toasts.open}
-            autoHideDuration={6000}
-            onClose={handleToastClose}
-          >
-            <Alert variant="filled" severity={toasts.severity}>
-              {toasts.message}
-            </Alert>
-          </Snackbar>
-        </>
-      )}
+        </Paper>
+        
+        {/* Toast Notifications */}
+        <Snackbar
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          open={toasts.open}
+          autoHideDuration={6000}
+          onClose={handleToastClose}
+        >
+          <Alert variant="filled" severity={toasts.severity}>
+            {toasts.message}
+          </Alert>
+        </Snackbar>
+      </Box>
 
       {/* Edit User Dialog */}
       <DynamicFormDialog

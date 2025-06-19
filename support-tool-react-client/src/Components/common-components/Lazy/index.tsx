@@ -86,7 +86,7 @@ const Roles = lazy(() =>
 );
 
 const UploadContents = lazy(() =>
-  import("../../upload-contents").then((module) => ({
+  import("../../non-logged-in-page/upload-contents").then((module) => ({
     default: module.UploadContents,
   }))
 );
@@ -214,14 +214,14 @@ const LazyApp = () => {
               </ProtectedRoute>
             }
           /> 
-          <Route
+          {/* <Route
           path="/upload-contents"
           element={
             <ProtectedRoute>
               <UploadContents />
             </ProtectedRoute>
           }
-        />
+        /> */}
         <Route
             path="/non-logged-in-page"
             element={
@@ -232,6 +232,7 @@ const LazyApp = () => {
           >
             <Route index element={<ModuleCards />} />
             <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
+            <Route path="/non-logged-in-page/:id/upload-contents" element={<UploadContents />} />
           </Route>
         </Routes>
       </Suspense>
