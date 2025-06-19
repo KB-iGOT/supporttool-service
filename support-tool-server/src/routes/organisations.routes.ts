@@ -2,7 +2,8 @@ import express from "express";
 import {
     fetchOrganisations,
     fetchOrganisationByName,
-    deleteOrganisationById
+    deleteOrganisationById,
+    fetchOrganisationsData
 } from "../controllers/organisations.controller";
 import { userSession } from "../helpers/authHelper";
 
@@ -11,6 +12,8 @@ const router = express.Router();
 // Define routes
 router.route("/")
   .get(userSession, fetchOrganisations);
+  router.route("/search")
+    .post(userSession, fetchOrganisationsData);
 
 router.route("/:id")
 .get(userSession, fetchOrganisationByName);

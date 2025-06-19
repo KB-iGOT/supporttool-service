@@ -185,3 +185,50 @@ export const deleteOrganisationById: RequestHandler = async (
     });
   }
 }
+
+
+export const fetchOrganisationsData: RequestHandler = async (
+  req: Request,
+  res: Response
+) => {
+  logger.info("Fetching organizations data...");
+
+  try {
+    // Notice how fetchOrganisations function stringifies the body, but this one doesn't
+    var options = {
+      method: "POST",
+      url: `${process.env.KONG_API_URL}api/org/v1/search`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+      },
+      body: JSON.stringify(req.body)  // Add JSON.stringify here
+    }
+    logger.debug(`API request options: ${JSON.stringify(options)}`);
+
+    request(options, function (error, response, body) {
+      if (error) {
+        logger.error("Error fetching organisations:"+ error);
+        res
+          .status(500)
+          .send({ message: "Internal server error", error: error.message });
+        return;
+      } 
+      
+      if (body) {
+        logger.info(`Successfully fetched ${JSON.parse(body).result?.response?.count || 0} organizations`);
+        res.status(200).send(body);
+      } else {
+        logger.error("Empty response body from organization API");
+        res.status(500).send({ status: 500, message: "Internal server error" });
+      }
+    });
+    
+  } catch (error) {
+    logger.error("❌ Error in fetchOrganisationsData controller:"+ error);
+    res.status(500).send({ 
+      message: "Internal server error", 
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Box, 
   Table, 
@@ -24,7 +24,10 @@ import {
   InputLabel,
   Grid,
   InputAdornment,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Autocomplete,
+  CircularProgress,
+  Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PencilIcon from "@mui/icons-material/Edit";
@@ -34,12 +37,15 @@ import SearchIcon from "@mui/icons-material/Search";
 import PersonIcon from "@mui/icons-material/Person";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
+import BusinessIcon from "@mui/icons-material/Business";
 import { UserProfile } from "../../types/users";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { usersService } from "../../services/users.service";
 import { DynamicFormDialog } from "../common-components/dynamic-form-dialog/DynamicFormDialog";
 import { FieldDefinition, FormData as CustomFormData } from "../../types/forms";
 import { getNestedValue } from "../../utils/pathResolver";
+import axios from "axios";
+import { organisationService } from "../../services/organisations.service";
 
 // Configuration constants
 const FACETS_LIST = ["rootOrgName"];
@@ -59,12 +65,19 @@ interface SearchFieldConfig {
   icon: React.ReactNode;
 }
 
+// Organization interface
+interface Organization {
+  identifier: string;
+  orgName: string;
+  isRootOrg: boolean | null;
+}
+
 const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
   name: {
     type: 'name',
     label: 'Name',
     placeholder: 'Enter user name',
-    path: 'profileDetails.personalDetails.firstname',
+    path: 'query',
     icon: <PersonIcon />
   },
   email: {
@@ -97,8 +110,8 @@ const sampleFields: FieldDefinition[] = [
     validation: {
       minLength: 2,
       maxLength: 50,
-      pattern: '^[A-Za-z\\s]+$',
-      errorMessage: 'Please enter a valid name (letters only)'
+      pattern: '^.*$',
+      errorMessage: 'Please enter a valid name'
     }
   },
   {
@@ -156,8 +169,78 @@ export const Users = () => {
     severity: AlertColor | undefined;
   }>({ message: "", open: false, severity: undefined });
   
+  // Organization states
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [orgSearchQuery, setOrgSearchQuery] = useState("");
+  const [orgOffset, setOrgOffset] = useState(0);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [hasMoreOrgs, setHasMoreOrgs] = useState(true);
+  const orgLimit = 10;
+
+  // Add these state variables to track validation errors
+  const [searchErrors, setSearchErrors] = useState<{
+    email?: string;
+    phone?: string;
+  }>({});
+
   // Refs
   const initialLoadComplete = useRef(false);
+  const orgListRef = useRef<HTMLUListElement>(null);
+  
+  // Function to validate email format
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
+  };
+
+  // Function to validate phone number format
+  const validatePhone = (phone: string): boolean => {
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    return phoneRegex.test(phone);
+  };
+
+  // Fetch organizations with pagination and search
+  const fetchOrganizations = useCallback(async (offset = 0, query = "", reset = false) => {
+    try {
+      setOrgLoading(true);
+      let request = {
+        request: {
+          filters: {},
+          fields: ["identifier", "orgName"],
+          sortBy: { createdDate: "Desc" },
+          limit: orgLimit,
+          offset: offset,
+          query: query
+        }
+      }
+      const response = await organisationService.fetchOrganisationsData(request)
+        
+      const responseData = response.result?.response || {};
+      const newOrgs = responseData.content || [];
+      
+      // Update state
+      if (reset) {
+        setOrganizations(newOrgs);
+      } else {
+        setOrganizations(prev => [...prev, ...newOrgs]);
+      }
+      
+      // Check if we have more items to load
+      setHasMoreOrgs(newOrgs.length === orgLimit);
+      setOrgOffset(offset + newOrgs.length);
+      
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      setToasts({
+        message: "Failed to load organizations",
+        open: true,
+        severity: "error",
+      });
+    } finally {
+      setOrgLoading(false);
+    }
+  }, []);
 
   // API and data fetching functions
   const fetchUsers = async (
@@ -165,9 +248,11 @@ export const Users = () => {
     pageSize = 10, 
     query = "", 
     filters: { [key: string]: string[] } = {},
-    updateFacets = true
+    updateFacets = true,
+    selectedOrganization: Organization | null = null
   ) => {
     setLoading(true);
+    let freeTextQuery : string = '';
     try {
       // Build the filter object based on search type and query
       let searchFilters = { ...filters };
@@ -175,9 +260,22 @@ export const Users = () => {
       // Only add search filter if there's a query
       if (query.trim()) {
         const searchPath = searchFields[searchType].path;
+        if(searchPath !== 'query') {
+          // If the search path is not 'query', we need to ensure it matches the expected structure
+          searchFilters = {
+            ...searchFilters,
+            [searchPath]: [query.trim()]  // Wrap in array to match expected type
+          };
+        } else {
+          freeTextQuery = query.trim();
+        }
+      }
+      
+      // Add organization filter if selected
+      if (selectedOrganization) {
         searchFilters = {
           ...searchFilters,
-          [searchPath]: [query.trim()]  // Wrap in array to match expected type
+          rootOrgName: [selectedOrganization.orgName]
         };
       }
       
@@ -192,20 +290,17 @@ export const Users = () => {
           },
           offset: pageNumber * pageSize,
         },
-        query: ""
+        query: freeTextQuery
       };
       
       const data = await usersService.getUsers(requestPayload);
       if (data.result) {
-
+        setUsers(data.result.response.content || []);
+        setUsersCount(data.result.response.count || 0);
         
         if (updateFacets) {
           setFacets(data.result.response.facets || []);
           initialLoadComplete.current = true;
-        } else {
-
-          setUsers(data.result.response.content || []);
-          setUsersCount(data.result.response.count || 0);
         }
       }
     } catch (error) {
@@ -237,15 +332,69 @@ export const Users = () => {
     return payload;
   };
 
+  // Infinite scroll handler for organization dropdown
+  const handleOrgScroll = useCallback(() => {
+    if (orgListRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = orgListRef.current;
+      
+      // When user has scrolled to the bottom
+      if (scrollHeight - scrollTop <= clientHeight + 50 && !orgLoading && hasMoreOrgs) {
+        fetchOrganizations(orgOffset, orgSearchQuery);
+      }
+    }
+  }, [orgOffset, orgLoading, hasMoreOrgs, orgSearchQuery, fetchOrganizations]);
+
   // Event handlers
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+    const value = event.target.value;
+    setSearchQuery(value);
+    
+    // Clear errors when field is empty
+    if (!value.trim()) {
+      setSearchErrors({});
+      return;
+    }
+    
+    // Validate based on search type
+    if (searchType === 'email' && value.trim()) {
+      const isValid = validateEmail(value.trim());
+      setSearchErrors(prev => ({
+        ...prev,
+        email: isValid ? undefined : 'Please enter a valid email address'
+      }));
+    } else if (searchType === 'phone' && value.trim()) {
+      const isValid = validatePhone(value.trim());
+      setSearchErrors(prev => ({
+        ...prev, 
+        phone: isValid ? undefined : 'Please enter a valid phone number (10-15 digits, may include + prefix)'
+      }));
+    } else {
+      // Clear errors for other search types or empty fields
+      setSearchErrors({});
+    }
+  };
+
+  const handleOrgSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setOrgSearchQuery(value);
+    
+    // Reset organization list and fetch with new search query
+    setOrgOffset(0);
+    setHasMoreOrgs(true);
+    fetchOrganizations(0, value, true);
   };
   
   const handleSearchTypeChange = (event: SelectChangeEvent) => {
-    setSearchType(event.target.value as SearchFieldType);
+    const newSearchType = event.target.value as SearchFieldType;
+    setSearchType(newSearchType);
     // Clear search query when changing search type
     setSearchQuery("");
+    // Clear selected org if moving away from name search
+    if (newSearchType !== 'name') {
+      setSelectedOrg(null);
+    }
+    // Clear validation errors
+    setSearchErrors({});
   };
 
   const handleSearchKeyPress = (event: React.KeyboardEvent) => {
@@ -254,15 +403,106 @@ export const Users = () => {
     }
   };
 
+  const handleOrgSelect = (_event: React.SyntheticEvent, value: Organization | null) => {
+    setSelectedOrg(value);
+  };
+
+  const handleSearchFieldBlur = () => {
+    if (!searchQuery.trim()) return;
+    
+    if (searchType === 'email') {
+      const isValid = validateEmail(searchQuery.trim());
+      if (!isValid) {
+        setSearchErrors(prev => ({
+          ...prev,
+          email: 'Please enter a valid email address'
+        }));
+        setToasts({
+          message: "Please enter a valid email address",
+          open: true,
+          severity: "warning",
+        });
+      }
+    } else if (searchType === 'phone') {
+      const isValid = validatePhone(searchQuery.trim());
+      if (!isValid) {
+        setSearchErrors(prev => ({
+          ...prev,
+          phone: 'Please enter a valid phone number (10-15 digits, may include + prefix)'
+        }));
+        setToasts({
+          message: "Please enter a valid phone number (10-15 digits, may include + prefix)",
+          open: true,
+          severity: "warning",
+        });
+      }
+    }
+  };
+
   const handleSearch = () => {
+    // Validate required fields based on search type
+    if (searchType === 'name') {
+      if (!selectedOrg) {
+        setToasts({
+          message: "Please select an organization when searching by name",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+      if (!searchQuery.trim()) {
+        setToasts({
+          message: "Please enter a name to search",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+    } else if (searchType === 'email') {
+      if (!searchQuery.trim()) {
+        setToasts({
+          message: "Please enter an email to search",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+      if (!validateEmail(searchQuery.trim())) {
+        setToasts({
+          message: "Please enter a valid email address",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+    } else if (searchType === 'phone') {
+      if (!searchQuery.trim()) {
+        setToasts({
+          message: "Please enter a phone number to search",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+      if (!validatePhone(searchQuery.trim())) {
+        setToasts({
+          message: "Please enter a valid phone number (10-15 digits, may include + prefix)",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+    }
+
+    // Proceed with search
     setPage(0);
-    fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false);
+    fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
   };
 
   const handleFilterChange = (filters: { [key: string]: string[] }) => {
     setSelectedFilters(filters);
     setPage(0);
-    fetchUsers(0, rowsPerPage, searchQuery, filters, false);
+    fetchUsers(0, rowsPerPage, searchQuery, filters, false, selectedOrg);
   };
 
   const handleToastClose = () => {
@@ -271,14 +511,14 @@ export const Users = () => {
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
-    fetchUsers(newPage, rowsPerPage, searchQuery, selectedFilters, false);
+    fetchUsers(newPage, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     setRowsPerPage(newRowsPerPage);
     setPage(0);
-    fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false);
+    fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
   };
 
   const handleDrawerClose = () => {
@@ -287,6 +527,7 @@ export const Users = () => {
 
   const handleClearSearch = () => {
     setSearchQuery("");
+    setSelectedOrg(null);
     setPage(0);
     fetchUsers(0, rowsPerPage, "", selectedFilters, false);
   };
@@ -301,45 +542,89 @@ export const Users = () => {
     try {
       setLoading(true);
       
-      // Track field changes
+      // Track field changes for display purposes
       const changedFields: Record<string, any> = {};
-      const updatePayload: Record<string, any> = {};
       
+      // Create a deep copy of the original user data as our base
+      const updatePayload: {
+        request: {
+          userId: any;
+          profileDetails: any;
+          [key: string]: any; // Allow additional properties like email
+        }
+      } = {
+        request: {
+          userId: editUserData.identifier,
+          profileDetails: JSON.parse(JSON.stringify(editUserData.profileDetails || {}))
+        }
+      };
+      
+      // Loop through all fields defined in sampleFields
       sampleFields.forEach(field => {
-        const newValue = field.fieldPath ? 
-          getNestedValue(data, field.fieldPath) : 
-          data.get(field.identifier);
+        // Extract value from form data
+        let newValue;
+        if (data instanceof Map) {
+          // If data is a Map (FormData)
+          newValue = data.get(field.identifier);
+        } else if (typeof data === 'object' && data !== null) {
+          // If data is a regular object
+          newValue = field.fieldPath ? 
+            getNestedValue(data, field.fieldPath) : 
+            data[field.identifier];
+        }
         
+        // Get original value from user data
         const originalValue = field.fieldPath ? 
           getNestedValue(editUserData, field.fieldPath) : 
           editUserData[field.identifier];
 
         // Only process changed fields
-        if (String(newValue) !== String(originalValue)) {
+        if (String(newValue) !== String(originalValue) && newValue !== undefined) {
           // For display
           changedFields[field.displayName] = {
             original: originalValue ?? '',
             new: newValue ?? ''
           };
           
-          // For API update
+          // For API update - set directly in the appropriate path
           if (field.fieldPath) {
             const pathParts = field.fieldPath.split('.');
-            let current = updatePayload;
             
-            for (let i = 0; i < pathParts.length - 1; i++) {
-              const part = pathParts[i];
-              current[part] = current[part] || {};
-              current = current[part];
+            // Special handling for email field which needs to be at the top level and in personalDetails
+            if (field.identifier === 'email') {
+              // Email needs to be in both root level and in personalDetails
+              updatePayload.request.email = newValue;
+              
+              // Ensure personalDetails exists
+              if (!updatePayload.request.profileDetails.personalDetails) {
+                updatePayload.request.profileDetails.personalDetails = {};
+              }
+              // Set email in personalDetails
+              updatePayload.request.profileDetails.personalDetails.primaryEmail = newValue;
+            } else {
+              // For other fields, navigate the path and set the value
+              let current = updatePayload.request;
+              
+              for (let i = 0; i < pathParts.length - 1; i++) {
+                const part = pathParts[i];
+                if (!current[part]) {
+                  current[part] = {};
+                }
+                current = current[part];
+              }
+              
+              current[pathParts[pathParts.length - 1]] = newValue;
             }
-            
-            current[pathParts[pathParts.length - 1]] = newValue;
           } else {
-            updatePayload[field.identifier] = newValue;
+            // Direct properties (not nested)
+            updatePayload.request[field.identifier] = newValue;
           }
         }
       });
 
+      console.log('Modified fields:', changedFields);
+      console.log('Update payload:', updatePayload);
+      
       setModifiedFields(changedFields);
       
       // Stop if no changes
@@ -352,27 +637,27 @@ export const Users = () => {
         setOpen(false);
         return;
       }
-      
-      // Update user
-      const userId = editUserData.identifier;
-      const response : any= await usersService.updateUser(userId, updatePayload);
+      // Send the update request
+      const response : any = await usersService.updateUser(editUserData.identifier, updatePayload);
       
       if (response && response.responseCode === "OK") {
-        setToasts({
+        setToasts({ 
           message: "User updated successfully",
           open: true,
           severity: "success",
         });
         
-        fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false);
+        // This line already refreshes the user list
+        fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
         setOpen(false);
       } else {
         throw new Error(response?.responseMessage || "Failed to update user");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
+      let message = error?.response?.data?.error?.params?.errmsg || error.message || "An error occurred while updating user";
       setToasts({
-        message: error instanceof Error ? error.message : "An error occurred while updating user",
+        message:message,
         open: true,
         severity: "error",
       });
@@ -385,13 +670,39 @@ export const Users = () => {
   useEffect(() => {
     try {
       // Initial load - just get users without search query
-      fetchUsers(page, rowsPerPage, "", {}, true);
+      // fetchUsers(page, rowsPerPage, "", {}, true);
+      
+      // Initial load of organizations
+      fetchOrganizations(0, "", true);
     } catch (error) {
       console.error("Error in initial data fetch:", error);
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  // Add scroll event listener to organization list
+  useEffect(() => {
+    const listElement = orgListRef.current;
+    if (listElement) {
+      listElement.addEventListener('scroll', handleOrgScroll);
+      return () => {
+        listElement.removeEventListener('scroll', handleOrgScroll);
+      };
+    }
+  }, [handleOrgScroll]);
+
+  // Add these new handler functions to your Users component
+  const handleOrgFieldBlur = () => {
+    // Check if organization is required (when searchType is 'name') and is not selected
+    if (searchType === 'name' && !selectedOrg && searchQuery.trim() !== '') {
+      setToasts({
+        message: "Organization is required when searching by name",
+        open: true,
+        severity: "warning",
+      });
+    }
+  };
 
   // Render components
   return (
@@ -419,10 +730,10 @@ export const Users = () => {
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>Search Users</Typography>
           
-          <Grid container spacing={2} alignItems="center">
+          <Grid container spacing={2} alignItems="flex-start">
             {/* Search Type Dropdown */}
             <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
+              <FormControl fullWidth sx={{ mt: 0 }}>
                 <InputLabel id="search-type-label">Search By</InputLabel>
                 <Select
                   labelId="search-type-label"
@@ -450,8 +761,64 @@ export const Users = () => {
               </FormControl>
             </Grid>
             
-            {/* Search Text Field */}
-            <Grid item xs={12} sm={7}>
+            {/* Organization Selector - required when search type is 'name' */}
+            {searchType === 'name' && (
+              <Grid item xs={12} sm={4}>
+                <Autocomplete
+                  id="organization-select"
+                  options={organizations}
+                  getOptionLabel={(option) => option.orgName}
+                  value={selectedOrg}
+                  onChange={handleOrgSelect}
+                  onBlur={handleOrgFieldBlur}
+                  sx={{ mt: 0 }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Organization"
+                      placeholder="Select an organization"
+                      onChange={handleOrgSearchChange}
+                      required={true}
+                      error={searchType === 'name' && !selectedOrg && searchQuery.trim() !== ''}
+                      helperText={searchType === 'name' && !selectedOrg && searchQuery.trim() !== '' ? 'Organization is required when searching by name' : ' '}
+                      FormHelperTextProps={{ sx: { mt: 0, minHeight: '1.25em' } }}
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <BusinessIcon />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                        endAdornment: (
+                          <>
+                            {orgLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        )
+                      }}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <li {...props} key={option.identifier}>{option.orgName}</li>
+                  )}
+                  ListboxProps={{
+                    ref: orgListRef,
+                    style: { maxHeight: 200, overflow: 'auto' }
+                  }}
+                  filterOptions={(x) => x}
+                  loading={orgLoading}
+                  loadingText="Loading organizations..."
+                  noOptionsText="No organizations found"
+                  fullWidth
+                />
+              </Grid>
+            )}
+            
+            {/* Search Text Field - highlight required status and validation errors */}
+            <Grid item xs={12} sm={searchType === 'name' ? 3 : 7}>
               <TextField
                 fullWidth
                 label={searchFields[searchType].label}
@@ -460,6 +827,18 @@ export const Users = () => {
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onKeyPress={handleSearchKeyPress}
+                onBlur={handleSearchFieldBlur}
+                required={true}
+                error={!searchQuery.trim() || 
+                  (searchType === 'email' && Boolean(searchErrors.email)) || 
+                  (searchType === 'phone' && Boolean(searchErrors.phone))
+                }
+                helperText={
+                  !searchQuery.trim() ? `${searchFields[searchType].label} is required` : 
+                  (searchType === 'email' && searchErrors.email) ? searchErrors.email : 
+                  (searchType === 'phone' && searchErrors.phone) ? searchErrors.phone : ' '
+                }
+                FormHelperTextProps={{ sx: { mt: 0, minHeight: '1.25em' } }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -481,37 +860,41 @@ export const Users = () => {
               />
             </Grid>
             
-            {/* Search Button */}
-            <Grid item xs={12} sm={2}>
+            {/* Search Button - aligned with the input fields */}
+            <Grid item xs={12} sm={2} sx={{ display: 'flex', alignItems: 'flex-start' }}>
               <Button
                 fullWidth
                 variant="contained"
                 onClick={handleSearch}
                 startIcon={<SearchIcon />}
-                disabled={!searchQuery.trim()}
+                disabled={
+                  !searchQuery.trim() || 
+                  (searchType === 'name' && !selectedOrg) ||
+                  (searchType === 'email' && !!searchErrors.email) ||
+                  (searchType === 'phone' && !!searchErrors.phone)
+                }
+                sx={{ height: '56px', mt: 0 }}
               >
                 Search
               </Button>
             </Grid>
-            
-            {/* Filter Button */}
-            <Grid item xs={12}>
-              <Box display="flex" justifyContent="flex-end">
-                <Button
-                  variant="outlined"
-                  onClick={() => setIsDrawerOpen(true)}
-                >
-                  Advanced Filters
-                </Button>
-              </Box>
-            </Grid>
           </Grid>
           
-          {/* Active Search Display */}
-          {searchQuery && (
-            <Box mt={2}>
+          {/* Active Search Display - adjusted margin to account for consistent spacing */}
+          {(searchQuery || selectedOrg) && (
+            <Box mt={3}>
               <Alert severity="info">
-                Searching for {searchType}: <strong>{searchQuery}</strong>
+                {searchQuery && (
+                  <>Searching for {searchType}: <strong>{searchQuery}</strong></>
+                )}
+                {selectedOrg && (
+                  <>{searchQuery ? ' in ' : 'Searching in '} organization: <Chip 
+                    label={selectedOrg.orgName} 
+                    variant="outlined" 
+                    size="small" 
+                    icon={<BusinessIcon />}
+                  /></>
+                )}
               </Alert>
             </Box>
           )}
@@ -605,7 +988,7 @@ export const Users = () => {
             </>
           ) : (
             <Alert severity="info" sx={{ m: 2 }}>
-              {searchQuery 
+              {searchQuery || selectedOrg
                 ? "No users found matching your search criteria. Please try with different search parameters."
                 : "No users available. Create one by clicking on add new user."}
             </Alert>

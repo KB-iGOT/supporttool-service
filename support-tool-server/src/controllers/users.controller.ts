@@ -65,18 +65,13 @@ export const updateUser: RequestHandler = async (
     // Call the actual user update API
     const response = await axios({
       method: "PATCH",
-      url: `${process.env.KONG_API_URL}/api/private/user/v2/update`,
+      url: `${process.env.KONG_API_URL}/api/user/private/v1/update`,
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
         "x-authenticated-user-token": req.user.token.trim(),
       },
-      data: {
-        request: {
-          userId: targetUserId,
-          ...updatedFields,
-        },
-      },
+      data: req.body,
     });
 
     // Log successful updates
