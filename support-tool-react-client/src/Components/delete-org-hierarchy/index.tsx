@@ -16,6 +16,8 @@ import {
 } from '@mui/material';
 import { organisationService } from '../../services/organisations.service';
 import { JsonEditor } from './../common-components/json-editor/json-editor';
+import { AppContext } from '../../Context/AppContext';
+import { appContextType } from '../../types';
 // import axios from 'axios';
 // import config from '@config/config';
 
@@ -30,6 +32,10 @@ export const DeleteOrg = () => {
     message: '',
     severity: 'success' as 'success' | 'error'
   });
+
+  // Get permissions from context
+  const { checkPermissions } = React.useContext(AppContext) as appContextType;
+  const permissions = checkPermissions();
 
   const handleFetchOrg = async () => {
     if (!orgName.trim()) {
@@ -58,6 +64,16 @@ export const DeleteOrg = () => {
   };
 
   const handleDeleteClick = () => {
+    // Check permissions before showing delete confirmation dialog
+    if (!permissions.canDelete) {
+      setSnackbar({
+        open: true,
+        message: 'You do not have permission to delete organizations',
+        severity: 'error'
+      });
+      return;
+    }
+    
     if (!orgData) return;
     setOpenDialog(true);
   };
@@ -67,17 +83,27 @@ export const DeleteOrg = () => {
   };
 
   const handleDeleteConfirm = async () => {
+    // Double-check permissions before proceeding with deletion
+    if (!permissions.canDelete) {
+      setSnackbar({
+        open: true,
+        message: 'You do not have permission to delete organizations',
+        severity: 'error'
+      });
+      setOpenDialog(false);
+      return;
+    }
+    
     setLoading(true);
     try {
-
       const response = await organisationService.deleteOrganisationById(orgData.id);
       
-        if (response.data && response.data) {
-            setOrgData({});
-        } else {
-            setError('Organization not found');
-            setOrgData(null);
-        }
+      if (response.data && response.data) {
+          setOrgData({});
+      } else {
+          setError('Organization not found');
+          setOrgData(null);
+      }
       
       setSnackbar({
         open: true,
@@ -110,7 +136,15 @@ export const DeleteOrg = () => {
       </Typography>
       
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        {/* Use Grid container for better responsiveness */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            width: '100%'
+          }}
+        >
           <TextField
             label="Organization Name"
             value={orgName}
@@ -119,12 +153,17 @@ export const DeleteOrg = () => {
             fullWidth
             placeholder="Enter organization name"
             disabled={loading}
+            sx={{ flexGrow: 1 }}
           />
           <Button 
             variant="contained" 
             onClick={handleFetchOrg}
             disabled={loading || !orgName.trim()}
-            sx={{ minWidth: '120px' }}
+            sx={{ 
+              minWidth: '120px',
+              height: { xs: '40px', sm: '56px' },
+              alignSelf: { sm: 'flex-start' } 
+            }}
           >
             {loading ? <CircularProgress size={24} /> : 'Fetch Details'}
           </Button>
@@ -136,8 +175,7 @@ export const DeleteOrg = () => {
           </Alert>
         )}
       </Paper>
-
-      {orgData && Object.keys(orgData).length && (
+      {orgData && Object.keys(orgData).length > 0 && (
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
             Organization Details
@@ -155,9 +193,34 @@ export const DeleteOrg = () => {
             variant="contained"
             color="error"
             onClick={handleDeleteClick}
-            disabled={loading}
+            disabled={loading || !permissions.canDelete}
+            sx={{
+              opacity: permissions.canDelete ? 1 : 0.6,
+              pointerEvents: permissions.canDelete ? 'auto' : 'none',
+              position: 'relative'
+            }}
           >
             Delete Organization
+            {!permissions.canDelete && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.1)',
+                  borderRadius: 'inherit'
+                }}
+              >
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  No permission
+                </Typography>
+              </Box>
+            )}
           </Button>
         </Paper>
       )}
