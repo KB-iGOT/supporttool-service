@@ -46,6 +46,8 @@ import { FieldDefinition, FormData as CustomFormData } from "../../types/forms";
 import { getNestedValue } from "../../utils/pathResolver";
 import axios from "axios";
 import { organisationService } from "../../services/organisations.service";
+import { appContextType } from "../../types";
+import { AppContext } from "../../Context/AppContext";
 
 // Configuration constants
 const FACETS_LIST = ["rootOrgName"];
@@ -187,7 +189,9 @@ export const Users = () => {
   // Refs
   const initialLoadComplete = useRef(false);
   const orgListRef = useRef<HTMLUListElement>(null);
-  
+    // Get permissions from context
+    const { checkPermissions } = React.useContext(AppContext) as appContextType;
+    const permissions = checkPermissions();
   // Function to validate email format
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -528,6 +532,7 @@ export const Users = () => {
   const handleClearSearch = () => {
     setSearchQuery("");
     setSelectedOrg(null);
+    setSearchErrors({});
     setPage(0);
     fetchUsers(0, rowsPerPage, "", selectedFilters, false);
   };
@@ -535,6 +540,10 @@ export const Users = () => {
   const handleEditUser = (user: Record<string, any>) => {
     setEditUserData(user);
     setOpen(true);
+  };
+
+  const handleDeleteUser = (user: Record<string, any>) => {
+    console.log("Delete user functionality to be implemented for user:", user);
   };
 
   // Submit handler for user updates
@@ -647,9 +656,11 @@ export const Users = () => {
           severity: "success",
         });
         
-        // This line already refreshes the user list
-        fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+        // Close the form dialog
         setOpen(false);
+        
+        // Reset form and refresh data
+        resetFormAndFetchUsers();
       } else {
         throw new Error(response?.responseMessage || "Failed to update user");
       }
@@ -657,13 +668,26 @@ export const Users = () => {
       console.error("Error updating user:", error);
       let message = error?.response?.data?.error?.params?.errmsg || error.message || "An error occurred while updating user";
       setToasts({
-        message:message,
+        message: message,
         open: true,
         severity: "error",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add this new function to handle form reset and data refresh
+  const resetFormAndFetchUsers = () => {
+    // Clear form data
+    setEditUserData({});
+    setModifiedFields({});
+    
+    // Clear any search errors if they exist
+    setSearchErrors({});
+    
+    // Fetch users again with current filters and search parameters
+    fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
   };
 
   // Effects
@@ -955,19 +979,26 @@ export const Users = () => {
                         <TableCell>{row?.profileDetails?.personalDetails?.mobile || '-'}</TableCell>
                         <TableCell>{row?.profileDetails?.profileStatus || '-'}</TableCell>
                         <TableCell align="right">
-                          <IconButton
-                            aria-label="edit"
-                            size="small"
-                            onClick={() => handleEditUser(row)}
-                          >
-                            <PencilIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            aria-label="delete"
-                            size="small"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          {permissions.canWrite && (
+                            <IconButton
+                              aria-label="edit"
+                              size="small"
+                              onClick={() => handleEditUser(row)}
+                              disabled={!permissions.canWrite}
+                            >
+                              <PencilIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canDelete && (
+                            <IconButton
+                              aria-label="delete"
+                              size="small"
+                              onClick={() => handleDeleteUser(row)}
+                              disabled={!permissions.canDelete}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
