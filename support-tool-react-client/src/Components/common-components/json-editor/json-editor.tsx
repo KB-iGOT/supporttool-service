@@ -1,7 +1,9 @@
 import MonacoEditor from '@monaco-editor/react';
 import { makeStyles, createStyles } from '@mui/styles';
 import React, { useRef, useEffect, useState } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, IconButton, Tooltip } from '@mui/material';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 
 const editorStyles = makeStyles(() =>
   createStyles({
@@ -30,6 +32,28 @@ const editorStyles = makeStyles(() =>
       backgroundColor: 'rgba(0, 0, 0, 0.2)',
       zIndex: 10,
     },
+    fullscreenContainer: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1300,
+      backgroundColor: '#fff',
+      padding: '16px',
+      display: 'flex',
+      flexDirection: 'column'
+    },
+    fullscreenButton: {
+      position: 'absolute',
+      top: '0px',
+      right: '0px',
+      zIndex: 15,
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      '&:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      },
+    },
   }),
 );
 
@@ -44,7 +68,8 @@ export const JsonEditor = (props: {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorHeight, setEditorHeight] = useState('400px');
-
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullScreenHeight = 'calc(100vh - 24px) !important'; // Use !important to override any inline styles
   // Pretty-print the JSON input
   const formattedInput =
     typeof input === 'string'
@@ -63,6 +88,24 @@ export const JsonEditor = (props: {
       editor?.getAction("editor.action.formatDocument")?.run();
     }, 300);
   };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  // Handle escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   // Fix for ResizeObserver loop error and ensure editor is displayed
   useEffect(() => {
@@ -111,21 +154,38 @@ export const JsonEditor = (props: {
     };
   }, []);
 
-  return (
-    <Box 
-      ref={containerRef} 
-      className={classes.editorContainer}
-      sx={{ 
-        height: editorHeight,
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-    >
+  const editorContent = (
+    <>
       {!isEditorReady && (
         <Box className={classes.loaderContainer}>
           <CircularProgress />
         </Box>
       )}
+      
+      <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+        <IconButton
+          className={classes.fullscreenButton}
+          onClick={toggleFullscreen}
+          size="small"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            color: '#333',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            },
+          }}
+        >
+          {isFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
+          <span style={{ fontSize: '12px', fontWeight: '700' }}>
+            {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          </span>
+        </IconButton>
+      </Tooltip>
       
       <MonacoEditor
         height="100%"
@@ -152,7 +212,6 @@ export const JsonEditor = (props: {
           foldingStrategy: 'auto',
           renderLineHighlight: 'all',
           automaticLayout: true, // Try enabling automatic layout again
-          
         }}
         onChange={(value) => {
           if (onChange && value !== undefined) {
@@ -167,6 +226,33 @@ export const JsonEditor = (props: {
         }}
         className={classes.editor}
       />
+    </>
+  );
+
+  if (isFullscreen) {
+    return (
+      <Box className={classes.fullscreenContainer}
+      sx={{ 
+        height: isFullscreen? fullScreenHeight : editorHeight,
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {editorContent}
+      </Box>
+    );
+  }
+
+  return (
+    <Box 
+      ref={containerRef} 
+      className={classes.editorContainer}
+      sx={{ 
+        height: isFullscreen? fullScreenHeight : editorHeight,
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {editorContent}
     </Box>
   );
 };

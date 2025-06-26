@@ -139,9 +139,9 @@ export const FormFilter: React.FC<FormFilterProps> = ({
         if (selectedValues.type && item.type !== selectedValues.type) return false;
         if (selectedValues.subtype && item.subtype !== selectedValues.subtype) return false;
         if (selectedValues.action && item.action !== selectedValues.action) return false;
-        if (selectedValues.root_org && item.root_org !== selectedValues.root_org) return false;
         if (selectedValues.component && item.component !== selectedValues.component) return false;
         if (selectedValues.framework && item.framework !== selectedValues.framework) return false;
+        if (selectedValues.root_org && item.root_org !== selectedValues.root_org) return false;
         return true;
       });
     };
@@ -168,25 +168,25 @@ export const FormFilter: React.FC<FormFilterProps> = ({
     const actions = selectedValues.type && selectedValues.subtype ? 
       getUniqueValues('action') : [];
       
-    const rootOrgs = selectedValues.type && selectedValues.subtype && selectedValues.action ? 
-      getUniqueValues('root_org') : [];
-      
-    const components = selectedValues.type && selectedValues.subtype && 
-                     selectedValues.action && selectedValues.root_org ? 
+    const components = selectedValues.type && selectedValues.subtype && selectedValues.action ? 
       getUniqueValues('component') : [];
       
     const frameworks = selectedValues.type && selectedValues.subtype && 
-                     selectedValues.action && selectedValues.root_org && 
-                     selectedValues.component ? 
+                     selectedValues.action && selectedValues.component ? 
       getUniqueValues('framework') : [];
+      
+    const rootOrgs = selectedValues.type && selectedValues.subtype && 
+                   selectedValues.action && selectedValues.component && 
+                   selectedValues.framework ? 
+      getUniqueValues('root_org') : [];
     
     setFilterOptions({
       type: types,
       subtype: subtypes,
       action: actions,
-      root_org: rootOrgs,
       component: components,
-      framework: frameworks
+      framework: frameworks,
+      root_org: rootOrgs
     });
   }, [formsData, selectedValues]);
   
@@ -194,7 +194,14 @@ export const FormFilter: React.FC<FormFilterProps> = ({
   const handleSelectChange = (value: string, field: keyof FormFilterData) => {
     // Reset all subsequent selections
     const resetSelections = (startField: keyof FormFilterData) => {
-      const fields: (keyof FormFilterData)[] = ['type', 'subtype', 'action', 'root_org', 'component', 'framework'];
+      const fields: (keyof FormFilterData)[] = [
+        'type', 
+        'subtype', 
+        'action', 
+        'component', 
+        'framework', 
+        'root_org'
+      ];
       const startIndex = fields.indexOf(startField);
       
       const resetValues = { ...selectedValues };
@@ -487,14 +494,14 @@ export const FormFilter: React.FC<FormFilterProps> = ({
           {/* Action Selection - with search */}
           {renderDropdown('action', 'Action', filterOptions.action, !selectedValues.subtype)}
           
-          {/* Root Org Selection - with search */}
-          {renderDropdown('root_org', 'Root Organization', filterOptions.root_org, !selectedValues.action)}
-          
           {/* Component Selection - with search */}
-          {renderDropdown('component', 'Component', filterOptions.component, !selectedValues.root_org)}
+          {renderDropdown('component', 'Component', filterOptions.component, !selectedValues.action)}
           
           {/* Framework Selection - with search */}
           {renderDropdown('framework', 'Framework', filterOptions.framework, !selectedValues.component)}
+          
+          {/* Root Org Selection - with search */}
+          {renderDropdown('root_org', 'Root Organization', filterOptions.root_org, !selectedValues.framework)}
         </Grid>
         
         {/* Selected Values Summary */}

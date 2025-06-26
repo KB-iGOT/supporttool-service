@@ -166,7 +166,6 @@ export const createPrivateContents: RequestHandler = async (
         error: "Service unavailable",
       });
     } else {
-      // Something happened in setting up the request that triggered an Error
       logger.error(`Request setup error: ${(error as any).message}`);
       res.status(500).json({
         message: "Internal server error",
@@ -322,11 +321,11 @@ export const updatePrivateContent: RequestHandler = async (
 ) => {
   logger.info("Updating private content");
   try {
-    logger.info(`Update request body: ${JSON.stringify(req.body)}`);
+    logger.info(`${req.params.id} Update request body: ${JSON.stringify(req.body)}`);
     
     const response = await axios({
-      method: "POST",
-      url: `${process.env.KONG_API_URL}/api/private/content/v3/update`,
+      method: "PATCH",
+      url: `${process.env.KONG_API_URL}/api/private/content/v3/update/${req.params.id}`,
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
@@ -367,6 +366,77 @@ export const updatePrivateContent: RequestHandler = async (
       res.status(500).json({
         status: 500,
         message: "Internal server error while updating content",
+        error: (error as any).message,
+      });
+    }
+  }
+};
+
+export const deletePrivateContent: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  logger.info(`Retiring private content with ID: ${req.params.id}`);
+  
+  try {
+    // Validate that we have a content ID
+    if (!req.params.id) {
+      logger.warn("Missing content ID in retire request");
+      res.status(400).json({
+        status: 400,
+        message: "Content ID is required for retirement",
+      });
+      return;
+    }
+
+    // Log the retirement request
+    logger.info(`Retire request for content ID ${req.params.id}`);
+    
+    // Make the API call to retire the content - no body, only parameter
+    const response = await axios({
+      method: "DELETE",
+      url: `${process.env.KONG_API_URL}/api/private/content/v3/retire/${req.params.id}`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      }
+      // No data parameter, only using URL params
+    });
+
+    logger.info(`Content retired successfully: ${JSON.stringify(response.data)}`);
+    
+    // Return success response
+    res.status(200).json({
+      status: 200,
+      message: "Content retired successfully",
+      responseCode: "OK",
+      result: response.data,
+    });
+  } catch (error) {
+    logger.error(`❌ Error retiring content: ${error}`);
+
+    // Check if it's an axios error with response
+    if ((error as any).response) {
+      const axiosError = error as any;
+      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      res.status(axiosError.response.status).json({
+        status: axiosError.response.status,
+        message: "Error retiring content",
+        error: axiosError.response.data,
+      });
+    } else if ((error as any).request) {
+      logger.error("No response received from API");
+      res.status(503).json({
+        status: 503,
+        message: "No response from content API",
+        error: "Service unavailable",
+      });
+    } else {
+      logger.error(`Request setup error: ${(error as any).message}`);
+      res.status(500).json({
+        status: 500,
+        message: "Internal server error while retiring content",
         error: (error as any).message,
       });
     }

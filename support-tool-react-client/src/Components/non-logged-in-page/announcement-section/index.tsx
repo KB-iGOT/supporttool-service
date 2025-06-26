@@ -19,7 +19,13 @@ import {
   IconButton,
   Tooltip,
   Link,
-  Divider
+  Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  TextField
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -30,7 +36,9 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PublicIcon from '@mui/icons-material/Public';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { nonLoggedInServive } from '../../../services/non-loggedin.service';
+import { contentsService } from '../../../services/contents.service';
 import { EllipsisCell } from '../../common-components/ellipsis-cell/ellipsis-cell';
 import { AppContext } from '../../../Context/AppContext';
 import { appContextType } from '../../../types';
@@ -76,6 +84,10 @@ export const AnnouncementSection: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [copyStatus, setCopyStatus] = useState<{ id: string; copied: boolean } | null>(null);
+  const [retireDialogOpen, setRetireDialogOpen] = useState<boolean>(false);
+  const [retireReason, setRetireReason] = useState<string>('');
+  const [retireLoading, setRetireLoading] = useState<boolean>(false);
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
 
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -103,7 +115,7 @@ export const AnnouncementSection: React.FC = () => {
             status: { '!=': 'Retired' }
           },
           facets: ['name', 'source', 'position'],
-          sortBy: { createdOn: 'Desc' },
+          sortBy: { registrationEndDate: 'Desc' },
           limit: rowsPerPage,
           offset: page * rowsPerPage
         }
@@ -191,27 +203,6 @@ export const AnnouncementSection: React.FC = () => {
     }
   };
 
-  const getStatusColor = (item: ContentItem) => {
-    if (item.status === 'Live') return 'success';
-    if (item.status === 'Draft') return 'default';
-
-    if (item.position?.toLowerCase() === 'closed') return 'error';
-
-    const now = new Date();
-
-    if (item.endDate) {
-      const endDate = new Date(item.endDate);
-      if (endDate < now) return 'error';
-    }
-
-    if (item.registrationEndDate) {
-      const regEndDate = new Date(item.registrationEndDate);
-      if (regEndDate < now) return 'warning';
-    }
-
-    return 'primary';
-  };
-
   const getTitle = () => {
     switch (category.toLowerCase()) {
       case 'career':
@@ -226,6 +217,90 @@ export const AnnouncementSection: React.FC = () => {
   const handleCreateContent = () => {
     navigate(`/non-logged-in-page/career/upload-contents?primaryCategory=${category}`);
   };
+
+  const handleRetireContent = async () => {
+    if (!selectedContent?.identifier) {
+      setError('Missing required data to retire content');
+      return;
+    }
+
+    setRetireLoading(true);
+    setError(null);
+
+    try {
+      const retireData = {
+        request: {
+          content: {
+            retireReason: retireReason || 'Content retired by admin'
+          }
+        }
+      };
+
+      const response = await contentsService.retirePrivateContent(selectedContent.identifier);
+
+      if (response && response.responseCode === 'OK') {
+        // Close dialog
+        setRetireDialogOpen(false);
+        setSelectedContent(null);
+        setRetireReason('');
+
+        // Refresh the content list
+        fetchContents();
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (err: any) {
+      console.error('Error retiring content:', err);
+      setError(`Failed to retire content: ${err.response?.data?.params?.errmsg || err.message}`);
+    } finally {
+      setRetireLoading(false);
+    }
+  };
+
+  const openRetireDialog = (content: ContentItem) => {
+    setSelectedContent(content);
+    setRetireDialogOpen(true);
+  };
+
+  const RetireContentDialog = () => (
+    <Dialog
+      open={retireDialogOpen}
+      onClose={() => setRetireDialogOpen(false)}
+      aria-labelledby="retire-content-dialog-title"
+    >
+      <DialogTitle id="retire-content-dialog-title">Retire Content</DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          Are you sure you want to retire "{selectedContent?.name}"? This action cannot be undone.
+        </DialogContentText>
+        {/* <TextField
+          autoFocus
+          margin="dense"
+          id="retire-reason"
+          label="Reason for retirement (optional)"
+          type="text"
+          fullWidth
+          variant="outlined"
+          value={retireReason}
+          onChange={(e) => setRetireReason(e.target.value)}
+        /> */}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setRetireDialogOpen(false)} disabled={retireLoading}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleRetireContent}
+          color="error"
+          variant="contained"
+          disabled={retireLoading}
+          startIcon={retireLoading ? <CircularProgress size={20} color="inherit" /> : <DeleteOutlineIcon />}
+        >
+          {retireLoading ? 'Retiring...' : 'Retire Content'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -276,7 +351,6 @@ export const AnnouncementSection: React.FC = () => {
                   <TableCell sx={{ fontWeight: 'bold' }}>Location</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Timeline</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }} align="center">
                     Actions
                   </TableCell>
@@ -346,23 +420,6 @@ export const AnnouncementSection: React.FC = () => {
                       </Box>
                     </TableCell>
 
-                    <TableCell>
-                      <Chip
-                        label={item.status || 'Unknown'}
-                        size="small"
-                        color={
-                          getStatusColor(item) as
-                            | 'default'
-                            | 'primary'
-                            | 'secondary'
-                            | 'error'
-                            | 'info'
-                            | 'success'
-                            | 'warning'
-                        }
-                      />
-                    </TableCell>
-
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                         {item.artifactUrl && (
@@ -421,6 +478,18 @@ export const AnnouncementSection: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                         )}
+
+                        {permissions.canWrite && (
+                          <Tooltip title="Retire Content">
+                            <IconButton
+                              size="small"
+                              onClick={() => openRetireDialog(item)}
+                              color="error"
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -460,6 +529,8 @@ export const AnnouncementSection: React.FC = () => {
           )}
         </Paper>
       )}
+
+      <RetireContentDialog />
     </Box>
   );
 };
