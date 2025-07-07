@@ -6,8 +6,10 @@ import {
   updateRole, 
 //   deleteRole, 
   getRolePermissions, 
-  updateRolePermissions
+  updateRolePermissions,
+  getIgotRolesList
 } from "../controllers/roles.controller";
+import { userSession } from "../helpers/authHelper";
 
 const rolesRouter = Router();
 
@@ -20,5 +22,6 @@ rolesRouter.put("/update/:id", updateRole);
 // // Role permissions routes
 rolesRouter.get("/:roleId/permissions", getRolePermissions ,()=>{console.log("Role permissions fetched")});
 rolesRouter.post("/update/:roleId/permissions", updateRolePermissions);
-
+rolesRouter.route("/orgTypeList")
+  .get(userSession, getIgotRolesList);
 export default rolesRouter;

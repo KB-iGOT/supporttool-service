@@ -2,6 +2,8 @@
 import { Request, Response } from "express";
 import { RequestHandler } from "express";
 import pool from "../config/database";
+import logger from "../utils/logger";
+import axios from "axios";
 
 // Get all roles
 export const getAllRoles: RequestHandler = async (_: Request, res: Response) => {
@@ -128,73 +130,8 @@ export const updateRole: RequestHandler = async (req: Request, res: Response) =>
       .json({ message: "Internal server error", error: error.message });
   }
 };
-// // Delete a role
-// export const deleteRole: RequestHandler = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params;
-    
-//     // Check if role exists
-//     const existingRole = await pool.query(
-//       "SELECT * FROM roles WHERE id = $1",
-//       [id]
-//     );
-    
-//     if (existingRole.rowCount === 0) {
-//       return res.status(404).json({ message: "Role not found" });
-//     }
-    
-//     // Delete the role (permissions will cascade due to foreign key constraint)
-//     await pool.query("DELETE FROM roles WHERE id = $1", [id]);
-    
-//     res.json({
-//       status: 200,
-//       responseCode: "OK",
-//       message: "Role deleted successfully",
-//     });
-//   } catch (error: any) {
-//     console.error("❌ Error deleting role:", error);
-//     res
-//       .status(500)
-//       .json({ message: "Internal server error", error: error.message });
-//   }
-// };
 
 // Get permissions for a role
-// export const getRolePermissions: RequestHandler = async (req: Request, res: Response) => {
-//   try {
-//     const { roleId } = req.params;
-    
-//     // Check if role exists
-//     const existingRole = await pool.query(
-//       "SELECT * FROM roles WHERE id = $1",
-//       [roleId]
-//     );
-    
-//     if (existingRole.rowCount === 0) {
-//       res.status(404).json({ message: "Role not found" });
-//       return;
-//     }
-    
-//     // Get permissions
-//     const permissions = await pool.query(
-//       "SELECT * FROM role_permissions WHERE role_id = $1",
-//       [roleId]
-//     );
-    
-//     res.json({
-//       status: 200,
-//       responseCode: "OK",
-//       permissions: permissions.rows,
-//     });
-//   } catch (error: any) {
-//     console.error("❌ Error fetching role permissions:", error);
-//     res
-//       .status(500)
-//       .json({ message: "Internal server error", error: error.message });
-//   }
-// };
-
-
 export const getRolePermissions: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { roleId } = req.params;
@@ -303,5 +240,73 @@ export const updateRolePermissions: RequestHandler = async (req: Request, res: R
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
+  }
+};
+
+export const getIgotRolesList: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  logger.info('Fetching iGot organization roles list');
+  
+  try {
+    // Make the API call to get organization type list with roles
+    console.log("🔍 Fetching organization roles list from API",req.user.token.trim(),process.env.AUTHORIZATION);
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/data/v1/system/settings/get/orgTypeList`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+        "rootorg": "igot"
+      }
+    });
+
+    logger.info('Organization roles list fetched successfully');
+    
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(`Roles data: ${JSON.stringify(response.data)}`);
+    }
+    
+    // Return success response
+    res.status(200).json({
+      status: 200,
+      message: "Roles fetched successfully",
+      responseCode: "OK",
+      result: response.data,
+    });
+  } catch (error) {
+    logger.error(`Error fetching organization roles: ${error}`);
+
+    // Check if it's an axios error with response
+    if ((error as any).response) {
+      const axiosError = error as any;
+      logger.error(`API Error status: ${axiosError.response.status}`);
+      
+      if (process.env.NODE_ENV !== 'production') {
+        logger.error(`API Error details: ${JSON.stringify(axiosError.response.data)}`);
+      }
+      
+      res.status(axiosError.response.status).json({
+        status: axiosError.response.status,
+        message: "Error fetching organization roles",
+        error: axiosError.response.data,
+      });
+    } else if ((error as any).request) {
+      logger.error("No response received from roles API");
+      res.status(503).json({
+        status: 503,
+        message: "No response from roles API",
+        error: "Service unavailable",
+      });
+    } else {
+      logger.error(`Request setup error: ${(error as any).message}`);
+      res.status(500).json({
+        status: 500,
+        message: "Internal server error while fetching roles",
+        error: (error as any).message,
+      });
+    }
   }
 };

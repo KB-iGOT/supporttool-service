@@ -442,3 +442,74 @@ export const deletePrivateContent: RequestHandler = async (
     }
   }
 };
+
+export const readPrivateContent: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  logger.info(`Reading private content with ID: ${req.params.id}`);
+  
+  try {
+    // Validate that we have a content ID
+    if (!req.params.id) {
+      logger.warn("Missing content ID in read request");
+      res.status(400).json({
+        status: 400,
+        message: "Content ID is required to read content",
+      });
+      return;
+    }
+
+    // Log the read request
+    logger.info(`Read request for content ID ${req.params.id}`);
+    
+    // Make the API call to read the content - no body, only parameter
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/private/content/v3/read/${req.params.id}`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      }
+      // No data parameter, only using URL params
+    });
+
+    logger.info(`Content read successfully: ${JSON.stringify(response.data)}`);
+    
+    // Return success response
+    res.status(200).json({
+      status: 200,
+      message: "Content read successfully",
+      responseCode: "OK",
+      result: response.data,
+    });
+  } catch (error) {
+    logger.error(`❌ Error reading content: ${error}`);
+
+    // Check if it's an axios error with response
+    if ((error as any).response) {
+      const axiosError = error as any;
+      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      res.status(axiosError.response.status).json({
+        status: axiosError.response.status,
+        message: "Error reading content",
+        error: axiosError.response.data,
+      });
+    } else if ((error as any).request) {
+      logger.error("No response received from API");
+      res.status(503).json({
+        status: 503,
+        message: "No response from content API",
+        error: "Service unavailable",
+      });
+    } else {
+      logger.error(`Request setup error: ${(error as any).message}`);
+      res.status(500).json({
+        status: 500,
+        message: "Internal server error while reading content",
+        error: (error as any).message,
+      });
+    }
+  }
+};

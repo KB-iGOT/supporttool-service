@@ -2,14 +2,18 @@ import axios from "axios";
 
 import env from "../Config/env";
 import { get } from "http";
+import { getCookie } from "../utils";
 // Base URL (Change according to your backend server)
 const API_BASE_URL = env.apiBaseUrl;
+
+const userId = getCookie('userId');
 
 // Create an Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    "x-user-id": userId ?? '',
   },
 });
 
@@ -36,6 +40,10 @@ export const rolesService = {
   ,
   updateRolePermissions: async (roleId: any, data: any) => {
     const response = await apiClient.post(`/roles/update/${roleId}/permissions`, data);
+    return response.data;
+  },
+  fetchIgotRoles: async () => {
+    const response = await apiClient.get("/roles/orgTypeList");
     return response.data;
   }
 };

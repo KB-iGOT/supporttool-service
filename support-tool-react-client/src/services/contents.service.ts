@@ -82,4 +82,15 @@ export const contentsService = {
       throw error;
     }
   },
+
+  privateContentRead: async (contentId: string) => {
+
+    try {
+    const response = await apiClient.get(`/contents/private/read/${contentId}`);
+    return response.data;
+    } catch (error) {
+      console.error("Error retiring content:", error);
+      throw error;
+    }
+  },
 };

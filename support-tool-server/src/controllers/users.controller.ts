@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
+import logger from "../utils/logger";
+// Make sure to import logger
 
 export const getUsers: RequestHandler = async (req: any, res: Response) => {
   try {
@@ -164,3 +166,84 @@ export const getUserByEmail: RequestHandler = async (req: any, res: Response) =>
     }
   }
 };
+
+
+export const assignUserRoles: RequestHandler = async (req: any, res: Response): Promise<void> => {
+  const { userId, organisationId, roles } = req.body.request || {};
+  
+  logger.info(`Assigning roles to user: ${userId} for organization: ${organisationId}`);
+  
+  // Validate request payload
+  if (!userId || !organisationId || !roles || !Array.isArray(roles)) {
+    logger.warn('Invalid role assignment request - missing required fields');
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "User ID, organisation ID and roles array are required"
+    });
+    return;
+  }
+
+  try {
+    logger.debug(`Role assignment request payload: ${JSON.stringify(req.body)}`);
+    
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/user/private/v1/assign/role`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+      data: req.body
+    });
+
+    logger.info(`Roles successfully assigned to user: ${userId}`);
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(`Assigned roles: ${roles.join(', ')}`);
+    }
+
+    // Return success response
+    res.status(200).json({
+      status: 200,
+      responseCode: "OK",
+      message: "Roles assigned successfully",
+      result: response.data
+    });
+  } catch (error) {
+    logger.error(`Error assigning roles to user: ${userId}`);
+
+    // Check if it's an axios error with response
+    if ((error as any).response) {
+      const axiosError = error as any;
+      logger.error(`API Error status: ${axiosError.response.status}`);
+      
+      if (process.env.NODE_ENV !== 'production') {
+        logger.error(`API Error details: ${JSON.stringify(axiosError.response.data)}`);
+      }
+      
+      res.status(axiosError.response.status).json({
+        status: axiosError.response.status,
+        responseCode: "API_ERROR",
+        message: "Error assigning user roles",
+        error: axiosError.response.data
+      });
+    } else if ((error as any).request) {
+      logger.error("No response received from role assignment API");
+      res.status(503).json({
+        status: 503,
+        responseCode: "SERVICE_UNAVAILABLE",
+        message: "No response from role assignment API",
+        error: "Service unavailable"
+      });
+    } else {
+      logger.error(`Request setup error: ${(error as any).message}`);
+      res.status(500).json({
+        status: 500,
+        responseCode: "SERVER_ERROR",
+        message: "Internal server error while assigning roles",
+        error: (error as any).message
+      });
+    }
+  }
+};
+

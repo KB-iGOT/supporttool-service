@@ -36,4 +36,17 @@ export const usersService = {
     const response = await apiClient.patch(`/users/${userId}`, requestPayload);
     return response.data;
   },
+
+  assignUserRoles: async (userId: string, organisationId: string, roles: string[]) => {
+
+    // Construct the request payload as expected by your API
+    const response = await apiClient.post(`/users/role/assign`, {
+      request: {
+        userId,
+        organisationId,
+        roles
+      }
+    });
+    return response.data;
+  },
 };

@@ -25,7 +25,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  TextField
+  TextField,
+  InputAdornment
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -37,6 +38,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PublicIcon from '@mui/icons-material/Public';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
+import EditIcon from '@mui/icons-material/Edit';
 import { nonLoggedInServive } from '../../../services/non-loggedin.service';
 import { contentsService } from '../../../services/contents.service';
 import { EllipsisCell } from '../../common-components/ellipsis-cell/ellipsis-cell';
@@ -88,6 +92,8 @@ export const AnnouncementSection: React.FC = () => {
   const [retireReason, setRetireReason] = useState<string>('');
   const [retireLoading, setRetireLoading] = useState<boolean>(false);
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [searchText, setSearchText] = useState<string>('');
+  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
 
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -101,7 +107,27 @@ export const AnnouncementSection: React.FC = () => {
 
   useEffect(() => {
     fetchContents();
-  }, [category, page, rowsPerPage]);
+  }, [category, page, rowsPerPage, searchText]);
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchText = event.target.value;
+
+    if (searchDebounce) {
+      clearTimeout(searchDebounce);
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSearchText(newSearchText);
+      setPage(0);
+    }, 500);
+
+    setSearchDebounce(timeoutId);
+  };
+
+  const clearSearch = () => {
+    setSearchText('');
+    setPage(0);
+  };
 
   const fetchContents = async () => {
     setLoading(true);
@@ -114,12 +140,26 @@ export const AnnouncementSection: React.FC = () => {
             primaryCategory: [category],
             status: { '!=': 'Retired' }
           },
-          facets: ['name', 'source', 'position'],
+          query: '',
+          facets: ['name', 'source'],
           sortBy: { registrationEndDate: 'Desc' },
           limit: rowsPerPage,
           offset: page * rowsPerPage
         }
       };
+
+      // Only include position in facets for categories that use it
+      if (shouldShowPosition(category)) {
+        requestData.request.facets.push('position');
+      }
+
+      if (searchText.trim()) {
+        requestData.request = {
+          ...requestData.request,
+          query: searchText.trim(),
+        };
+      }
+
       const response = await nonLoggedInServive.privateSearch(requestData);
 
       const data: SearchResponse = response;
@@ -215,7 +255,7 @@ export const AnnouncementSection: React.FC = () => {
   };
 
   const handleCreateContent = () => {
-    navigate(`/non-logged-in-page/career/upload-contents?primaryCategory=${category}`);
+    navigate(`/non-logged-in-page/${category}/upload-contents?primaryCategory=${category}`);
   };
 
   const handleRetireContent = async () => {
@@ -239,12 +279,9 @@ export const AnnouncementSection: React.FC = () => {
       const response = await contentsService.retirePrivateContent(selectedContent.identifier);
 
       if (response && response.responseCode === 'OK') {
-        // Close dialog
         setRetireDialogOpen(false);
         setSelectedContent(null);
         setRetireReason('');
-
-        // Refresh the content list
         fetchContents();
       } else {
         throw new Error('Invalid response format');
@@ -273,17 +310,6 @@ export const AnnouncementSection: React.FC = () => {
         <DialogContentText sx={{ mb: 2 }}>
           Are you sure you want to retire "{selectedContent?.name}"? This action cannot be undone.
         </DialogContentText>
-        {/* <TextField
-          autoFocus
-          margin="dense"
-          id="retire-reason"
-          label="Reason for retirement (optional)"
-          type="text"
-          fullWidth
-          variant="outlined"
-          value={retireReason}
-          onChange={(e) => setRetireReason(e.target.value)}
-        /> */}
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setRetireDialogOpen(false)} disabled={retireLoading}>
@@ -301,6 +327,20 @@ export const AnnouncementSection: React.FC = () => {
       </DialogActions>
     </Dialog>
   );
+
+  // Add this helper function to determine if position column should be shown
+  const shouldShowPosition = (category: string) => {
+    // Don't show position column for tender and notification
+    return !['tender', 'notification'].includes(category.toLowerCase());
+  };
+
+  // Add this function to get an appropriate search placeholder
+  const getSearchPlaceholder = () => {
+    if (!shouldShowPosition(category)) {
+      return "Search by title, description, or location...";
+    }
+    return "Search by title, description, position, or location...";
+  };
 
   return (
     <Box sx={{ padding: 3 }}>
@@ -330,10 +370,42 @@ export const AnnouncementSection: React.FC = () => {
 
       <Divider sx={{ mb: 3 }} />
 
+      <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+        <TextField
+          fullWidth
+          placeholder={getSearchPlaceholder()}
+          variant="outlined"
+          onChange={handleSearchChange}
+          defaultValue={searchText}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: searchText && (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={clearSearch}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
+        />
+      </Box>
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
+      )}
+
+      {searchText && !loading && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Showing results for "{searchText}" - {totalCount} items found
+          </Typography>
+        </Box>
       )}
 
       {loading ? (
@@ -347,7 +419,9 @@ export const AnnouncementSection: React.FC = () => {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Position</TableCell>
+                  {shouldShowPosition(category) && (
+                    <TableCell sx={{ fontWeight: 'bold' }}>Position</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 'bold' }}>Location</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Timeline</TableCell>
                   <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
@@ -374,13 +448,15 @@ export const AnnouncementSection: React.FC = () => {
                       </Typography>
                     </TableCell>
 
-                    <TableCell>
-                      <Chip
-                        label={item.position || 'N/A'}
-                        size="small"
-                        color={item.position?.toLowerCase() === 'open' ? 'success' : 'default'}
-                      />
-                    </TableCell>
+                    {shouldShowPosition(category) && (
+                      <TableCell>
+                        <Chip
+                          label={item.position || 'N/A'}
+                          size="small"
+                          color={item.position?.toLowerCase() === 'open' ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                    )}
 
                     <TableCell>
                       <Box display="flex" alignItems="center">
@@ -422,6 +498,22 @@ export const AnnouncementSection: React.FC = () => {
 
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        {permissions.canWrite && (
+                          <Tooltip title="Edit Content">
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                navigate(
+                                  `/non-logged-in-page/${category}/edit/${item.identifier}?primaryCategory=${category}`
+                                )
+                              }
+                              color="primary"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
                         {item.artifactUrl && (
                           <>
                             <Tooltip title="View Document">

@@ -35,6 +35,16 @@ const Users = lazy(() =>
     default: module.Users,
   }))
 );
+const UsersList = lazy(() =>
+  import("../../users/list-user/index").then((module) => ({
+    default: module.UsersList,
+  }))
+);
+const ReissueCertificate = lazy(() =>
+  import("../../users/list-user/ReissueCertificate").then((module) => ({
+    default: module.ReissueCertificate,
+  }))
+);
 const Forms = lazy(() =>
   import("../../forms/index").then((module) => ({
     default: module.Forms,
@@ -157,7 +167,10 @@ const LazyApp = () => {
                 <Users />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<UsersList />} />
+            <Route path="certificates" element={<ReissueCertificate />} />
+          </Route>
           <Route
             path="/forms"
             element={
@@ -233,6 +246,7 @@ const LazyApp = () => {
             <Route index element={<ModuleCards />} />
             <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
             <Route path="/non-logged-in-page/:id/upload-contents" element={<UploadContents />} />
+            <Route path="/non-logged-in-page/:id/edit/:doId" element={<UploadContents />} />
           </Route>
         </Routes>
       </Suspense>
