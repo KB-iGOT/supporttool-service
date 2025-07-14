@@ -95,6 +95,7 @@ export const updateConfig: RequestHandler = async (
   req: any,
   res: Response
 ) => {
+  console.log("Updating system settings with data:", req.body);
   try {
     const response = await axios({
       method: "POST",
@@ -104,7 +105,7 @@ export const updateConfig: RequestHandler = async (
         Authorization: process.env.AUTHORIZATION,
         "x-authenticated-user-token": req.user.token.trim(),
       },
-      data: JSON.stringify(req.body),
+      data: req.body,
     });
 
     // If successful

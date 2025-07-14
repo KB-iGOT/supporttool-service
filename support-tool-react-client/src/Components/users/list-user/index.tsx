@@ -21,13 +21,14 @@ import { FieldDefinition, FormData as CustomFormData } from "../../../types/form
 import { getNestedValue } from "../../../utils/pathResolver";
 import { AppContext } from "../../../Context/AppContext";
 import { appContextType } from "../../../types";
-import { SearchPanel, SearchFieldType, searchFields } from "./SearchPanel";
+import { SearchPanel, SearchFieldType, searchFields, UserStatusType } from "./SearchPanel"; // Import UserStatusType
 import { UsersTable } from "./UsersTable";
 import { Organization } from "./types";
 import { HelpDialog } from "./HelpDialog"; // Import the new HelpDialog component
+import { CreateUserDialog } from "./CreateUserDialog"; // Import the CreateUserDialog component
 
 // Configuration constants
-const FACETS_LIST = ["rootOrgName"];
+const FACETS_LIST = ["rootChannel"];
 const filterConfig = {
   courseCategory: 'multi',
   resourceCategory: 'multi'
@@ -85,6 +86,76 @@ const sampleFields: FieldDefinition[] = [
   }
 ];
 
+// Remove the channel field from createUserFields as we'll use a custom component for it
+const createUserFields: FieldDefinition[] = [
+  {
+    identifier: 'firstName',
+    name: 'firstName',
+    displayName: 'Full Name',
+    fieldType: 'text',
+    optional: false,
+    selected: true,
+    order: 1,
+    placeholder: 'Enter full name',
+    validation: {
+      minLength: 2,
+      maxLength: 100,
+      pattern: '^[A-Za-z\\s.]+$',
+      errorMessage: 'Please enter a valid name (letters, spaces, and periods only)'
+    }
+  },
+  {
+    identifier: 'email',
+    name: 'email',
+    displayName: 'Email',
+    fieldType: 'email',
+    optional: false,
+    selected: true,
+    order: 2,
+    placeholder: 'Enter email address',
+    validation: {
+      pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+      errorMessage: 'Please enter a valid email address'
+    }
+  },
+  {
+    identifier: 'phone',
+    name: 'phone',
+    displayName: 'Phone Number',
+    fieldType: 'tel',
+    optional: false,
+    selected: true,
+    order: 3,
+    placeholder: 'Enter phone number',
+    validation: {
+      minLength: 10,
+      maxLength: 15,
+      pattern: '^\\+?[0-9]{10,15}$',
+      errorMessage: 'Please enter a valid phone number (10-15 digits, may include + prefix)'
+    }
+  },
+  {
+    identifier: 'roles',
+    name: 'roles',
+    displayName: 'Roles',
+    fieldType: 'select',
+    optional: false,
+    selected: true,
+    order: 5,
+    defaultValue: ['PUBLIC'],
+    placeholder: 'Select user roles',
+    options: [
+      { label: 'Public User', value: 'PUBLIC' },
+      { label: 'Content Creator', value: 'CONTENT_CREATOR' },
+      { label: 'Content Reviewer', value: 'CONTENT_REVIEWER' },
+      { label: 'Organization Admin', value: 'ORG_ADMIN' }
+    ],
+    validation: {
+      errorMessage: 'Please select at least one role'
+    }
+  }
+];
+
 export const UsersList = () => {
   // State declarations
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -112,6 +183,14 @@ export const UsersList = () => {
   // Add new state for help dialog
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
+  // Add new state for create user dialog
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [channels, setChannels] = useState<string[]>([]);
+  const [creatingUser, setCreatingUser] = useState(false);
+
+  // Add new state for user status
+  const [userStatus, setUserStatus] = useState<UserStatusType>('active');
+
   // Refs
   const initialLoadComplete = useRef(false);
 
@@ -126,9 +205,9 @@ export const UsersList = () => {
     query = "", 
     filters: { [key: string]: string[] } = {},
     updateFacets = true,
-    selectedOrganization: Organization | null = null
+    selectedOrganization: Organization | null = null,
+    status: UserStatusType = 'active' // Add status parameter with default value
   ) => {
-    debugger
     setLoading(true);
     let freeTextQuery : string = '';
     try {
@@ -153,9 +232,18 @@ export const UsersList = () => {
       if (selectedOrganization) {
         searchFilters = {
           ...searchFilters,
-          rootOrgName: [selectedOrganization.orgName]
+          rootChannel: [selectedOrganization.channel]
         };
       }
+      
+      // Determine status value for API
+      let statusValue;
+      if (status === 'active') {
+        statusValue = 1;
+      } else if (status === 'inactive') {
+        statusValue = 0;
+      }
+      // If status is 'all', don't include status in filters
       
       const requestPayload = {
         request: {
@@ -163,7 +251,7 @@ export const UsersList = () => {
           facets: FACETS_LIST,
           limit: pageSize,
           filters: {
-            status: 1,
+            ...(status !== 'all' ? { status: statusValue } : {}), // Only include status if not 'all'
             ...buildFilterPayload(searchFilters)
           },
           offset: pageNumber * pageSize,
@@ -176,13 +264,13 @@ export const UsersList = () => {
         // Important: Clear the state first to ensure React detects changes
         setUsers([]);
         
-          setUsers(data.result.response.content || []);
-          setUsersCount(data.result.response.count || 0);
-          
-          if (updateFacets) {
-            setFacets(data.result.response.facets || []);
-            initialLoadComplete.current = true;
-          }
+        setUsers(data.result.response.content || []);
+        setUsersCount(data.result.response.count || 0);
+        
+        if (updateFacets) {
+          setFacets(data.result.response.facets || []);
+          initialLoadComplete.current = true;
+        }
       }
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -243,6 +331,10 @@ export const UsersList = () => {
     setSelectedOrg(org);
   };
 
+  const handleUserStatusChange = (newStatus: UserStatusType) => {
+    setUserStatus(newStatus);
+  };
+
   const handleSearch = () => {
     // Validate required fields based on search type
     if (searchType === 'name') {
@@ -300,13 +392,13 @@ export const UsersList = () => {
 
     // Proceed with search
     setPage(0);
-    fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+    fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
   };
 
   const handleFilterChange = (filters: { [key: string]: string[] }) => {
     setSelectedFilters(filters);
     setPage(0);
-    fetchUsers(0, rowsPerPage, searchQuery, filters, false, selectedOrg);
+    fetchUsers(0, rowsPerPage, searchQuery, filters, false, selectedOrg, userStatus);
   };
 
   const handleToastClose = () => {
@@ -315,14 +407,14 @@ export const UsersList = () => {
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
-    fetchUsers(newPage, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+    fetchUsers(newPage, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     setRowsPerPage(newRowsPerPage);
     setPage(0);
-    fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+    fetchUsers(0, newRowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
   };
 
   const handleDrawerClose = () => {
@@ -332,8 +424,8 @@ export const UsersList = () => {
   const handleClearSearch = () => {
     setSearchQuery("");
     setSelectedOrg(null);
+    setUserStatus('active');
     setPage(0);
-    // fetchUsers(0, rowsPerPage, "", selectedFilters, false);
     setUsers([]);
   };
 
@@ -484,7 +576,7 @@ export const UsersList = () => {
     setModifiedFields({});
     
     // Fetch users again with current filters and search parameters
-    fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+    fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
   };
 
   // Add a function to force refresh user data after role updates
@@ -492,9 +584,9 @@ export const UsersList = () => {
     console.log("Forcing user data refresh after role update");
     setUsers([]); // Clear current users to trigger re-fetch
     setTimeout(() => {
-      fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg);
+      fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
     },1000);
-  }, [page, rowsPerPage, searchQuery, selectedFilters, selectedOrg]);
+  }, [page, rowsPerPage, searchQuery, selectedFilters, selectedOrg, userStatus]);
 
   // Add function to handle help dialog
   const handleHelpOpen = () => {
@@ -505,13 +597,71 @@ export const UsersList = () => {
     setHelpDialogOpen(false);
   };
 
+  // Add this function to fetch available channels
+ 
+
+  // Add useEffect to fetch channels when needed
+  useEffect(() => {
+   
+  }, [createUserDialogOpen]);
+
+  // Modify the handleCreateUser function to work with the new format
+  const handleCreateUser = async (data: any) => {
+    try {
+      setCreatingUser(true);
+      
+      // Create the request payload
+      const payload = {
+        personalDetails: {
+          email: data.email,
+          firstName: data.firstName,
+          phone: data.phone,
+          channel: data.channel,
+          roles: data.roles || ['PUBLIC']
+        }
+      };
+      
+      console.log("Creating user with payload:", payload);
+      
+      // Send API request
+      const response = await usersService.createUser(payload);
+      
+      if (response && response.responseCode === "OK") {
+        setToasts({
+          message: "User created successfully",
+          open: true,
+          severity: "success",
+        });
+        
+        // Close the dialog and refresh users
+        setCreateUserDialogOpen(false);
+        
+        // Reset page to 0 and fetch users again
+        setPage(0);
+        fetchUsers(0, rowsPerPage, "", selectedFilters, true, null, userStatus);
+      } else {
+        throw new Error(response?.responseMessage || "Failed to create user");
+      }
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      let message = error?.response?.data?.error?.params?.errmsg || error.message || "An error occurred while creating user";
+      setToasts({
+        message: message,
+        open: true,
+        severity: "error",
+      });
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   // Render components
   return (
     <>
       {loading && <LinearProgress />}
       
       <Box sx={{ position: 'relative' }}>
-        {/* Header Section - Updated with Help button */}
+        {/* Header Section - Updated with Help and Create User buttons */}
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
           <div>
             <Typography variant="h4" component="h1" sx={{ margin: 0 }}>User Management</Typography>
@@ -519,16 +669,27 @@ export const UsersList = () => {
               Search for users by name, email, or phone number
             </Typography>                
           </div>
-          <Tooltip title="View available actions">
+          <Box>
             <Button
-              variant="outlined"
-              startIcon={<HelpIcon />}
-              onClick={handleHelpOpen}
-              sx={{ ml: 2 }}
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateUserDialogOpen(true)}
+              sx={{ mr: 2 }}
             >
-              Help
+              Create User
             </Button>
-          </Tooltip>
+            <Tooltip title="View available actions">
+              <Button
+                variant="outlined"
+                startIcon={<HelpIcon />}
+                onClick={handleHelpOpen}
+                sx={{ ml: 2 }}
+              >
+                Help
+              </Button>
+            </Tooltip>
+          </Box>
         </Box>
 
         {/* Search Panel Component */}
@@ -536,17 +697,24 @@ export const UsersList = () => {
           searchQuery={searchQuery}
           searchType={searchType}
           selectedOrg={selectedOrg}
+          userStatus={userStatus}
           onSearch={handleSearch}
           onSearchQueryChange={handleSearchQueryChange}
           onSearchTypeChange={handleSearchTypeChange}
+          onUserStatusChange={handleUserStatusChange}
           onClearSearch={handleClearSearch}
           onOrgSelect={handleOrgSelect}
         />
             
         {/* Active Filters Display */}
-        {Object.keys(selectedFilters).length > 0 && (
+        {/* {(Object.keys(selectedFilters).length > 0 || userStatus !== 'all') && (
           <Box mt={2} p={2} mb={3} bgcolor="white" borderRadius={1} boxShadow={1}>
             <Typography variant="subtitle2" gutterBottom>Active Filters:</Typography>
+            {userStatus !== 'all' && (
+              <Box mb={1}>
+                <strong>Status:</strong> {userStatus === 'active' ? 'Active Users' : 'Inactive Users'}
+              </Box>
+            )}
             {Object.entries(selectedFilters).map(([category, values]) => (
               values && values.length > 0 ? (
                 <Box key={category} mb={1}>
@@ -555,7 +723,7 @@ export const UsersList = () => {
               ) : null
             ))}
           </Box>
-        )}
+        )} */}
 
         {/* Filter Drawer */}
         <FilterDrawer
@@ -609,6 +777,14 @@ export const UsersList = () => {
         fields={sampleFields}
         initialData={editUserData}
         onSubmit={handleSubmit}
+      />
+
+      {/* Create User Dialog */}
+      <CreateUserDialog
+        open={createUserDialogOpen}
+        onClose={() => setCreateUserDialogOpen(false)}
+        onSubmit={handleCreateUser}
+        processing={creatingUser}
       />
     </>
   );

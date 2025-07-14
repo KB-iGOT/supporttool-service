@@ -21,18 +21,31 @@ import Snackbar from "@mui/material/Snackbar";
 import { Content, Facets } from "../../types/contents";
 import { FilterDrawer } from "./../common-components/filter-drawer";
 import { FormControl, TextField, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from "@mui/material";
+import MenuItem from "@mui/material/MenuItem";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Chip from "@mui/material/Chip";
+import InputLabel from "@mui/material/InputLabel";
+import OutlinedInput from "@mui/material/OutlinedInput";
 import { EllipsisCell } from "../common-components/ellipsis-cell/ellipsis-cell";
 import { AppContext } from "../../Context/AppContext";
 import { appContextType } from "../../types";
 import { useFormInterceptor } from "../../hooks/useFormsInterceptor";
 import { useActionInterceptor } from "../../hooks/useActionInterceptor";
-    import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import SortIcon from '@mui/icons-material/Sort';
 
 const filterConfig = {
   courseCategory: 'multi',
   resourceCategory: 'multi'
 } as const;
-
 
 export const Contents = () => {
   const location = useLocation();
@@ -48,14 +61,14 @@ export const Contents = () => {
     severity: AlertColor | undefined;
   }>({ message: "", open: false, severity: undefined });
 
-    const { modulePermissions } = React.useContext(
-            AppContext,
-          ) as appContextType;
-    
-  
-          const { checkPermissions } = React.useContext(
-            AppContext,
-          ) as appContextType;
+  const { modulePermissions } = React.useContext(
+    AppContext,
+  ) as appContextType;
+
+  const { checkPermissions } = React.useContext(
+    AppContext,
+  ) as appContextType;
+
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -63,13 +76,16 @@ export const Contents = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
-  
+
   // Use ref to track if initial load is complete
   const initialLoadComplete = useRef(false);
+
+  // Add new state for help dialog
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   // Handler for search input changes
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +127,7 @@ export const Contents = () => {
   const deleteHandler = async (payload: any) => {
     console.log("Delete payload:", payload);
     if (!contentToDelete) return;
-    
+
     setLoading(true);
     try {
       // Call the retire API
@@ -124,7 +140,7 @@ export const Contents = () => {
         open: true,
         severity: "success"
       });
-      
+
       // Refresh the content list
       fetchContents(page, rowsPerPage, searchQuery, selectedFilters, false);
     } catch (error) {
@@ -148,9 +164,9 @@ export const Contents = () => {
   });
 
   const fetchContents = async (
-    pageNumber = 0, 
-    pageSize = 10, 
-    query = "", 
+    pageNumber = 0,
+    pageSize = 10,
+    query = "",
     filters: { [key: string]: string[] } = {},
     updateFacets = true // New parameter to control facet update
   ) => {
@@ -173,12 +189,12 @@ export const Contents = () => {
           }
         }
       };
-      
+
       const data = await contentsService.getContent(requestPayload);
       if (data.result) {
         setContents(data.result.content || []);
         setContentsCount(data.result.count || 0);
-        
+
         // Only update facets on initial load or when explicitly requested
         if (updateFacets) {
           setFacets(data.result.facets);
@@ -199,14 +215,14 @@ export const Contents = () => {
   // Helper function to build filter payload from selected filters
   const buildFilterPayload = (filters: { [key: string]: string[] }) => {
     const payload: { [key: string]: string[] } = {};
-    
+
     // Convert the filter structure to the format expected by the API
     Object.entries(filters).forEach(([filterName, values]) => {
       if (values && values.length > 0) {
         payload[filterName] = values;
       }
     });
-    
+
     return payload;
   };
 
@@ -228,6 +244,39 @@ export const Contents = () => {
     setIsDrawerOpen(false);
   };
 
+  // Filter selection handlers
+  const handleFilterSelect = (event: SelectChangeEvent<string[]>, filterName: string) => {
+    const values = event.target.value as string[];
+    
+    // Clear all filters and set only the current one if it has values
+    if (values.length > 0) {
+      setSelectedFilters({ [filterName]: values });
+    } else {
+      // If the user cleared all values in this filter, clear all filters
+      setSelectedFilters({});
+    }
+  };
+
+  const handleApplyFilters = () => {
+    setPage(0);
+    fetchContents(0, rowsPerPage, searchQuery, selectedFilters, false);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedFilters({});
+    setPage(0);
+    fetchContents(0, rowsPerPage, searchQuery, {}, false);
+  };
+
+  // Functions to handle the help dialog
+  const handleHelpOpen = () => {
+    setHelpDialogOpen(true);
+  };
+
+  const handleHelpClose = () => {
+    setHelpDialogOpen(false);
+  };
+
   useEffect(() => {
     // Initial load - update facets
     const permissions = checkPermissions();
@@ -238,7 +287,7 @@ export const Contents = () => {
       // console.error("Error in initial data fetch:", error);
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run only once on mount
 
   return (
@@ -249,83 +298,109 @@ export const Contents = () => {
         <>
           <Box display="flex" alignItems={"center"} justifyContent="space-between" mb={2}>
             <div>
-                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
-                <Typography variant="body2">Contents Data goes here.</Typography>                
+              <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
+              <Typography variant="body2">Contents Data goes here.</Typography>
             </div>
-            {/* <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-            >
-              Add new content
-            </Button> */}
+            <Tooltip title="Help">
+              <IconButton 
+                color="primary" 
+                onClick={handleHelpOpen}
+                sx={{ ml: 1 }}
+              >
+                <HelpOutlineIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          <div className="bg-gray-100 p-4">
-              <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
-                <FormControl sx={{ flexGrow: 1 }}>
-                  <TextField
-                    autoComplete="off"
-                    margin="dense"
-                    id="searchContent"
-                    name="searchContent"
-                    label="Search Content"
-                    type="text"
-                    fullWidth
-                    variant="filled"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    onKeyPress={handleSearchKeyPress}
-                    color="primary"
-                    sx={{
-                      backgroundColor: "white",
-                      borderRadius: "4px",
-                      '& .MuiFilledInput-root': {
-                        backgroundColor: "white",
-                        '&:hover': {
-                          backgroundColor: "white",
-                          opacity: 0.9
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: "white"
-                        }
-                      }
-                    }}
-                  />
-                </FormControl>
-                <Button
-                  variant="contained"
-                  onClick={() => setIsDrawerOpen(true)}
-                >
-                  Open Filters
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <FormControl sx={{ width: "100%" }}>
+                <TextField
+                  autoComplete="off"
+                  margin="dense"
+                  id="searchContent"
+                  name="searchContent"
+                  label="Search Content"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onKeyPress={handleSearchKeyPress}
+                  color="primary"
+                />
+              </FormControl>
+
+              <Box display="flex" flexWrap="wrap" gap={2}>
+                {facets && facets.map((facet) => (
+                  facet.values && facet.values.length > 0 && (
+                    <FormControl key={facet.name} sx={{ minWidth: 200, flex: 1 }}>
+                      <InputLabel id={`${facet.name}-label`}>{facet.name}</InputLabel>
+                      <Select
+                        labelId={`${facet.name}-label`}
+                        id={facet.name}
+                        multiple
+                        value={selectedFilters[facet.name] || []}
+                        onChange={(e) => handleFilterSelect(e, facet.name)}
+                        input={<OutlinedInput label={facet.name} />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {(selected as string[]).map((value) => (
+                              <Chip key={value} label={value} />
+                            ))}
+                          </Box>
+                        )}
+                      >
+                        {facet.values.map((option) => (
+                          <MenuItem key={option.name} value={option.name}>
+                            {option.name} ({option.count})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )
+                ))}
+              </Box>
+
+              <Box display="flex" justifyContent="flex-end" gap={2}>
+                <Button variant="outlined" onClick={handleClearFilters}>
+                  Clear Filters
+                </Button>
+                <Button variant="contained" onClick={handleApplyFilters}>
+                  Apply Filters
                 </Button>
               </Box>
-              
+
               {Object.keys(selectedFilters).length > 0 && (
-                <Box mt={2} p={2} bgcolor="white" borderRadius={1} boxShadow={1}>
+                <Box mt={1}>
                   <Typography variant="subtitle2" gutterBottom>Active Filters:</Typography>
-                  {Object.entries(selectedFilters).map(([category, values]) => (
-                    values && values.length > 0 ? (
-                      <Box key={category} mb={1}>
-                        <strong>{category}:</strong> {values.join(", ")}
-                      </Box>
-                    ): null
-                  ))}
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    {Object.entries(selectedFilters).map(([category, values]) => (
+                      values && values.length > 0 ? (
+                        values.map(value => (
+                          <Chip
+                            key={`${category}-${value}`}
+                            label={`${category}: ${value}`}
+                            onDelete={() => {
+                              const updatedValues = selectedFilters[category].filter(v => v !== value);
+                              setSelectedFilters(prev => ({
+                                ...prev,
+                                [category]: updatedValues
+                              }));
+                            }}
+                          />
+                        ))
+                      ) : null
+                    ))}
+                  </Box>
                 </Box>
               )}
+            </Box>
+          </Paper>
 
-              <FilterDrawer
-                open={isDrawerOpen}
-                onClose={handleDrawerClose}
-                facets={facets}
-                filterConfig={filterConfig}
-                onFilterChange={handleFilterChange}
-                initialFilters={selectedFilters}
-              />
-          </div>
-          
           {contents && contents.length > 0 ? (
             <>
-                         <TableContainer component={Paper}>
+              <TableContainer component={Paper}>
                 <Table sx={{ minWidth: 650 }} aria-label="simple table">
                   <TableHead>
                     <TableRow>
@@ -342,20 +417,20 @@ export const Contents = () => {
                         key={row.identifier}
                         sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                       >
-                        <TableCell 
-                          component="th" 
+                        <TableCell
+                          component="th"
                           scope="row"
-                          sx={{ 
+                          sx={{
                             maxWidth: 250,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                           }}
                         >
-                           <EllipsisCell text={row.name} maxWidth={250} />
+                          <EllipsisCell text={row.name} maxWidth={250} />
                         </TableCell>
-                        <TableCell 
-                          sx={{ 
+                        <TableCell
+                          sx={{
                             maxWidth: 150,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -367,8 +442,8 @@ export const Contents = () => {
                         <TableCell sx={{ maxWidth: 120 }}>
                           {new Date(row.createdOn).toLocaleDateString()}
                         </TableCell>
-                        <TableCell 
-                          sx={{ 
+                        <TableCell
+                          sx={{
                             maxWidth: 150,
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
@@ -381,7 +456,7 @@ export const Contents = () => {
                           {/* <IconButton
                             aria-label="edit"
                             size="small"
-                            onClick={() => {}}  
+                            onClick={() => {}}
                           >
                             <PencilIcon fontSize="small" />
                           </IconButton> */}
@@ -403,7 +478,7 @@ export const Contents = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              
+
               {/* Table Pagination Component */}
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25, 50, 100]}
@@ -420,7 +495,81 @@ export const Contents = () => {
               No contents available. Create one by clicking on add new content.
             </Alert>
           )}
-          
+
+          {/* Help Dialog */}
+          <Dialog
+            open={helpDialogOpen}
+            onClose={handleHelpClose}
+            aria-labelledby="help-dialog-title"
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle id="help-dialog-title">
+              <Box display="flex" alignItems="center" gap={1}>
+                <HelpOutlineIcon color="primary" />
+                <Typography variant="h6">Content Management Help</Typography>
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              <Typography variant="body1" paragraph>
+                This page allows you to manage content items. Here's what you can do:
+              </Typography>
+              
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <SearchIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Search Content" 
+                    secondary="Type keywords in the search box and press Enter to find specific content items."
+                  />
+                </ListItem>
+                
+                <ListItem>
+                  <ListItemIcon>
+                    <FilterAltIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Filter Content" 
+                    secondary="Use the filter dropdowns to narrow down content by category. Only one filter category can be active at a time."
+                  />
+                </ListItem>
+                
+                {checkPermissions().canDelete && (
+                  <ListItem>
+                    <ListItemIcon>
+                      <DeleteOutlineIcon color="error" />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary="Retire Content" 
+                      secondary="Click the trash icon to retire a content item. Retired content will no longer be available to users."
+                    />
+                  </ListItem>
+                )}
+                
+                <ListItem>
+                  <ListItemIcon>
+                    <SortIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Pagination" 
+                    secondary="Navigate between pages and adjust how many items are displayed per page using the controls at the bottom."
+                  />
+                </ListItem>
+              </List>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Note: Content is sorted by last updated date by default, with the most recently updated items appearing first.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleHelpClose} variant="contained">
+                Got it
+              </Button>
+            </DialogActions>
+          </Dialog>
+
           {/* Delete Confirmation Dialog */}
           <Dialog
             open={deleteDialogOpen}
@@ -433,7 +582,7 @@ export const Contents = () => {
             </DialogTitle>
             <DialogContent>
               <DialogContentText id="alert-dialog-description">
-                Are you sure you want to retire "{contentToDelete?.name}"? 
+                Are you sure you want to retire "{contentToDelete?.name}"?
                 This action will make the content unavailable to users.
               </DialogContentText>
             </DialogContent>
@@ -452,7 +601,7 @@ export const Contents = () => {
               </Button>
             </DialogActions>
           </Dialog>
-          
+
           <Snackbar
             anchorOrigin={{ vertical: "top", horizontal: "right" }}
             open={toasts.open}

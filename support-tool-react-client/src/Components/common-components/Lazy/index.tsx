@@ -41,7 +41,7 @@ const UsersList = lazy(() =>
   }))
 );
 const ReissueCertificate = lazy(() =>
-  import("../../users/list-user/ReissueCertificate").then((module) => ({
+  import("../../users/re-issue-certificate").then((module) => ({
     default: module.ReissueCertificate,
   }))
 );
@@ -115,6 +115,13 @@ const ModuleCards = lazy(() =>
     default: module.ModuleCards,
   }))
 );
+
+const ApiCalls = lazy(() =>
+  import("../../api-call").then((module) => ({
+    default: module.ApiCalls,
+  }))
+);
+
 const LazyApp = () => {
   return (
       <Suspense fallback={<div>Loading route...</div>}>
@@ -235,6 +242,8 @@ const LazyApp = () => {
             </ProtectedRoute>
           }
         /> */}
+
+        <Route path="/api-cals" element={<ApiCalls />} />
         <Route
             path="/non-logged-in-page"
             element={
@@ -245,6 +254,7 @@ const LazyApp = () => {
           >
             <Route index element={<ModuleCards />} />
             <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
+            
             <Route path="/non-logged-in-page/:id/upload-contents" element={<UploadContents />} />
             <Route path="/non-logged-in-page/:id/edit/:doId" element={<UploadContents />} />
           </Route>

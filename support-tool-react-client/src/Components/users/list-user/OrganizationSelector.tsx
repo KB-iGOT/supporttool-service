@@ -41,7 +41,7 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
       let request = {
         request: {
           filters: {},
-          fields: ["identifier", "orgName"],
+          fields: ["identifier", "channel"],
           sortBy: { createdDate: "Desc" },
           limit: orgLimit,
           offset: offset,
@@ -119,7 +119,7 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
     <Autocomplete
       id="organization-select"
       options={organizations}
-      getOptionLabel={(option) => option.orgName}
+      getOptionLabel={(option) => option.channel}
       value={selectedOrg}
       onChange={handleOrgSelect}
       onBlur={onBlur}
@@ -154,7 +154,7 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
         />
       )}
       renderOption={(props, option) => (
-        <li {...props} key={option.identifier}>{option.orgName}</li>
+        <li {...props} key={option.identifier}>{option.channel}</li>
       )}
       ListboxProps={{
         ref: orgListRef,

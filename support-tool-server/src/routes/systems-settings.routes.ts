@@ -13,5 +13,6 @@ const SystemSettingsRoutes = express.Router();
 SystemSettingsRoutes.route("/").get(userSession, getList);
 SystemSettingsRoutes.route("/:id").get(userSession, getConfig);
 SystemSettingsRoutes.route("/update").post(userSession, updateConfig);
+SystemSettingsRoutes.route("/create").post(userSession, updateConfig);
 
 export default SystemSettingsRoutes;

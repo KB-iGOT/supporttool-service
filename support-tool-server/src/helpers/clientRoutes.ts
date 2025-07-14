@@ -104,7 +104,12 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
       '/support-users',
       '/system-settings',
       '/system-settings/edit/:id',
-      '/organisations'
+      '/organisations',
+      '/system-settings/cadre-edit/:id',
+      '/forms',
+      '/forms/edit/:id',
+      '/forms/create',
+      '/roles',
     ],
     isAuthenticated,
     (req: Request, res: Response) => {

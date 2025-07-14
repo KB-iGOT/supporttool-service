@@ -2,18 +2,23 @@ export interface FieldDefinition {
     identifier: string;
     name: string;
     displayName: string;
-    fieldType: "text" | "dropdown" | "email" | "tel"|"number" | "password" | "textarea";
+    fieldType: "text" | "dropdown" | "email" | "tel"|"number" | "password" | "textarea"| "select";
     optional: boolean;
     selected?: boolean;
     order?: number;
     fieldPath?: string;
     placeholder: string;
+    defaultValue?: string | string[];
     validation?: {
       minLength?: number;
       maxLength?: number;
       pattern?: string;
       errorMessage?: string;
     };
+    options?: {
+      label: string;
+      value: string;
+    }[];
   }
   
   export interface FormData {
