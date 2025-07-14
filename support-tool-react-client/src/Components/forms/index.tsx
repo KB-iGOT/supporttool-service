@@ -283,6 +283,49 @@ export const Forms = () => {
   const handleExitCreateMode = () => {
     setCreateMode(false);
   };
+
+  const handleSaveForm = async (formMetadata: FormFilterData, jsonData: any) => {
+    // Validate JSON before saving
+    if (!validateJson(jsonData)) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      
+      const response = await formsService.createFormData({
+        type: formMetadata.type,
+        subtype: formMetadata.subtype,
+        action: formMetadata.action,
+        root_org: formMetadata.root_org,
+        component: formMetadata.component,
+        framework: formMetadata.framework,
+        data: jsonData
+      });
+      
+      if (response?.status === 200) {
+        setJsonValidationMessage("Form created successfully!");
+        setJsonValid(true);
+        setShowValidationMessage(true);
+        // Exit create mode and refresh form list
+        setCreateMode(false);
+        fetchFormData();
+      } else {
+        setError("Failed to create form: " + (response?.message || "Unknown error"));
+      }
+    } catch (err: any) {
+      console.error("Error creating form:", err);
+      let message = err?.response?.data?.message || err?.message || "Unknown error occurred";
+      setError("Failed to create form: " + message);
+      setCreateMode(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setCreateMode(false);
+  };
   
   // Handle close of validation message
   const handleCloseValidationMessage = () => {
@@ -300,24 +343,25 @@ export const Forms = () => {
     );
   }
   
-  if (error) {
-    return <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>;
-  }
+
   
   // If in create mode, show the create form component
   if (createMode) {
     return (
-      <CreateForm 
-        loading={loading} 
-        onSave={handleSaveNewForm} 
-        onCancel={handleExitCreateMode} 
+      <CreateForm
+        loading={loading}
+        onSave={handleSaveForm}
+        onCancel={handleCancel}
+        formsData={formsFilter}
       />
     );
   }
   
   // Otherwise show the regular form filter and editor
   return (
+    
     <Box>
+      {error && (<Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>)}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4">Form Configuration</Typography>
@@ -411,11 +455,11 @@ export const Forms = () => {
             <Typography variant="subtitle2">How to find a form configuration:</Typography>
             <ol>
               <li>Select <strong>Type</strong> of the form configuration (use search to filter options)</li>
-              <li>Choose <strong>Subtype</strong> from available options</li>
+              <li>Select <strong>Subtype</strong> from available options</li>
               <li>Select <strong>Action</strong> type for the form</li>
-              <li>Choose <strong>Root Organization</strong> the form belongs to</li>
               <li>Select <strong>Component</strong> for the form</li>
-              <li>Choose <strong>Framework</strong> for the form</li>
+              <li>Select <strong>Framework</strong> for the form</li>
+              <li>Select <strong>Root Organization</strong> the form belongs to</li>
               <li>Click <strong>Find Configuration</strong> to view or edit the form</li>
             </ol>
             <Divider sx={{ my: 2 }} />

@@ -37,6 +37,8 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
     if (open) {
       const newFormData = JSON.parse(JSON.stringify(initialData));
       setFormData(newFormData);
+      // Reset errors when dialog opens
+      setErrors({});
     }
   }, [initialData, open]);
 
@@ -55,25 +57,76 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
     }
   };
 
+  const validateField = (field: FieldDefinition, value: any): string => {
+    // Required field validation
+    if (!field.optional && (!value || String(value).trim() === '')) {
+      return `${field.displayName} is required`;
+    }
+
+    // Skip further validation if field is optional and empty
+    if (field.optional && (!value || String(value).trim() === '')) {
+      return '';
+    }
+
+    const validation = field.validation;
+    if (validation) {
+      // Min length validation
+      if (validation.minLength && String(value).length < validation.minLength) {
+        return `${field.displayName} must be at least ${validation.minLength} characters`;
+      }
+
+      // Max length validation
+      if (validation.maxLength && String(value).length > validation.maxLength) {
+        return `${field.displayName} cannot exceed ${validation.maxLength} characters`;
+      }
+
+      // Pattern validation
+      if (validation.pattern && value) {
+        const regex = new RegExp(validation.pattern);
+        if (!regex.test(String(value))) {
+          return validation.errorMessage || `${field.displayName} format is invalid`;
+        }
+      }
+    }
+
+    return '';
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+    
     fields.forEach((field) => {
       const value = field.fieldPath
         ? getNestedValue(formData, field.fieldPath)
         : formData[field.identifier];
       
-      if (!field.optional && (!value || value === '')) {
-        newErrors[field.identifier] = `${field.displayName} is required`;
+      const errorMessage = validateField(field, value);
+      if (errorMessage) {
+        newErrors[field.identifier] = errorMessage;
       }
     });
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFieldBlur = (field: FieldDefinition) => {
+    const value = field.fieldPath
+      ? getNestedValue(formData, field.fieldPath)
+      : formData[field.identifier];
+    
+    const errorMessage = validateField(field, value);
+    if (errorMessage) {
+      setErrors(prev => ({ ...prev, [field.identifier]: errorMessage }));
+    } else {
+      // Clear error if valid
+      setErrors(prev => ({ ...prev, [field.identifier]: '' }));
+    }
   };
 
   const handleSubmit = () => {
     if (validateForm()) {
       onSubmit(formData);
-      onClose();
     }
   };
 
@@ -81,7 +134,7 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{title ? title :'Dynamic Form'}</DialogTitle>
+      <DialogTitle>{title || 'Edit User'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
           {sortedFields.map((field) => (
@@ -90,6 +143,7 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
               field={field}
               value={field.fieldPath ? getNestedValue(formData, field.fieldPath) : formData[field.identifier]}
               onChange={(value) => handleFieldChange(field, value)}
+              onBlur={() => handleFieldBlur(field)}
               error={errors[field.identifier]}
             />
           ))}
@@ -97,7 +151,13 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">{submitButtonText ? submitButtonText : 'Submit'}</Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained"
+          color="primary"
+        >
+          {submitButtonText || 'Save Changes'}
+        </Button>
       </DialogActions>
     </Dialog>
   );

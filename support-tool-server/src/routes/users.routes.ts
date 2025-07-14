@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles,  } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -9,4 +9,5 @@ UsersRoutes.route("/").post(userSession, getUsers);
 UsersRoutes.route("/:userId").patch(userSession, updateUser);
 UsersRoutes.route("/email").post(userSession, getUserByEmail);
 
+UsersRoutes.route("/role/assign").post(userSession, assignUserRoles);
 export default UsersRoutes ;

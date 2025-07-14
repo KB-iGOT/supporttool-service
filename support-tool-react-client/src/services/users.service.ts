@@ -31,17 +31,22 @@ export const usersService = {
     const response = await apiClient.post(`/users/email`, request);
     return response.data;
   },
-  updateUser: async (userId: string, updatedFields: any) => {
+  updateUser: async (userId: string, requestPayload: any) => {
     // Construct the request payload as expected by your API
-    const requestPayload = {
+    const response = await apiClient.patch(`/users/${userId}`, requestPayload);
+    return response.data;
+  },
+
+  assignUserRoles: async (userId: string, organisationId: string, roles: string[]) => {
+
+    // Construct the request payload as expected by your API
+    const response = await apiClient.post(`/users/role/assign`, {
       request: {
         userId,
-        ...updatedFields
+        organisationId,
+        roles
       }
-    };
-    
-    const response = {}
-    // await apiClient.patch(`/users/${userId}`, requestPayload);
-    return response;
+    });
+    return response.data;
   },
 };

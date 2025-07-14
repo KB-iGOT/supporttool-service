@@ -2,7 +2,7 @@ export interface FieldDefinition {
     identifier: string;
     name: string;
     displayName: string;
-    fieldType: 'text' | 'dropdown';
+    fieldType: "text" | "dropdown" | "email" | "tel"|"number" | "password" | "textarea";
     optional: boolean;
     selected?: boolean;
     order?: number;

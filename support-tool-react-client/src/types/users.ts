@@ -60,6 +60,7 @@ export interface UserProfile {
     personalDetails: {
       firstname: string;
       primaryEmail: string;
+      mobile: string;
     };
     mandatoryFieldsExists: boolean;
   };

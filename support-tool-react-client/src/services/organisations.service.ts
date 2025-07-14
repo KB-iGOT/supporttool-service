@@ -23,6 +23,10 @@ export const organisationService = {
     const response = await apiClient.get(`/org`);
     return response.data;
   },
+  fetchOrganisationsData: async (request:any) => {
+    const response = await apiClient.post(`/org/search`, request);
+    return response.data;
+  },
   fetchOrganisationByName: async (orgName:string) => {
     
     const response = await apiClient.get(`/org/`+ orgName);

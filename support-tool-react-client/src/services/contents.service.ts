@@ -61,5 +61,36 @@ export const contentsService = {
       console.error("Error creating private content:", error);
       throw error;
     }
-  }
+  },
+  privateContentUpdate: async (contentData: any, contentId:string) => {
+    try {
+      const response = await apiClient.patch(`/contents/private/update/${contentId}`, contentData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating private content:", error);
+      throw error;
+    }
+  },
+
+  retirePrivateContent: async (contentId: string) => {
+
+    try {
+    const response = await apiClient.delete(`/contents/private/retire/${contentId}`);
+    return response.data;
+    } catch (error) {
+      console.error("Error retiring content:", error);
+      throw error;
+    }
+  },
+
+  privateContentRead: async (contentId: string) => {
+
+    try {
+    const response = await apiClient.get(`/contents/private/read/${contentId}`);
+    return response.data;
+    } catch (error) {
+      console.error("Error retiring content:", error);
+      throw error;
+    }
+  },
 };

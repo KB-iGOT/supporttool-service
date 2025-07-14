@@ -7,6 +7,7 @@ interface FormFieldRendererProps {
   value: any;
   onChange: (value: any) => void;
   error?: string;
+  onBlur?: () => void;
 }
 
 const mockDropdownOptions = [
@@ -20,18 +21,34 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   value,
   onChange,
   error,
+  onBlur,
 }) => {
-  if (field.fieldType === 'text') {
+  // Handle text, email, tel, number, password, and other text-based input types
+  if (field.fieldType === 'text' || 
+      field.fieldType === 'email' || 
+      field.fieldType === 'tel' || 
+      field.fieldType === 'number' || 
+      field.fieldType === 'password') {
+    
     return (
       <TextField
         fullWidth
         label={field.displayName}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur} // Make sure this is here
         required={!field.optional}
         error={!!error}
-        helperText={error}
+        helperText={error || field.placeholder}
         margin="normal"
+        type={field.fieldType} // Use the field type for the input type
+        placeholder={field.placeholder}
+        // If there's validation pattern, apply it
+        inputProps={{
+          pattern: field.validation?.pattern,
+          minLength: field.validation?.minLength,
+          maxLength: field.validation?.maxLength,
+        }}
       />
     );
   }
@@ -44,6 +61,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           labelId={`${field.identifier}-label`}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           required={!field.optional}
           label={field.displayName}
         >
@@ -58,5 +76,9 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
     );
   }
 
+  // Return a warning message for unsupported field types in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(`Unsupported field type: ${field.fieldType} for field: ${field.identifier}`);
+  }
   return null;
 };
