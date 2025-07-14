@@ -11,6 +11,11 @@ export interface INotification {
         token?: string;
   }
 
+  export interface ActionPayload {
+  type: string;
+  payload: any;
+}
+
 export type appContextType = {
     loading: boolean;
     setLoading: (loading: boolean) => void;
@@ -28,5 +33,15 @@ export type appContextType = {
       permissions: any;
       basePath: string;
     };
+      interceptAction: (
+    actionType: string,
+    payload: any,
+    onComplete: (enhancedPayload: any) => void
+  ) => void;
+  isIntercepting: boolean;
+  currentAction: ActionPayload | null;
+  currentHandler: ((data: any) => void) | null;
+  completeAction: (jiraLink: string) => void;
+  cancelAction: () => void;
 }
 

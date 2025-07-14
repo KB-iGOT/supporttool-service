@@ -2,11 +2,12 @@ import React, {
   createContext,
   ReactNode,
   useState,
-  useEffect
+  useEffect,
+  useContext
 } from 'react';
-import { appContextType, IUserConfig } from '../types';
+import { ActionPayload, appContextType, IUserConfig } from '../types';
 import { decodeCookie, getCookie } from '../utils';
-import { checkModulePermission, getBasePath } from './../utils/permissionUtils';
+import { checkModulePermission } from './../utils/permissionUtils';
 
 export const AppContext = createContext<appContextType | undefined>(
   undefined,
@@ -28,6 +29,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     message: string;
     severity: "success" | "error" | "info";
   }>({ open: false, message: "", severity: "info" });
+  const [isIntercepting, setIsIntercepting] = useState(false);
+  const [currentAction, setCurrentAction] = useState<ActionPayload | null>(null);
+  const [currentHandler, setCurrentHandler] = useState<((data: any) => void) | null>(null);
 
   // Define the setUserFromCookie function
   const setUserFromCookie = (value: boolean) => {
@@ -90,6 +94,38 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     return checkModulePermission(modulePermissions, currentPath);
   };
 
+  const interceptAction = (
+    actionType: string,
+    payload: any,
+    onComplete: (data: any) => void
+  ) => {
+    setCurrentAction({ type: actionType, payload });
+    setCurrentHandler(() => onComplete);
+    setIsIntercepting(true);
+  };
+
+  const completeAction = (jiraLink: string) => {
+    if (currentAction && currentHandler) {
+      const enhancedPayload = {
+        ...currentAction.payload,
+        jiraLink
+      };
+      console.log("Enhanced Payload: ", enhancedPayload);
+      currentHandler(enhancedPayload);
+    }
+    resetState();
+  };
+
+  const cancelAction = () => {
+    resetState();
+  };
+
+  const resetState = () => {
+    setIsIntercepting(false);
+    setCurrentAction(null);
+    setCurrentHandler(null);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -103,9 +139,23 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         notification,
         setNotification,
         checkPermissions, 
+        interceptAction,
+        isIntercepting,
+        currentAction,
+        currentHandler,
+        completeAction,
+        cancelAction
       }}
     >
       {children}
     </AppContext.Provider>
   );
+};
+
+export const useActionIntercept = (): appContextType => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useActionIntercept must be used within an ActionInterceptProvider');
+  }
+  return context;
 };

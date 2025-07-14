@@ -5,6 +5,7 @@ import { Sidebar } from "./Components/common-components/sidebar";
 import { BreadcrumbNavigator } from "./Components/common-components/breadcrumbs";
 import { AppContextProvider } from "./Context/AppContext";
 import { Notification } from "./Components/common-components/notifications";
+import JiraLinkPopup from "./Components/common-components/jira-popup";
 
 const LazyApp = React.lazy(
   () => import("./Components/common-components/Lazy/index")
@@ -28,6 +29,7 @@ function App() {
           </div>
         </div>
         <Notification />
+        <JiraLinkPopup />
       </AppContextProvider>
   );
 }

@@ -62,6 +62,7 @@ export const retireContents: RequestHandler = async (
   try {
     // Get the content ID from the request parameters
     const contentId = req.params.id;
+    const link = req.query.jiraLink as string;
 
     if (!contentId) {
       res.status(400).json({

@@ -24,6 +24,8 @@ import { FormControl, TextField, Typography, Dialog, DialogActions, DialogConten
 import { EllipsisCell } from "../common-components/ellipsis-cell/ellipsis-cell";
 import { AppContext } from "../../Context/AppContext";
 import { appContextType } from "../../types";
+import { useFormInterceptor } from "../../hooks/useFormsInterceptor";
+import { useActionInterceptor } from "../../hooks/useActionInterceptor";
 
 const filterConfig = {
   courseCategory: 'multi',
@@ -102,13 +104,14 @@ export const Contents = () => {
   };
 
   // Handle confirming content deletion
-  const handleDeleteConfirm = async () => {
+  const deleteHandler = async (payload: any) => {
+    console.log("Delete payload:", payload);
     if (!contentToDelete) return;
     
     setLoading(true);
     try {
       // Call the retire API
-      await contentsService.retireContent(contentToDelete.identifier);
+      await contentsService.retireContent(payload);
       
       // Show success message
       setToasts({
@@ -132,6 +135,12 @@ export const Contents = () => {
       setContentToDelete(null);
     }
   };
+
+  const { handleAction: handleDeleteAction } = useActionInterceptor({
+    actionType: 'Delete',
+    onComplete: deleteHandler,
+    getPayload: () => ({identifier: contentToDelete?.identifier}),
+  });
 
   const fetchContents = async (
     pageNumber = 0, 
@@ -428,7 +437,7 @@ export const Contents = () => {
                 Cancel
               </Button>
               <Button 
-                onClick={handleDeleteConfirm} 
+                onClick={handleDeleteAction} 
                 color="error" 
                 variant="contained" 
                 autoFocus

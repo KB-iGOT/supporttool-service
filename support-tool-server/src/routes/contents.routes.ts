@@ -19,7 +19,7 @@ ContentsRoutes.route("/")
   .post(userSession, getContents);
 
 ContentsRoutes.route("/retire/:id")
-.get(userSession, retireContents,()=>{
+.delete(userSession, retireContents,()=>{
   console.log('hjghjzdgfghfdgfj')
 });
 

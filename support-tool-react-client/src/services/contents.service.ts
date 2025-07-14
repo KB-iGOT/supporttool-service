@@ -24,10 +24,10 @@ export const contentsService = {
     const response = await apiClient.post("/contents", request);
     return response.data;
   },
-  retireContent: async (contentId: string) => {
+  retireContent: async ({identifier,jiraLink,moduleId}: {identifier: string; jiraLink: string;moduleId: number;}) => {
 
     try {
-    const response = await apiClient.get(`/contents/retire/${contentId}`);
+    const response = await apiClient.delete(`/contents/retire/${identifier}?jiraLink=${jiraLink}?moduleId=${moduleId}`);
     return response.data;
     } catch (error) {
       console.error("Error retiring content:", error);
