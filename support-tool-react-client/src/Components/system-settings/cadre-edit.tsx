@@ -248,12 +248,14 @@ export const CadreEdit: React.FC = () => {
   });
 
   // Toggle accordion expansion
-  const handleAccordionChange = useCallback((accordionId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpandedAccordions(prev => ({
-      ...prev,
-      [accordionId]: isExpanded
-    }));
-  }, []);
+  const handleAccordionChange = useCallback((accordionId: string, index: number, type: string) => 
+    (event: React.SyntheticEvent, isExpanded: boolean) => {
+      setExpandedAccordions(prev => ({
+        ...prev,
+        [`${type}-${index}`]: isExpanded,
+        [accordionId]: isExpanded  // Keep both location-based and ID-based references
+      }));
+    }, []);
 
   // Helper function to set values in nested objects
   const setNestedValue = useCallback((obj: any, path: string[], value: any): any => {
@@ -276,13 +278,47 @@ export const CadreEdit: React.FC = () => {
     // Save active element before state update
     saveActiveElement();
     
+    // Check if we're modifying an ID field
+    const isIdField = path.length > 0 && path[path.length - 1] === "id";
+    let oldId :any= null;
+    
+    if (isIdField) {
+      // Get the current ID before changing it
+      try {
+        let current: any = formData;
+        for (let i = 0; i < path.length - 1; i++) {
+          if (current[path[i]] === undefined) break;
+          current = current[path[i]];
+        }
+        oldId = current.id;
+      } catch (err) {
+        console.error("Error getting old ID:", err);
+      }
+    }
+    
     setFormData(prevData => {
       // Use functional state update to ensure we're working with latest state
-      return setNestedValue(prevData, path, value);
+      const updatedData = setNestedValue(prevData, path, value);
+      
+      // If we're changing an ID and the accordion was expanded, update the expanded state
+      if (isIdField && oldId && expandedAccordions[oldId] && value) {
+        // Update in next tick to ensure render completes first
+        setTimeout(() => {
+          setExpandedAccordions(prev => {
+            const newState = { ...prev };
+            // Remove old ID's expanded state
+            delete newState[oldId];
+            // Set new ID's expanded state to true
+            newState[value] = true;
+            return newState;
+          });
+        }, 0);
+      }
+      
+      return updatedData;
     });
-  }, [setNestedValue, saveActiveElement]);
+  }, [setNestedValue, saveActiveElement, formData, expandedAccordions]);
 
-  // COMPLETELY REWRITTEN Add function with throttling to prevent double-adds
   const addItem = useCallback((path: string[], template: any) => {
     // Create a unique key for this operation
     const operationKey = path.join('.');
@@ -304,16 +340,7 @@ export const CadreEdit: React.FC = () => {
     // Create deep copy of template with empty values
     const emptyTemplate = JSON.parse(JSON.stringify(template));
     
-    // Generate unique ID based on current time
-    if (emptyTemplate.id && typeof emptyTemplate.id === 'string' && emptyTemplate.id.includes('-')) {
-      const prefix = emptyTemplate.id.split('-')[0];
-      emptyTemplate.id = `${prefix}-${now}`;
-    }
-    
-    // Use a non-state variable to track the new ID for accordion expansion
-    const newItemId = emptyTemplate.id;
-    
-    // Update form data
+    // Update form data and generate incremental ID
     setFormData(prevData => {
       try {
         // Navigate to the array in the data structure
@@ -343,6 +370,29 @@ export const CadreEdit: React.FC = () => {
           parent[finalKey] = []; // Create an array if it doesn't exist
         }
         
+        // Generate incremental ID based on existing IDs with THREE-DIGIT format
+        if (emptyTemplate.id && typeof emptyTemplate.id === 'string' && emptyTemplate.id.includes('-')) {
+          const prefix = emptyTemplate.id.split('-')[0]; // Now will get "cs" for services
+          let highestId = 0;
+          
+          // Find the highest existing ID with the same prefix
+          parent[finalKey].forEach((item: any) => {
+            if (item.id && typeof item.id === 'string' && item.id.startsWith(prefix)) {
+              const parts = item.id.split('-');
+              if (parts.length > 1) {
+                const idNum = parseInt(parts[1]);
+                if (!isNaN(idNum) && idNum > highestId) {
+                  highestId = idNum;
+                }
+              }
+            }
+          });
+          
+          // Set the new ID with incremented number in THREE-DIGIT format
+          const nextId = highestId + 1;
+          emptyTemplate.id = `${prefix}-${nextId.toString().padStart(3, '0')}`;
+        }
+        
         // Add the new item to the array
         parent[finalKey].push(emptyTemplate);
         
@@ -352,6 +402,9 @@ export const CadreEdit: React.FC = () => {
         return prevData; // Return unchanged data on error
       }
     });
+    
+    // Store the new ID for accordion expansion (using a ref to avoid state updates)
+    const newItemId = emptyTemplate.id;
     
     // Auto-expand newly added accordion after delay to ensure rendering is complete
     if (newItemId) {
@@ -488,9 +541,9 @@ export const CadreEdit: React.FC = () => {
     setExclusionYearDialogOpen(true);
   }, []);
 
-  // Templates for adding new items - with empty values
+  // Templates for adding new items - with empty values and proper ID templates
   const getNewCadreTemplate = useCallback((): Cadre => ({
-    id: `cadre-template`,  // Will be replaced with unique ID on add
+    id: `cadre-001`,  // Three-digit format starting ID
     name: "",  // Empty string
     startBatchYear: new Date().getFullYear() - 5,
     endBatchYear: new Date().getFullYear(),
@@ -498,7 +551,7 @@ export const CadreEdit: React.FC = () => {
   }), []);
 
   const getNewServiceTemplate = useCallback((): Service => ({
-    id: `service-template`,  // Will be replaced with unique ID on add
+    id: `cs-001`,  // Changed to use cs- prefix with three-digit format
     name: "", // Empty string
     displayName: "", // Empty string
     cadreControllingAuthority: "", // Empty string
@@ -511,7 +564,7 @@ export const CadreEdit: React.FC = () => {
   const getNewCivilServiceTypeTemplate = useCallback((): CivilServiceType => ({
     name: "", // Empty string
     displayName: "", // Empty string
-    id: `cst-template`,  // Will be replaced with unique ID on add
+    id: `cst-001`,  // Three-digit format starting ID
     serviceList: [] // Empty array - no default services
   }), []);
 
@@ -561,7 +614,10 @@ export const CadreEdit: React.FC = () => {
   const renderCadre = useCallback((cadre: Cadre, index: number, parentPath: string[]) => {
     const basePath = [...parentPath, index.toString()];
     const accordionId = cadre.id;
-    const isExpanded = !!expandedAccordions[accordionId]; // Default to collapsed
+    const positionKey = `cadre-${index}-${parentPath.join('-')}`;
+    
+    // Check expanded state using both ID and position keys
+    const isExpanded = !!expandedAccordions[accordionId] || !!expandedAccordions[positionKey]; 
     
     // Create a debounced remove handler specifically for this item
     const handleRemoveCadre = createDebouncedRemoveHandler(parentPath, index);
@@ -569,13 +625,13 @@ export const CadreEdit: React.FC = () => {
     return (
       <Accordion 
         expanded={isExpanded}
-        onChange={handleAccordionChange(accordionId)}
-        key={cadre.id || `cadre-${index}`}
+        onChange={handleAccordionChange(accordionId, index, 'cadre')}
+        key={positionKey} // Use position-based key instead of ID
         sx={{ 
           mb: 2,
           ...styles.cadre,
           '&.Mui-expanded': {
-            margin: '0 0 16px 0', // Fix spacing issues when expanded
+            margin: '0 0 16px 0',
           }
         }}
       >
@@ -660,17 +716,20 @@ export const CadreEdit: React.FC = () => {
     const basePath = [...parentPath, index.toString()];
     const cadreListPath = [...basePath, "cadreList"];
     const accordionId = service.id;
-    const isExpanded = !!expandedAccordions[accordionId]; // Default to false
+    const positionKey = `service-${index}-${parentPath.join('-')}`;
     
-    // Create debounced handlers for this service
+    // Check expanded state using both ID and position keys
+    const isExpanded = !!expandedAccordions[accordionId] || !!expandedAccordions[positionKey];
+    
+    // Create debounced handlers for this service with properly formatted template
     const handleAddCadre = createDebouncedAddHandler(cadreListPath, getNewCadreTemplate());
     const handleRemoveService = createDebouncedRemoveHandler(parentPath, index);
     
     return (
       <Accordion 
         expanded={isExpanded}
-        onChange={handleAccordionChange(accordionId)}
-        key={service.id || `service-${index}`}
+        onChange={handleAccordionChange(accordionId, index, 'service')}
+        key={positionKey} // Use position-based key instead of ID
         sx={{ 
           mb: 3,
           ...styles.service,
@@ -817,17 +876,20 @@ export const CadreEdit: React.FC = () => {
     const basePath = ["civilServiceType", "civilServiceTypeList", index.toString()];
     const serviceListPath = [...basePath, "serviceList"];
     const accordionId = cst.id;
-    const isExpanded = !!expandedAccordions[accordionId]; // Always default to false
+    const positionKey = `cst-${index}`;
     
-    // Create debounced handlers for this civil service type
+    // Check expanded state using both ID and position keys
+    const isExpanded = !!expandedAccordions[accordionId] || !!expandedAccordions[positionKey];
+    
+    // Create debounced handlers for this civil service type with properly formatted template
     const handleAddService = createDebouncedAddHandler(serviceListPath, getNewServiceTemplate());
     const handleRemoveCivilServiceType = createDebouncedRemoveHandler(["civilServiceType", "civilServiceTypeList"], index);
     
     return (
       <Accordion 
         expanded={isExpanded}
-        onChange={handleAccordionChange(accordionId)}
-        key={cst.id || `cst-${index}`}
+        onChange={handleAccordionChange(accordionId, index, 'cst')}
+        key={positionKey} // Use position-based key instead of ID
         sx={{ 
           mb: 4, 
           ...styles.civilServiceType,
@@ -911,7 +973,7 @@ export const CadreEdit: React.FC = () => {
             ) || null}
             
             {(!cst.serviceList || cst.serviceList.length === 0) && (
-              <Typography variant="body2" color="text.secondary" sx={{ my: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ my: 4, textAlign: 'center' }}>
                 No services added yet. Click 'Add Service' to create one.
               </Typography>
             )}
@@ -929,7 +991,7 @@ export const CadreEdit: React.FC = () => {
     renderService
   ]);
 
-  // Create debounced handler for adding civil service type
+  // Create debounced handler for adding civil service type with properly formatted template
   const handleAddCivilServiceType = useCallback(() => {
     addItem(["civilServiceType", "civilServiceTypeList"], getNewCivilServiceTypeTemplate());
   }, [addItem, getNewCivilServiceTypeTemplate]);

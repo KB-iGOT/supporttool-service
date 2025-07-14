@@ -1,6 +1,7 @@
 import axios from "axios";
 import env from "../Config/env";
-import {  getCookie } from "../utils";
+import { getCookie } from "../utils";
+import { request } from "http";
 // Base URL (Change according to your backend server)
 const API_BASE_URL = env.apiBaseUrl;
 
@@ -17,17 +18,12 @@ const apiClient = axios.create({
 
 // API Service for Modules
 export const usersService = {
-    
-
-
   // Fetch all Modules
   getUsers: async (request: any) => {
-
-    
     const response = await apiClient.post("/users", request);
     return response.data;
   },
-  getUserByEmail:async (request: any) =>{
+  getUserByEmail: async (request: any) => {
     const response = await apiClient.post(`/users/email`, request);
     return response.data;
   },
@@ -36,9 +32,7 @@ export const usersService = {
     const response = await apiClient.patch(`/users/${userId}`, requestPayload);
     return response.data;
   },
-
   assignUserRoles: async (userId: string, organisationId: string, roles: string[]) => {
-
     // Construct the request payload as expected by your API
     const response = await apiClient.post(`/users/role/assign`, {
       request: {
@@ -48,5 +42,144 @@ export const usersService = {
       }
     });
     return response.data;
+  },
+  getUserContentEnrollList: async (userId: string) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.get(`/users/content/enrollment/list/${userId}`);
+    return response.data;
+  },
+  downloadcertificate: async (certId: string) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.get(`/users//certs/download/${certId}`);
+    return response.data;
+  },
+  reissuecertificate: async (requestPayload: any) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.post(`/users/cert/reissue`, requestPayload);
+    return response.data;
+  },
+  getUserEventEnrollList: async (userId: string) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.get(`/users/event/enrollment/list/${userId}`);
+    return response.data;
+  },
+  /**
+   * Creates a new user
+   * @param payload The user data to create
+   * @returns API response
+   */
+  createUser: async (payload: any) => {
+    try {
+      const response = await apiClient.post(
+        `/users/profileDetails/createUser`,
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+  },
+  /**
+   * Migrates a user to a new organization
+   * @param userId The ID of the user to migrate
+   * @param data Migration options
+   * @returns API response
+   */
+  migrateUser: async (userId: string, data: {
+    channel: string;
+    forceMigration: boolean;
+    softDeleteOldOrg: boolean;
+    notifyMigration: boolean;
+  }) => {
+    try {
+      debugger
+      const response = await apiClient.patch(
+        `/users/migrate`,
+        {
+          request: {
+            userId,
+            channel: data.channel,
+            forceMigration: data.forceMigration,
+            softDeleteOldOrg: data.softDeleteOldOrg,
+            notifyMigration: data.notifyMigration
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error migrating user:", error);
+      throw error;
+    }
+  },
+  /**
+   * Resets a user's password and generates a reset link
+   * @param userId The ID of the user to reset password for
+   * @param type The notification method (email)
+   * @returns API response with reset link
+   */
+  resetPassword: async (userId: string, type: 'email') => {
+    try {
+      const response = await apiClient.post(
+        `/users/password/reset`,
+        {
+          request: {
+            userId,
+            key: "test", // Default key value as specified in the API
+            type
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error resetting user password:", error);
+      throw error;
+    }
+  },
+  /**
+   * Blocks a user account
+   * @param userId The ID of the user to block
+   * @param requestedById The ID of the admin user making the request
+   * @returns API response
+   */
+  blockUser: async (userId: string, requestedById: string) => {
+    try {
+      const response = await apiClient.post(
+        `/users/block`,
+        {
+          request: {
+            userId,
+            requestedBy: requestedById
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      throw error;
+    }
+  },
+  /**
+   * Unblocks a previously blocked user account
+   * @param userId The ID of the user to unblock
+   * @param requestedById The ID of the admin user making the request
+   * @returns API response
+   */
+  unblockUser: async (userId: string, requestedById: string) => {
+    try {
+      const response = await apiClient.post(
+        `/users/unblock`,
+        {
+          request: {
+            userId,
+            requestedBy: requestedById
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error unblocking user:", error);
+      throw error;
+    }
   },
 };

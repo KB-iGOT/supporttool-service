@@ -1,5 +1,5 @@
 export interface Organization {
   identifier: string;
-  orgName: string;
+  channel: string;
   isRootOrg: boolean | null;
 }
