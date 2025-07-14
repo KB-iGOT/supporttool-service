@@ -67,7 +67,7 @@ export const Home = () => {
                 {/* <Typography variant="body2">{element.description}</Typography> */}
               </CardContent>
               <CardActions>
-                <Button size="small" onClick={()=>navigate(element.url)}>
+                <Button size="small" onClick={()=>navigate(element.url,{ state: element })}>
                   Go to {element.name}
                 </Button>
               </CardActions>
@@ -95,7 +95,7 @@ export const Home = () => {
                     {/* <Typography variant="body2">{element.description}</Typography> */}
                   </CardContent>
                   <CardActions>
-                    <Button size="small" onClick={()=>navigate(element.url)}>
+                    <Button size="small" onClick={()=>navigate(element.url,{ state: element })}>
                       Go to {element.name}
                     </Button>
                   </CardActions>

@@ -26,6 +26,7 @@ import { AppContext } from "../../Context/AppContext";
 import { appContextType } from "../../types";
 import { useFormInterceptor } from "../../hooks/useFormsInterceptor";
 import { useActionInterceptor } from "../../hooks/useActionInterceptor";
+    import { useLocation } from "react-router-dom";
 
 const filterConfig = {
   courseCategory: 'multi',
@@ -34,6 +35,9 @@ const filterConfig = {
 
 
 export const Contents = () => {
+  const location = useLocation();
+  const moduleState = location.state;
+  console.log("Module state:", moduleState, location.state);
   const [contents, setContents] = useState<Content[]>([]);
   const [contentsCount, setContentsCount] = useState<number>(0);
   const [facets, setFacets] = useState<Facets[]>([]);
@@ -111,7 +115,8 @@ export const Contents = () => {
     setLoading(true);
     try {
       // Call the retire API
-      await contentsService.retireContent(payload);
+      console.log(moduleState);
+      await contentsService.retireContent({...payload, module: moduleState?.name});
       
       // Show success message
       setToasts({

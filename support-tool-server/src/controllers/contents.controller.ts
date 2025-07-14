@@ -6,11 +6,9 @@ import axios from "axios"; // Use axios instead of request (which is deprecated)
 import FormData from "form-data";
 import logger from "../utils/logger";
 import { Logger } from "winston";
+import logAudit from "../helpers/auditLogger";
 
-export const getContents: RequestHandler = async (
-  req: any,
-  res: Response
-) => {
+export const getContents: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "POST",
@@ -54,25 +52,51 @@ export const getContents: RequestHandler = async (
   }
 };
 
-
 export const retireContents: RequestHandler = async (
   req: Request,
   res: Response
 ) => {
+   const contentId = req.params.id;
+    const { jiraLink, module } = req.query;
+    const user_id = req.headers["x-user-id"];
+
+    let auditObject = {
+      user_id,
+      module,
+      sub_module: null,
+      action: "DELETE",
+      entity_id: contentId,
+      request_payload: null,
+      modified_payload: null,
+      response_payload: null,
+      ip_address: null,
+      user_agent: null,
+      status: null,
+      message: null,
+      jira_link: jiraLink,
+    };
+
+    console.log(auditObject);
   try {
-    // Get the content ID from the request parameters
-    const contentId = req.params.id;
-    const link = req.query.jiraLink as string;
 
     if (!contentId) {
-      res.status(400).json({
+      logger.error("Content ID is required for retirement");
+      const response = {
         status: 400,
         message: "Content ID is required",
+      };
+      await logAudit({
+        ...auditObject,
+        status: "FAILURE",
+        response_payload: JSON.stringify(response),
+        message: response.message,
       });
+
+      res.status(400).json(response);
       return;
     }
 
-    console.log(`Attempting to retire content with ID: ${contentId}`);
+   logger.info(`Attempting to retire content with ID: ${contentId}`);
 
     // Make request to the learning service API
     const response = await axios({
@@ -81,46 +105,67 @@ export const retireContents: RequestHandler = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.headers["x-authenticated-user-token"] || "",
+        "x-authenticated-user-token":
+          req.headers["x-authenticated-user-token"] || "",
       },
     });
 
-    console.log(`Content retired successfully. ID: ${contentId}`);
+    logger.info(`Content retired successfully. ID: ${contentId}`);
 
-    // Return the response from the learning service
-    res.status(200).json({
+    const responseData = {
       status: 200,
       message: "Content retired successfully",
       data: response.data,
-    });
-  } catch (error) {
-    console.error("❌ Error retiring content:", error);
+    };
 
+    await logAudit({
+        ...auditObject,
+        status: "SUCCESS",
+        response_payload: JSON.stringify(responseData),
+        message: responseData.message,
+      });
+    // Return the response from the learning service
+    res.status(200).json(responseData);
+
+  } catch (error) {
+    let errorState: any = {};
+    let errorStatus = 0;
     // Check if it's an axios error with response
     if ((error as any).response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       const axiosError = error as any;
-      res.status(axiosError.response.status).json({
+
+      errorState = {
         status: axiosError.response.status,
         message: "Error retiring content",
         error: axiosError.response.data,
-      });
+      };
+
+      errorStatus = axiosError.response.status;
     } else if ((error as any).request) {
       // The request was made but no response was received
-      res.status(503).json({
+      errorState = {
         status: 503,
         message: "No response from learning service API",
         error: "Service unavailable",
-      });
+      };
+      errorStatus = 503;
     } else {
-      // Something happened in setting up the request that triggered an Error
-      res.status(500).json({
+      errorState = {
         status: 500,
         message: "Internal server error while retiring content",
         error: (error as any).message,
-      });
+      };
+      errorStatus = 500;
+      // Something happened in setting up the request that triggered an Error
     }
+    logger.error("❌ Error retiring content:" + JSON.stringify(errorState));
+    await logAudit({
+        ...auditObject,
+        status: "FAILURE",
+        response_payload: JSON.stringify(errorState),
+        message: errorState.message,
+      });
+    res.status(errorStatus).json(errorState);
   }
 };
 
@@ -131,7 +176,7 @@ export const createPrivateContents: RequestHandler = async (
   logger.info("Creating private content");
   try {
     logger.info(`Request body: ${JSON.stringify(req.body)}`);
-    
+
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/private/content/v3/create`,
@@ -143,18 +188,22 @@ export const createPrivateContents: RequestHandler = async (
       data: req.body, // Send the request body from client
     });
 
-    logger.info(`Content created successfully: ${JSON.stringify(response.data)}`);
+    logger.info(
+      `Content created successfully: ${JSON.stringify(response.data)}`
+    );
     // If successful
     res.status(200).send(response.data);
   } catch (error) {
-    logger.error("❌ Error creating content:"+ error);
+    logger.error("❌ Error creating content:" + error);
 
     // Check if it's an axios error with response
     if ((error as any).response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
       const axiosError = error as any; // Explicitly cast error to any
-      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      logger.error(
+        `API Error response: ${JSON.stringify(axiosError.response.data)}`
+      );
       res.status(axiosError.response.status).json({
         message: "Error from content API",
         error: axiosError.response.data,
@@ -185,7 +234,7 @@ export const uploadPrivateContentFile: RequestHandler = async (
     // Get the content ID from the request parameters
     const contentId = req.params.id;
     logger.info(`Content ID for upload: ${contentId}`);
-    
+
     if (!contentId) {
       logger.warn("Missing content ID in upload request");
       res.status(400).json({
@@ -194,30 +243,40 @@ export const uploadPrivateContentFile: RequestHandler = async (
       });
       return;
     }
-    
+
     // Log request details for debugging
     logger.info(`Request body: ${JSON.stringify(req.body)}`);
-    logger.info(`Request files: ${req.files ? JSON.stringify(Object.keys(req.files)) : 'No files'}`);
-    logger.info(`Request file: ${req.file ? req.file.originalname : 'No file'}`);
-    
+    logger.info(
+      `Request files: ${
+        req.files ? JSON.stringify(Object.keys(req.files)) : "No files"
+      }`
+    );
+    logger.info(
+      `Request file: ${req.file ? req.file.originalname : "No file"}`
+    );
+
     // Check various locations where the file might be
     let fileData = null;
-    let fileName = '';
-    let mimeType = '';
-    
+    let fileName = "";
+    let mimeType = "";
+
     // Check if file is in the data field specifically (from your client)
     if (req.files && req.files.data) {
       fileData = req.files.data;
       fileName = req.files.data.name;
       mimeType = req.files.data.mimetype;
-      logger.info(`Found file in req.files.data: ${fileName}, size: ${fileData.size}`);
-    } 
+      logger.info(
+        `Found file in req.files.data: ${fileName}, size: ${fileData.size}`
+      );
+    }
     // Check if file is in the traditional multer location
     else if (req.file) {
       fileData = req.file.buffer;
       fileName = req.file.originalname;
       mimeType = req.file.mimetype;
-      logger.info(`Found file in req.file: ${fileName}, size: ${fileData.length}`);
+      logger.info(
+        `Found file in req.file: ${fileName}, size: ${fileData.length}`
+      );
     }
     // Check if file is in the multipart array
     else if (req.files && Array.isArray(req.files) && req.files.length > 0) {
@@ -225,7 +284,9 @@ export const uploadPrivateContentFile: RequestHandler = async (
       fileData = file.buffer;
       fileName = file.originalname;
       mimeType = file.mimetype;
-      logger.info(`Found file in req.files array: ${fileName}, size: ${fileData.length}`);
+      logger.info(
+        `Found file in req.files array: ${fileName}, size: ${fileData.length}`
+      );
     }
     // Check if file is in a named field in files object
     else if (req.files && Object.keys(req.files).length > 0) {
@@ -235,34 +296,41 @@ export const uploadPrivateContentFile: RequestHandler = async (
       fileData = file.data || file.buffer;
       fileName = file.name || file.originalname;
       mimeType = file.mimetype;
-      logger.info(`Found file in req.files.${fieldName}: ${fileName}, size: ${fileData.length || fileData.size}`);
+      logger.info(
+        `Found file in req.files.${fieldName}: ${fileName}, size: ${
+          fileData.length || fileData.size
+        }`
+      );
     }
-    
+
     // Check if file data was found
     if (!fileData) {
       logger.error("No file found in the request");
       res.status(400).json({
         status: 400,
-        message: "No file provided for upload. Please ensure the file is included in the request.",
+        message:
+          "No file provided for upload. Please ensure the file is included in the request.",
       });
       return;
     }
-    
+
     // Create form data for file upload
     const formData = new FormData();
-    
+
     // Add the file to form data
-    formData.append('data', fileData, {
+    formData.append("data", fileData, {
       filename: fileName,
       contentType: mimeType,
     });
-    
-    logger.info(`Preparing to upload file: ${fileName}, type: ${mimeType} for content ID: ${contentId}`);
+
+    logger.info(
+      `Preparing to upload file: ${fileName}, type: ${mimeType} for content ID: ${contentId}`
+    );
 
     // Make request to the content API
     const apiUrl = `${process.env.KONG_API_URL}/api/private/content/v3/upload/${contentId}`;
     logger.info(`Making request to: ${apiUrl}`);
-    
+
     const response = await axios({
       method: "POST",
       url: apiUrl,
@@ -274,7 +342,7 @@ export const uploadPrivateContentFile: RequestHandler = async (
       },
       data: formData,
       maxContentLength: Infinity,
-      maxBodyLength: Infinity
+      maxBodyLength: Infinity,
     });
 
     logger.info(`File uploaded successfully for content ID: ${contentId}`);
@@ -287,12 +355,14 @@ export const uploadPrivateContentFile: RequestHandler = async (
       result: response.data,
     });
   } catch (error) {
-    logger.error("❌ Error uploading content file:"+ error);
+    logger.error("❌ Error uploading content file:" + error);
 
     // Check if it's an axios error with response
     if ((error as any).response) {
       const axiosError = error as any;
-      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      logger.error(
+        `API Error response: ${JSON.stringify(axiosError.response.data)}`
+      );
       res.status(axiosError.response.status).json({
         status: axiosError.response.status,
         message: "Error uploading file",
@@ -322,8 +392,10 @@ export const updatePrivateContent: RequestHandler = async (
 ) => {
   logger.info("Updating private content");
   try {
-    logger.info(`${req.params.id} Update request body: ${JSON.stringify(req.body)}`);
-    
+    logger.info(
+      `${req.params.id} Update request body: ${JSON.stringify(req.body)}`
+    );
+
     const response = await axios({
       method: "PATCH",
       url: `${process.env.KONG_API_URL}/api/private/content/v3/update/${req.params.id}`,
@@ -335,8 +407,10 @@ export const updatePrivateContent: RequestHandler = async (
       data: req.body, // Send the request body from client
     });
 
-    logger.info(`Content updated successfully: ${JSON.stringify(response.data)}`);
-    
+    logger.info(
+      `Content updated successfully: ${JSON.stringify(response.data)}`
+    );
+
     // If successful
     res.status(200).json({
       status: 200,
@@ -344,12 +418,14 @@ export const updatePrivateContent: RequestHandler = async (
       result: response.data,
     });
   } catch (error) {
-    logger.error("❌ Error updating content:"+ error);
+    logger.error("❌ Error updating content:" + error);
 
     // Check if it's an axios error with response
     if ((error as any).response) {
       const axiosError = error as any;
-      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      logger.error(
+        `API Error response: ${JSON.stringify(axiosError.response.data)}`
+      );
       res.status(axiosError.response.status).json({
         status: axiosError.response.status,
         message: "Error updating content",
@@ -378,7 +454,7 @@ export const deletePrivateContent: RequestHandler = async (
   res: Response
 ) => {
   logger.info(`Retiring private content with ID: ${req.params.id}`);
-  
+
   try {
     // Validate that we have a content ID
     if (!req.params.id) {
@@ -392,7 +468,7 @@ export const deletePrivateContent: RequestHandler = async (
 
     // Log the retirement request
     logger.info(`Retire request for content ID ${req.params.id}`);
-    
+
     // Make the API call to retire the content - no body, only parameter
     const response = await axios({
       method: "DELETE",
@@ -401,12 +477,14 @@ export const deletePrivateContent: RequestHandler = async (
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
         "x-authenticated-user-token": req.user.token.trim(),
-      }
+      },
       // No data parameter, only using URL params
     });
 
-    logger.info(`Content retired successfully: ${JSON.stringify(response.data)}`);
-    
+    logger.info(
+      `Content retired successfully: ${JSON.stringify(response.data)}`
+    );
+
     // Return success response
     res.status(200).json({
       status: 200,
@@ -420,7 +498,9 @@ export const deletePrivateContent: RequestHandler = async (
     // Check if it's an axios error with response
     if ((error as any).response) {
       const axiosError = error as any;
-      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      logger.error(
+        `API Error response: ${JSON.stringify(axiosError.response.data)}`
+      );
       res.status(axiosError.response.status).json({
         status: axiosError.response.status,
         message: "Error retiring content",
@@ -449,7 +529,7 @@ export const readPrivateContent: RequestHandler = async (
   res: Response
 ) => {
   logger.info(`Reading private content with ID: ${req.params.id}`);
-  
+
   try {
     // Validate that we have a content ID
     if (!req.params.id) {
@@ -463,7 +543,7 @@ export const readPrivateContent: RequestHandler = async (
 
     // Log the read request
     logger.info(`Read request for content ID ${req.params.id}`);
-    
+
     // Make the API call to read the content - no body, only parameter
     const response = await axios({
       method: "GET",
@@ -472,12 +552,12 @@ export const readPrivateContent: RequestHandler = async (
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
         "x-authenticated-user-token": req.user.token.trim(),
-      }
+      },
       // No data parameter, only using URL params
     });
 
     logger.info(`Content read successfully: ${JSON.stringify(response.data)}`);
-    
+
     // Return success response
     res.status(200).json({
       status: 200,
@@ -491,7 +571,9 @@ export const readPrivateContent: RequestHandler = async (
     // Check if it's an axios error with response
     if ((error as any).response) {
       const axiosError = error as any;
-      logger.error(`API Error response: ${JSON.stringify(axiosError.response.data)}`);
+      logger.error(
+        `API Error response: ${JSON.stringify(axiosError.response.data)}`
+      );
       res.status(axiosError.response.status).json({
         status: axiosError.response.status,
         message: "Error reading content",
