@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ContentRequest, ContentCreateResponse, ContentUploadResponse } from '../types';
 import { contentsService } from '../../../../services/contents.service';
+import { useLocation } from 'react-router-dom';
 
 interface UseStepUpdateProps {
   updateContent: (data: ContentRequest, contentId: string, isEditMode: boolean, currentStep?: number) => Promise<boolean>;

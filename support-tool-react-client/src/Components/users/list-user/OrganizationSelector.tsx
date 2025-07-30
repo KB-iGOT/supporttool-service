@@ -154,7 +154,7 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
         />
       )}
       renderOption={(props, option) => (
-        <li {...props} key={option.identifier}>{option.channel}</li>
+        <li {...props} key={option.identifier}>{option.channel} - {option?.identifier}</li>
       )}
       ListboxProps={{
         ref: orgListRef,

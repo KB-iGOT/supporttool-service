@@ -26,6 +26,9 @@ import { UsersTable } from "./UsersTable";
 import { Organization } from "./types";
 import { HelpDialog } from "./HelpDialog"; // Import the new HelpDialog component
 import { CreateUserDialog } from "./CreateUserDialog"; // Import the CreateUserDialog component
+import { useActionInterceptor } from "../../../hooks/useActionInterceptor";
+import { data, useLocation } from "react-router-dom";
+import { set } from "date-fns";
 
 // Configuration constants
 const FACETS_LIST = ["rootChannel"];
@@ -145,10 +148,7 @@ const createUserFields: FieldDefinition[] = [
     defaultValue: ['PUBLIC'],
     placeholder: 'Select user roles',
     options: [
-      { label: 'Public User', value: 'PUBLIC' },
-      { label: 'Content Creator', value: 'CONTENT_CREATOR' },
-      { label: 'Content Reviewer', value: 'CONTENT_REVIEWER' },
-      { label: 'Organization Admin', value: 'ORG_ADMIN' }
+      { label: 'Public', value: 'PUBLIC' },
     ],
     validation: {
       errorMessage: 'Please select at least one role'
@@ -158,6 +158,8 @@ const createUserFields: FieldDefinition[] = [
 
 export const UsersList = () => {
   // State declarations
+    const location = useLocation();
+    const moduleState = location.state;
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [usersCount, setUsersCount] = useState<number>(0);
   const [facets, setFacets] = useState<any[]>([]);
@@ -170,7 +172,7 @@ export const UsersList = () => {
   const [searchType, setSearchType] = useState<SearchFieldType>('name');
   const [open, setOpen] = useState(false);
   const [modifiedFields, setModifiedFields] = useState<Record<string, any>>({});
-  const [editUserData, setEditUserData] = useState<Record<string, any>>({});
+  const [originalUserData, setoriginalUserData] = useState<Record<string, any>>({});
   const [toasts, setToasts] = useState<{
     message: string;
     open: boolean;
@@ -198,6 +200,27 @@ export const UsersList = () => {
   const { checkPermissions } = React.useContext(AppContext) as appContextType;
   const permissions = checkPermissions();
 
+  const [ userEditData,setUserEditData ] = useState<Record<string, any>>({});
+  
+  // Create a ref to hold the latest form data
+  const latestFormDataRef = useRef<CustomFormData>({});
+
+  const handleEditAction = (data: CustomFormData) => {
+    // Update both state and ref
+    setUserEditData(data);
+    latestFormDataRef.current = data;
+    
+    // Call handleEditSubmit which will use the latest data from the ref
+    handleEditSubmit();
+  }
+
+  // Modify your useActionInterceptor to use the ref instead
+  const { handleAction: handleEditSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handleSubmit(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
   // API and data fetching functions
   const fetchUsers = async (
     pageNumber = 0, 
@@ -206,7 +229,7 @@ export const UsersList = () => {
     filters: { [key: string]: string[] } = {},
     updateFacets = true,
     selectedOrganization: Organization | null = null,
-    status: UserStatusType = 'active' // Add status parameter with default value
+    status: UserStatusType = 'active' 
   ) => {
     setLoading(true);
     let freeTextQuery : string = '';
@@ -230,10 +253,10 @@ export const UsersList = () => {
       
       // Add organization filter if selected
       if (selectedOrganization) {
-        searchFilters = {
-          ...searchFilters,
-          rootChannel: [selectedOrganization.channel]
-        };
+          searchFilters = {
+            ...searchFilters,
+            rootOrgName: [selectedOrganization.channel]
+          };
       }
       
       // Determine status value for API
@@ -258,6 +281,9 @@ export const UsersList = () => {
         },
         query: freeTextQuery
       };
+      
+      // Log the request payload for debugging
+      console.log('API request payload:', requestPayload);
       
       const data = await usersService.getUsers(requestPayload);
       if (data.result) {
@@ -337,10 +363,10 @@ export const UsersList = () => {
 
   const handleSearch = () => {
     // Validate required fields based on search type
-    if (searchType === 'name') {
+    if (searchType === 'name' || searchType === 'roles') {
       if (!selectedOrg) {
         setToasts({
-          message: "Please select an organization when searching by name",
+          message: `Please select an organization when searching by ${searchType}`,
           open: true,
           severity: "warning",
         });
@@ -348,7 +374,7 @@ export const UsersList = () => {
       }
       if (!searchQuery.trim()) {
         setToasts({
-          message: "Please enter a name to search",
+          message: `Please ${searchType === 'roles' ? 'select a role' : 'enter a name'} to search`,
           open: true,
           severity: "warning",
         });
@@ -430,7 +456,7 @@ export const UsersList = () => {
   };
 
   const handleEditUser = (user: Record<string, any>) => {
-    setEditUserData(user);
+    setoriginalUserData(user);
     setOpen(true);
   };
 
@@ -439,11 +465,11 @@ export const UsersList = () => {
   };
 
   // Submit handler for user updates
-  const handleSubmit = async (data: CustomFormData) => {
+  const handleSubmit = async (interceptPayload: CustomFormData, formData: Record<string, any>) => {
     try {
       setLoading(true);
       
-      // Track field changes for display purposes
+      // Use formData instead of userEditData
       const changedFields: Record<string, any> = {};
       
       // Create a deep copy of the original user data as our base
@@ -455,8 +481,8 @@ export const UsersList = () => {
         }
       } = {
         request: {
-          userId: editUserData.identifier,
-          profileDetails: JSON.parse(JSON.stringify(editUserData.profileDetails || {}))
+          userId: originalUserData.identifier,
+          profileDetails: JSON.parse(JSON.stringify(originalUserData.profileDetails || {}))
         }
       };
       
@@ -464,20 +490,20 @@ export const UsersList = () => {
       sampleFields.forEach(field => {
         // Extract value from form data
         let newValue;
-        if (data instanceof Map) {
+        if (formData instanceof Map) {
           // If data is a Map (FormData)
-          newValue = data.get(field.identifier);
-        } else if (typeof data === 'object' && data !== null) {
-          // If data is a regular object
+          newValue = formData.get(field.identifier);
+        } else if (typeof formData === 'object' && formData !== null) {
+          // If formData is a regular object
           newValue = field.fieldPath ? 
-            getNestedValue(data, field.fieldPath) : 
-            data[field.identifier];
+            getNestedValue(formData, field.fieldPath) : 
+            formData[field.identifier];
         }
         
         // Get original value from user data
         const originalValue = field.fieldPath ? 
-          getNestedValue(editUserData, field.fieldPath) : 
-          editUserData[field.identifier];
+          getNestedValue(originalUserData, field.fieldPath) : 
+          originalUserData[field.identifier];
 
         // Only process changed fields
         if (String(newValue) !== String(originalValue) && newValue !== undefined) {
@@ -538,8 +564,15 @@ export const UsersList = () => {
         setOpen(false);
         return;
       }
+      let request  = {
+        payload: updatePayload,
+        changedFields,
+        userId: formData.identifier,
+        jiraLink: interceptPayload.jiraLink,
+        module: moduleState?.name || 'users',
+      }
       // Send the update request
-      const response : any = await usersService.updateUser(editUserData.identifier, updatePayload);
+      const response : any = await usersService.updateUser(request);
       
       if (response && response.responseCode === "OK") {
         setToasts({ 
@@ -572,7 +605,7 @@ export const UsersList = () => {
   // Function to handle form reset and data refresh
   const resetFormAndFetchUsers = () => {
     // Clear form data
-    setEditUserData({});
+    setoriginalUserData({});
     setModifiedFields({});
     
     // Fetch users again with current filters and search parameters
@@ -597,51 +630,100 @@ export const UsersList = () => {
     setHelpDialogOpen(false);
   };
 
-  // Add this function to fetch available channels
- 
+  // Modify the handleCreateUser function to call all three APIs in sequence
 
-  // Add useEffect to fetch channels when needed
-  useEffect(() => {
-   
-  }, [createUserDialogOpen]);
-
-  // Modify the handleCreateUser function to work with the new format
   const handleCreateUser = async (data: any) => {
     try {
       setCreatingUser(true);
       
-      // Create the request payload
-      const payload = {
-        personalDetails: {
+      // Step 1: Create the user
+      const createUserPayload = {
+        request: {
           email: data.email,
           firstName: data.firstName,
-          phone: data.phone,
-          channel: data.channel,
+          lastName: "",
+          password: "Password@123", // Default password, should be changed by user later
+          channel: data.channel
+        }
+      };
+      
+      console.log("Step 1: Creating user with payload:", createUserPayload);
+      
+      const createResponse = await usersService.createUser(createUserPayload);
+      
+      if (!createResponse || createResponse.responseCode !== "OK") {
+        throw new Error(createResponse?.responseMessage || "Failed to create user");
+      }
+      
+      // Extract the userId from the response
+      const userId = createResponse.result.userId;
+      if (!userId) {
+        throw new Error("User ID not found in response");
+      }
+      
+      // Step 2: Assign roles to the user
+      const roleAssignPayload = {
+        request: {
+          userId: userId,
+          organisationId: data.orgId || createResponse.result.rootOrgId,
           roles: data.roles || ['PUBLIC']
         }
       };
       
-      console.log("Creating user with payload:", payload);
+      console.log("Step 2: Assigning roles with payload:", roleAssignPayload);
       
-      // Send API request
-      const response = await usersService.createUser(payload);
+      const roleResponse = await usersService.assignUserRoles(
+        userId, 
+        roleAssignPayload.request.organisationId, 
+        roleAssignPayload.request.roles
+      );
       
-      if (response && response.responseCode === "OK") {
-        setToasts({
-          message: "User created successfully",
-          open: true,
-          severity: "success",
-        });
-        
-        // Close the dialog and refresh users
-        setCreateUserDialogOpen(false);
-        
-        // Reset page to 0 and fetch users again
-        setPage(0);
-        fetchUsers(0, rowsPerPage, "", selectedFilters, true, null, userStatus);
-      } else {
-        throw new Error(response?.responseMessage || "Failed to create user");
+      if (!roleResponse || roleResponse.responseCode !== "OK") {
+        console.warn("Role assignment failed, continuing with profile update");
       }
+      
+      // Step 3: Update profile with additional details
+      const profileUpdatePayload = {
+        request: {
+          userId: userId,
+          phone: data.phone,
+          maskedPhone: data.phone,
+          firstName: data.firstName,
+          lastName: "",
+          profileDetails: {
+            profileStatus: "VERIFIED",
+            personalDetails: {
+              firstname: data.firstName,
+              primaryEmail: data.email,
+              mobile: data.phone,
+              phoneVerified: true
+            },
+            mandatoryFieldsExists: true
+          }
+        }
+      };
+      
+      console.log("Step 3: Updating profile with payload:", profileUpdatePayload);
+      
+      const updateResponse = await usersService.updateUserV1(userId, profileUpdatePayload);
+      
+      if (!updateResponse || updateResponse.responseCode !== "OK") {
+        console.warn("Profile update failed, but user was created");
+      }
+      
+      setToasts({
+        message: "User created successfully",
+        open: true,
+        severity: "success",
+      });
+      
+      // Close the dialog and refresh users
+      setCreateUserDialogOpen(false);
+      
+      // Reset page to 0 and fetch users again
+      setPage(0);
+      fetchUsers(0, rowsPerPage, "", selectedFilters, true, null, userStatus);
+      
     } catch (error: any) {
       console.error("Error creating user:", error);
       let message = error?.response?.data?.error?.params?.errmsg || error.message || "An error occurred while creating user";
@@ -743,6 +825,7 @@ export const UsersList = () => {
           rowsPerPage={rowsPerPage}
           loading={loading}
           permissions={permissions}
+          searchType={searchType}
           onEditUser={handleEditUser}
           onDeleteUser={handleDeleteUser}
           onPageChange={handleChangePage}
@@ -775,8 +858,8 @@ export const UsersList = () => {
         open={open}
         onClose={() => setOpen(false)}
         fields={sampleFields}
-        initialData={editUserData}
-        onSubmit={handleSubmit}
+        initialData={originalUserData}
+        onSubmit={handleEditAction}
       />
 
       {/* Create User Dialog */}

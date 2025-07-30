@@ -27,9 +27,14 @@ export const usersService = {
     const response = await apiClient.post(`/users/email`, request);
     return response.data;
   },
-  updateUser: async (userId: string, requestPayload: any) => {
+  updateUser: async (requestPayload: any) => {
     // Construct the request payload as expected by your API
-    const response = await apiClient.patch(`/users/${userId}`, requestPayload);
+    const response = await apiClient.patch(`/users/${requestPayload?.userId}`, requestPayload);
+    return response.data;
+  },
+  updateUserV1: async (userId: string, requestPayload: any) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.patch(`/users/update/${userId}`, requestPayload);
     return response.data;
   },
   assignUserRoles: async (userId: string, organisationId: string, roles: string[]) => {
@@ -41,6 +46,11 @@ export const usersService = {
         roles
       }
     });
+    return response.data;
+  },
+  modifyUserRoles: async (requestData: any) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.post(`/users/role/update`, requestData);
     return response.data;
   },
   getUserContentEnrollList: async (userId: string) => {
@@ -118,17 +128,11 @@ export const usersService = {
    * @param type The notification method (email)
    * @returns API response with reset link
    */
-  resetPassword: async (userId: string, type: 'email') => {
+  resetPassword: async (request: any) => {
     try {
       const response = await apiClient.post(
         `/users/password/reset`,
-        {
-          request: {
-            userId,
-            key: "test", // Default key value as specified in the API
-            type
-          }
-        }
+        request
       );
       return response.data;
     } catch (error) {

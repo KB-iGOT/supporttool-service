@@ -90,6 +90,7 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
         email: email,
         phone: phone,
         channel: selectedChannel.channel,
+        orgId: selectedChannel.identifier, // Pass the organization ID
         roles: roles
       });
     }
@@ -163,12 +164,9 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
                   value={roles}
                   onChange={(e) => setRoles(typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[])}
                   label="User Roles"
-                  disabled={processing}
+                  disabled={true}
                 >
-                  <MenuItem value="PUBLIC">Public User</MenuItem>
-                  <MenuItem value="CONTENT_CREATOR">Content Creator</MenuItem>
-                  <MenuItem value="CONTENT_REVIEWER">Content Reviewer</MenuItem>
-                  <MenuItem value="ORG_ADMIN">Organization Admin</MenuItem>
+                  <MenuItem value="PUBLIC">Public</MenuItem>
                 </Select>
                 <FormHelperText>Please select at least one role</FormHelperText>
               </FormControl>

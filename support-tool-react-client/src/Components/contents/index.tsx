@@ -48,8 +48,8 @@ const filterConfig = {
 } as const;
 
 export const Contents = () => {
-  const location = useLocation();
-  const moduleState = location.state;
+const location = useLocation();
+const moduleState = location.state;
   console.log("Module state:", moduleState, location.state);
   const [contents, setContents] = useState<Content[]>([]);
   const [contentsCount, setContentsCount] = useState<number>(0);
@@ -192,7 +192,8 @@ export const Contents = () => {
 
       const data = await contentsService.getContent(requestPayload);
       if (data.result) {
-        setContents(data.result.content || []);
+        let contents = [...(data?.result?.content || []), ...(data?.result?.QuestionSet|| [])]
+        setContents(contents || []);
         setContentsCount(data.result.count || 0);
 
         // Only update facets on initial load or when explicitly requested

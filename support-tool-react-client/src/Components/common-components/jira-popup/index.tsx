@@ -23,10 +23,17 @@ const JiraLinkPopup: React.FC = () => {
     }
   }, [isIntercepting]);
 
-  const validateJiraLink = (value: string) => {
+  const validateTicketLink = (value: string) => {
+    // Match Jira tickets
     const jiraPattern =
       /^https:\/\/karmayogibharat\.atlassian\.net\/browse\/[A-Z]+-\d+$/;
-    return jiraPattern.test(value);
+
+    // Match Zoho Desk tickets
+    const zohoPattern =
+      /^https:\/\/desk\.zoho\.in\/agent\/karmayogibharat\/karmayogi-bharat\/tickets\/details\/\d+$/;
+
+    // Return true if either pattern matches
+    return jiraPattern.test(value) || zohoPattern.test(value);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,10 +41,10 @@ const JiraLinkPopup: React.FC = () => {
     setJiraLink(value);
 
     if (!value.trim()) {
-      setError("Jira link is required");
+      setError("Ticket link is required");
       setIsValid(false);
-    } else if (!validateJiraLink(value)) {
-      setError("Please enter a valid Jira ticket URL");
+    } else if (!validateTicketLink(value)) {
+      setError("Please enter a valid Jira or Zoho Desk ticket URL");
       setIsValid(false);
     } else {
       setError("");
@@ -69,32 +76,33 @@ const JiraLinkPopup: React.FC = () => {
         },
       }}
     >
-      <DialogTitle>Link {getActionTitle()} Action to Jira</DialogTitle>
+      <DialogTitle>Link {getActionTitle()} Action to Ticket</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          Please provide a Jira ticket link associated with this action.
+          Please provide a Jira or Zoho Desk ticket link associated with this action.
         </DialogContentText>
 
-          <div className="mb-4">
-            <TextField
-              autoFocus
-              required
-              margin="dense"
-              id="name"
-              name="email"
-              label="Email Address"
-              type="email"
-              fullWidth
-              variant="standard"
-              value={jiraLink}
-              onChange={handleChange}
-            />
-            {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-          </div>
+        <div className="mb-4">
+          <TextField
+            autoFocus
+            required
+            margin="dense"
+            id="ticketLink"
+            name="ticketLink"
+            label="Ticket URL"
+            type="url"
+            fullWidth
+            variant="standard"
+            value={jiraLink}
+            onChange={handleChange}
+            placeholder="https://desk.zoho.in/agent/... or https://karmayogibharat.atlassian.net/..."
+          />
+          {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+        </div>
       </DialogContent>
       <DialogActions>
         <Button onClick={cancelAction}>Cancel</Button>
-        <Button onClick={handleSubmit}>Subscribe</Button>
+        <Button onClick={handleSubmit}>Submit</Button>
       </DialogActions>
     </Dialog>
   );

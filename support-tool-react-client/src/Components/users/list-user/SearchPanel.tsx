@@ -34,7 +34,7 @@ import { Organization } from "./types";
 import { OrganizationSelector } from "./OrganizationSelector";
 
 // Type definitions
-export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId';
+export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId' | 'roles';
 export type UserStatusType = 'active' | 'inactive' | 'all';
 interface SearchFieldConfig {
   type: SearchFieldType;
@@ -43,7 +43,6 @@ interface SearchFieldConfig {
   path: string;
   icon: React.ReactElement<SvgIconProps>;
 }
-
 
 export const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
   name: {
@@ -73,6 +72,13 @@ export const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
     placeholder: 'Enter UUID',
     path: 'identifier',
     icon: <FingerprintIcon />
+  },
+  roles: {
+    type: 'roles',
+    label: 'Roles',
+    placeholder: 'Select role',
+    path: 'organisations.roles',
+    icon: <PersonIcon />
   }
 };
 
@@ -129,6 +135,16 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 }) => {
   // State for validation
   const [searchErrors, setSearchErrors] = useState<Record<string, string | undefined>>({});
+  
+  // Available roles options
+  const rolesOptions = [
+    "PUBLIC",
+    "CONTENT_CREATOR", 
+    "CONTENT_REVIEWER",
+    "ORG_ADMIN",
+    "MDO_ADMIN",
+    "MDO_LEADER",
+  ];
 
   // Validation functions
   const validateInput = (value: string, type: SearchFieldType): boolean => {
@@ -210,6 +226,9 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 
   // Helper function to check if search button should be enabled
   const isSearchEnabled = (): boolean => {
+    if (searchType === 'roles') {
+      return !!selectedOrg && !!searchQuery.trim();
+    }
     if (!searchQuery.trim()) return false;
     if (searchType === 'name' && !selectedOrg) return false;
     if (searchErrors[searchType]) return false;
@@ -240,7 +259,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                       <MenuItem key={key} value={key}>
                         <Box display="flex" alignItems="center">
                           {React.cloneElement(field.icon as React.ReactElement)}
-                          {field.label}
+                          <Box ml={1}>{field.label}</Box>
                         </Box>
                       </MenuItem>
                     ))}
@@ -258,11 +277,6 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                     value={userStatus}
                     label="User Status"
                     onChange={handleUserStatusChange}
-                    // startAdornment={
-                    //   <InputAdornment position="start">
-                    //     {STATUS_CONFIG[userStatus].icon}
-                    //   </InputAdornment>
-                    // }
                   >
                     {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                       <MenuItem key={key} value={key}>
@@ -276,14 +290,14 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                 </FormControl>
               </Grid>
 
-              {/* Organization Selector - only shown for name searches */}
-              {searchType === 'name' && (
+              {/* Organization Selector - shown for name searches and role searches */}
+              {(searchType === 'name' || searchType === 'roles') && (
                 <Grid item xs={12} sm={6}>
                   <OrganizationSelector 
                     selectedOrg={selectedOrg}
                     onOrgSelect={onOrgSelect}
                     onBlur={() => {}}
-                    error={searchType === 'name' && !selectedOrg && searchQuery.trim() !== ''}
+                    error={(searchType === 'name' || searchType === 'roles') && !selectedOrg && searchQuery.trim() !== ''}
                   />
                 </Grid>
               )}
@@ -300,42 +314,84 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
         <Grid item xs={12}>
           <Grid container spacing={2} alignItems="flex-start">
             <Grid item xs={12} sm={9}>
-              <TextField
-                fullWidth
-                label={searchFields[searchType].label}
-                placeholder={searchFields[searchType].placeholder}
-                variant="outlined"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onKeyPress={handleSearchKeyPress}
-                onBlur={handleSearchFieldBlur}
-                required
-                error={!searchQuery.trim() || Boolean(searchErrors[searchType])}
-                helperText={
-                  !searchQuery.trim() 
-                    ? `${searchFields[searchType].label} is required` 
-                    : searchErrors[searchType] || ' '
-                }
-                FormHelperTextProps={{ sx: { mt: 0, minHeight: '1.25em' } }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      {searchFields[searchType].icon}
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery ? (
-                    <InputAdornment position="end">
-                      <IconButton 
-                        size="small" 
-                        onClick={onClearSearch}
-                        aria-label="clear search"
-                      >
-                        <ClearIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : null
-                }}
-              />
+              {searchType === 'roles' ? (
+                <FormControl fullWidth error={!searchQuery.trim()}>
+                  <InputLabel id="roles-search-label">Select Role</InputLabel>
+                  <Select
+                    labelId="roles-search-label"
+                    id="roles-search-select"
+                    value={searchQuery}
+                    label="Select Role"
+                    onChange={(e) => onSearchQueryChange(e.target.value)}
+                    startAdornment={
+                      <InputAdornment position="start">
+                        {searchFields[searchType].icon}
+                      </InputAdornment>
+                    }
+                    endAdornment={
+                      searchQuery ? (
+                        <InputAdornment position="end">
+                          <IconButton 
+                            size="small" 
+                            onClick={onClearSearch}
+                            aria-label="clear search"
+                          >
+                            <ClearIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : null
+                    }
+                  >
+                    {rolesOptions.map((role) => (
+                      <MenuItem key={role} value={role}>
+                        {role}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {!searchQuery.trim() && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                      Role selection is required
+                    </Typography>
+                  )}
+                </FormControl>
+              ) : (
+                <TextField
+                  fullWidth
+                  label={searchFields[searchType].label}
+                  placeholder={searchFields[searchType].placeholder}
+                  variant="outlined"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onKeyPress={handleSearchKeyPress}
+                  onBlur={handleSearchFieldBlur}
+                  required
+                  error={!searchQuery.trim() || Boolean(searchErrors[searchType])}
+                  helperText={
+                    !searchQuery.trim() 
+                      ? `${searchFields[searchType].label} is required` 
+                      : searchErrors[searchType] || ' '
+                  }
+                  FormHelperTextProps={{ sx: { mt: 0, minHeight: '1.25em' } }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        {searchFields[searchType].icon}
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchQuery ? (
+                      <InputAdornment position="end">
+                        <IconButton 
+                          size="small" 
+                          onClick={onClearSearch}
+                          aria-label="clear search"
+                        >
+                          <ClearIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null
+                  }}
+                />
+              )}
             </Grid>
             <Grid item xs={12} sm={3}>
               <Button

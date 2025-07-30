@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
+import logAudit from "../helpers/auditLogger";
 
 // USER SEARCH OPERATIONS
 export const getUsers: RequestHandler = async (req: any, res: Response) => {
@@ -44,6 +45,112 @@ export const getUserByEmail: RequestHandler = async (req: any, res: Response) =>
 
 // USER MANAGEMENT OPERATIONS
 export const updateUser: RequestHandler = async (req: any, res: Response) => {
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  }= req.body;
+  const user_id = req.headers["x-user-id"];
+
+  let auditObject = {
+    user_id,
+    module,
+    sub_module: null,
+    action: "UPDATE",
+    entity_id: userId,
+    request_payload: payload,
+    modified_payload: changedFields,
+    response_payload: null,
+    ip_address: null,
+    user_agent: null,
+    status: null,
+    message: null,
+    jira_link: jiraLink,
+  };
+
+  console.log(auditObject);
+  if (!userId) {
+    const error = {
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "User ID is required",
+    }
+    await logAudit({
+      ...auditObject,
+      status: "FAILURE",
+      response_payload: JSON.stringify(error),
+      message: error.responseMessage,
+    });
+
+     res.status(400).json(error);
+  }
+
+  try {
+    const response = await axios({
+      method: "PATCH",
+      url: `${process.env.KONG_API_URL}/api/user/private/v1/update`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION
+      },
+      data: payload,
+    });
+
+    logger.info(`User ${userId} updated successfully`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "User updated successfully",
+    });
+    res.status(200).json(response.data);
+  } catch (error) {
+
+    let errorState: any = {};
+    let errorStatus = 0;
+    // Check if it's an axios error with response
+    if ((error as any).response) {
+      const axiosError = error as any;
+
+      errorState = {
+        status: axiosError.response.status,
+        message: "Error retiring content",
+        error: axiosError.response.data,
+      };
+
+      errorStatus = axiosError.response.status;
+    } else if ((error as any).request) {
+      // The request was made but no response was received
+      errorState = {
+        status: 503,
+        message: "No response from learning service API",
+        error: "Service unavailable",
+      };
+      errorStatus = 503;
+    } else {
+      errorState = {
+        status: 500,
+        message: "Internal server error while retiring content",
+        error: (error as any).message,
+      };
+      errorStatus = 500;
+      // Something happened in setting up the request that triggered an Error
+    }
+    logger.error("❌ Error retiring content:" + JSON.stringify(errorState));
+    await logAudit({
+        ...auditObject,
+        status: "FAILURE",
+        response_payload: JSON.stringify(errorState),
+        message: errorState.message,
+      });
+    res.status(errorStatus).json(errorState);
+  
+    // handleApiError(error, res, `Error updating user ${targetUserId}`);
+  }
+};
+
+export const updateSuperUser: RequestHandler = async (req: any, res: Response) => {
   const targetUserId = req.params.userId;
 
   if (!targetUserId) {
@@ -56,11 +163,10 @@ export const updateUser: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "PATCH",
-      url: `${process.env.KONG_API_URL}/api/user/private/v1/update`,
+      url: `${process.env.KONG_API_URL}/api/super/user/private/v1/update`,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.user.token.trim(),
+        "Authorization": process.env.AUTHORIZATION
       },
       data: req.body,
     });
@@ -86,7 +192,7 @@ export const createUsers: RequestHandler = async (req: any, res: Response) => {
     
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/apis/protected/v8/user/profileDetails/createUser`,
+      url: `${process.env.KONG_API_URL}/api/user/v3/create`,
       headers: {
         "Content-Type": "application/json",
         "Authorization": process.env.AUTHORIZATION,
@@ -139,13 +245,13 @@ export const assignUserRoles: RequestHandler = async (req: any, res: Response): 
   }
 
   try {
+    // const adminToken = await fetchAdminAccessToken();
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/user/private/v1/assign/role`,
       headers: {
         "Content-Type": "application/json",
         "Authorization": process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.user.token.trim(),
       },
       data: req.body
     });
@@ -161,6 +267,113 @@ export const assignUserRoles: RequestHandler = async (req: any, res: Response): 
     handleApiError(error, res, `Error assigning roles to user ${userId}`);
   }
 };
+
+
+// USER ROLES & ACCESS OPERATIONS
+export const updateUserRoles: RequestHandler = async (req: any, res: Response): Promise<void> => {
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  }= req.body;
+  const user_id = req.headers["x-user-id"];
+  if (Object.keys(payload).length === 0 ) {
+    logger.warn('Invalid role assignment request - missing required fields');
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "User ID, organisation ID and roles array are required"
+    });
+    return;
+  }
+
+  let auditObject = {
+    user_id,
+    module,
+    sub_module: null,
+    action: "UPDATE",
+    entity_id: userId,
+    request_payload: payload,
+    modified_payload: changedFields,
+    response_payload: null,
+    ip_address: null,
+    user_agent: null,
+    status: null,
+    message: null,
+    jira_link: jiraLink,
+  };
+
+
+  try {
+    // const adminToken = await fetchAdminAccessToken();
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/user/private/v1/assign/role`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+      },
+      data: payload
+    });
+
+    logger.info(`Roles successfully assigned to user: ${userId}`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "User role updated successfully",
+    });
+    res.status(200).json({
+      status: 200,
+      responseCode: "OK",
+      message: "Roles assigned successfully",
+      result: response.data
+    });
+  } catch (error) {
+    await auditLogApiError(error, res, `Error assigning roles to user ${userId}`,auditObject);
+    handleApiError(error, res, `Error assigning roles to user ${userId}`);
+  }
+};
+
+
+export const assignUserRolesv1: RequestHandler = async (req: any, res: Response): Promise<void> => {
+  const { userId, organisationId, roles } = req.body.request || {};
+  
+  if (!userId || !organisationId || !roles || !Array.isArray(roles)) {
+    logger.warn('Invalid role assignment request - missing required fields');
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "User ID, organisation ID and roles array are required"
+    });
+    return;
+  }
+
+  try {
+    const adminToken = await fetchAdminAccessToken();
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": adminToken.trim(),
+      },
+      data: req.body
+    });
+
+    logger.info(`Roles successfully assigned to user: ${userId}`);
+    res.status(200).json({
+      status: 200,
+      responseCode: "OK",
+      message: "Roles assigned successfully",
+      result: response.data
+    });
+  } catch (error) {
+    handleApiError(error, res, `Error assigning roles to user ${userId}`);
+  }
+};
+
 
 export const blockUser: RequestHandler = async (req: any, res: Response) => {
   const userId = req.body.request?.userId || 'unknown ID';
@@ -334,9 +547,32 @@ export const reissueCertificate: RequestHandler = async (req: any, res: Response
 };
 
 export const resetUserPassword: RequestHandler = async (req: any, res: Response) => {
-  const userId = req.body.request?.userId || 'unknown ID';
+  // const userId = req.body.request?.userId || 'unknown ID';
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  }= req.body;
+  const user_id = req.headers["x-user-id"];
   logger.info(`Resetting password for user with ID: ${userId}`);
-  
+  let auditObject = {
+    user_id,
+    module,
+    sub_module: null,
+    action: "UPDATE",
+    entity_id: userId,
+    request_payload: payload,
+    modified_payload: changedFields,
+    response_payload: null,
+    ip_address: null,
+    user_agent: null,
+    status: null,
+    message: null,
+    jira_link: jiraLink,
+  };
+
   try {
     const response = await axios({
       method: "POST",
@@ -346,10 +582,16 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
         "Authorization": process.env.AUTHORIZATION,
         "x-authenticated-user-token": req.user.token.trim(),
       },
-      data: req.body
+      data: payload
     });
 
     logger.info(`Password reset successful for user: ${userId}`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "Password reset successful for user",
+    });
     res.status(200).send(response.data);
   } catch (error) {
     handleApiError(error, res, `Error resetting password for user ${userId}`);
@@ -445,6 +687,36 @@ function handleApiError(error: any, res: Response, logMessage: string) {
       responseCode: "SERVER_ERROR",
       responseMessage: "Internal server error",
       error: error.message,
+    });
+  }
+}
+
+async function auditLogApiError(error: any, res: Response, logMessage: string, auditObject: any = {}) {
+  let responsePayload = '';
+  if (error.response) {
+    // Only log the serializable data, not the whole response object
+    responsePayload = JSON.stringify(error.response.data || {});
+    await logAudit({
+      ...auditObject,
+      status: "FAILURE",
+      response_payload: responsePayload,
+      message: logMessage,
+    });
+  } else if (error.request) {
+    responsePayload = JSON.stringify({ message: "No response received from API" });
+    await logAudit({
+      ...auditObject,
+      status: "SERVICE_UNAVAILABLE",
+      response_payload: responsePayload,
+      message: "No response received from API",
+    });
+  } else {
+    responsePayload = JSON.stringify({ message: error.message });
+    await logAudit({
+      ...auditObject,
+      status: "SERVICE_UNAVAILABLE",
+      response_payload: responsePayload,
+      message: "No response received from API",
     });
   }
 }

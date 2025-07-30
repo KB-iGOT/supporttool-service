@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Table,
@@ -17,7 +17,8 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Snackbar
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PencilIcon from "@mui/icons-material/Edit";
@@ -28,6 +29,7 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import BlockIcon from "@mui/icons-material/Block";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { UserProfile } from "../../../types/users";
 import { RoleAssignmentDialog } from "./RoleAssignmentDialog";
 import { UserMigrationDialog } from "./UserMigrationDialog";
@@ -36,6 +38,7 @@ import { UserBlockDialog } from "./UserBlockDialog";
 import { usersService } from "../../../services/users.service";
 import { AppContext } from "../../../Context/AppContext";
 import { appContextType } from "../../../types";
+import { useActionInterceptor } from "../../../hooks/useActionInterceptor";
 
 interface UsersTableProps {
   users: UserProfile[];
@@ -43,6 +46,7 @@ interface UsersTableProps {
   page: number;
   rowsPerPage: number;
   loading: boolean;
+  searchType: string;
   permissions: {
     canWrite: boolean;
     canDelete: boolean;
@@ -61,6 +65,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   rowsPerPage,
   loading,
   permissions,
+  searchType,
   onEditUser,
   onDeleteUser,
   onPageChange,
@@ -68,7 +73,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   onUserUpdated
 }) => {
   const navigate = useNavigate();
-    const { user } = React.useContext(AppContext) as appContextType;
+  const location = useLocation();
+  const moduleState = location.state;
+  const { user } = React.useContext(AppContext) as appContextType;
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [passwordResetDialogOpen, setPasswordResetDialogOpen] = useState(false);
@@ -78,6 +85,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuUser, setMenuUser] = useState<UserProfile | null>(null);
 
+  const [roleChangesData, setRoleChangesData] = useState<any>(null);
+  const [copySnackbar, setCopySnackbar] = useState({
+    open: false,
+    message: ''
+  });
+
   const handleRoleClick = (user: UserProfile) => {
     setSelectedUser(user);
     setRoleDialogOpen(true);
@@ -85,8 +98,8 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   };
 
   const handleRoleDialogClose = () => {
-    setRoleDialogOpen(false);
-    setSelectedUser(null);
+    // setRoleDialogOpen(false);
+    // setSelectedUser(null);
   };
 
   const handleMigrationClick = (user: UserProfile) => {
@@ -181,10 +194,52 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     }
   };
 
-  const handleRoleAssign = async (userId: string, orgId: string, roles: string[]) => {
-    try {
-      await usersService.assignUserRoles(userId, orgId, roles);
 
+  // Create a ref to hold the latest form data
+  const latestFormDataRef = React.useRef<any>({});
+
+  const handleRoleAssignAction = async (userId: string, orgId: string, roles: string[], initialRoles: string[]): Promise<void> => {
+    // Update both state and ref
+    setRoleChangesData({ userId, orgId, roles, initialRoles });
+    latestFormDataRef.current = { userId, orgId, roles, initialRoles };
+    
+    // Call handleEditSubmit which will use the latest data from the ref
+      handleRoleChangesSubmit();
+  }
+
+  // Modify your useActionInterceptor to use the ref instead
+  const { handleAction: handleRoleChangesSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handleRoleAssign(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+  
+
+  const handleRoleAssign = async (data: any, userData: any) => {
+    try {
+      let changedFields = {
+        "roles": {
+          "new": userData?.roles,
+           "original": userData?.initialRoles 
+          }
+        }
+      
+      let request = {
+        payload: {
+          request: {
+            userId: userData?.userId,
+            organisationId: userData?.orgId,
+            roles: userData?.roles
+          }
+        },
+        changedFields: changedFields|| {},
+        module: moduleState?.name || 'users',
+        jiraLink:data?.jiraLink || "",
+    }
+      await usersService.modifyUserRoles(request);
+
+      setRoleDialogOpen(false);
+      setSelectedUser(null);
       setTimeout(() => {
         if (onUserUpdated) {
           console.log("Roles updated, triggering data refresh");
@@ -212,6 +267,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       setTimeout(() => {
         if (onUserUpdated) {
           console.log("User migrated, triggering data refresh");
+
           onUserUpdated();
         }
       }, 1000);
@@ -221,16 +277,71 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     }
   };
 
-  const handlePasswordReset = async (userId: string, type: "email") => {
+
+  // Create a ref to hold the latest form data
+  const latestPasswordResetRef = React.useRef<{ userId: string; type: "email" }>({ userId: "", type: "email" });
+  let passwordResetResolver: ((value: string) => void) | null = null;
+
+
+  const handlePasswordResetAction = async (userId: string, notificationType: "email"): Promise<string> => {
+    // Update both state and ref
+    latestPasswordResetRef.current = { userId, type: notificationType };
+
+    // Create a promise that will be resolved by handlePasswordReset
+    const resetPromise = new Promise<string>((resolve) => {
+        passwordResetResolver = resolve;
+    });
+
+    // Call handleEditSubmit which will use the latest data from the ref
+    handleResetSubmit();
+    
+    return resetPromise;
+};
+
+
+  // Modify your useActionInterceptor to use the ref instead
+  const { handleAction: handleResetSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete:  (interceptPayload) => handlePasswordReset(interceptPayload, latestPasswordResetRef.current),
+    getPayload: () => ({})
+  });
+
+
+  const handlePasswordReset = async (ticket: any, data: any): Promise<void> => {
+    console.log("Resetting password for user:", user, data);
     try {
-      const response = await usersService.resetPassword(userId, type);
-      console.log("Password reset requested:", response);
-      return response.result.link;
+      debugger
+      let request = {
+        payload: {
+          request: {
+            userId: data?.userId,
+            key: "test", // Default key value as specified in the API
+            type: data?.type
+          }
+        },
+        jiraLink: ticket?.jiraLink || "",
+        changedFields:'',
+        module: moduleState?.name || 'users',
+      }
+        const response = await usersService.resetPassword(request);
+        console.log("Password reset requested:", response);
+        
+
+        
+        // Resolve the promise with the reset link
+        if (passwordResetResolver) {
+            passwordResetResolver(response.result.link);
+            passwordResetResolver = null;
+        }
     } catch (error) {
-      console.error("Error resetting password:", error);
-      throw error;
+        console.error("Error resetting password:", error);
+        if (passwordResetResolver) {
+            passwordResetResolver(""); // or handle error appropriately
+            passwordResetResolver = null;
+        }
+        throw error;
     }
-  };
+};
 
   const handleUserBlock = async (userId: string, currentStatus: number, requestedById: string) => {
     try {
@@ -250,6 +361,33 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       console.error("Error updating user block status:", error);
       throw error;
     }
+  };
+
+  // Updated function to handle copying email to clipboard with feedback
+  const handleCopyEmail = (email: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering other click events
+    navigator.clipboard.writeText(email)
+      .then(() => {
+        setCopySnackbar({
+          open: true,
+          message: `Email ${email} copied to clipboard`
+        });
+      })
+      .catch(err => {
+        console.error('Failed to copy email: ', err);
+        setCopySnackbar({
+          open: true,
+          message: 'Failed to copy email'
+        });
+      });
+  };
+
+  // Function to handle closing the snackbar
+  const handleSnackbarClose = () => {
+    setCopySnackbar({
+      ...copySnackbar,
+      open: false
+    });
   };
 
   return (
@@ -279,7 +417,24 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                     </TableCell>
                     <TableCell>{row.rootOrgName || "-"}</TableCell>
                     <TableCell>
-                      {row?.profileDetails?.personalDetails?.primaryEmail || "-"}
+                      {row?.profileDetails?.personalDetails?.primaryEmail ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{row.profileDetails.personalDetails.primaryEmail}</span>
+                          {searchType === 'roles' && (
+                            <Tooltip title="Copy email">
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleCopyEmail(row.profileDetails.personalDetails.primaryEmail, e)}
+                                sx={{ padding: 0.5 }}
+                              >
+                                <ContentCopyIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell>
                       {row?.profileDetails?.personalDetails?.mobile || "-"}
@@ -333,7 +488,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           horizontal: "right"
         }}
       >
-        {permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleEditFromMenu}>
             <ListItemIcon>
               <PencilIcon fontSize="small" />
@@ -342,7 +497,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleRoleFromMenu}>
             <ListItemIcon>
               <PersonIcon fontSize="small" />
@@ -351,7 +506,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handlePasswordResetFromMenu}>
             <ListItemIcon>
               <LockResetIcon fontSize="small" />
@@ -360,7 +515,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleMigrationFromMenu}>
             <ListItemIcon>
               <CompareArrowsIcon fontSize="small" />
@@ -386,7 +541,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleReissueCertificate}>
             <ListItemIcon>
               <CardMembershipIcon fontSize="small" />
@@ -395,21 +550,29 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canDelete && (
+        {/* {menuUser?.status !== 0 && permissions.canDelete && (
           <MenuItem onClick={handleDeleteFromMenu}>
             <ListItemIcon>
               <DeleteIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Delete User</ListItemText>
           </MenuItem>
-        )}
+        )} */}
       </Menu>
+
+      <Snackbar
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        open={copySnackbar.open}
+        autoHideDuration={2000}
+        onClose={handleSnackbarClose}
+        message={copySnackbar.message}
+      />
 
       <RoleAssignmentDialog
         open={roleDialogOpen}
         onClose={handleRoleDialogClose}
         user={selectedUser}
-        onRoleAssign={handleRoleAssign}
+        onRoleAssign={handleRoleAssignAction}
       />
 
       <UserMigrationDialog
@@ -423,7 +586,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         open={passwordResetDialogOpen}
         onClose={handlePasswordResetDialogClose}
         user={selectedUser}
-        onResetPassword={handlePasswordReset}
+        onResetPassword={handlePasswordResetAction}
       />
 
       <UserBlockDialog

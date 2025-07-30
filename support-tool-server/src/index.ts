@@ -24,6 +24,7 @@ import { connectCassandra } from "./utils/cassandra";
 import domainRoutes from "./routes/domains.routes";
 import privateRoutes from "./routes/private.routes";
 import rolesRouter from "./routes/roles.routes";
+import proxyRoutes from "./routes/proxy.routes";
 
 
 const app = express();
@@ -160,6 +161,7 @@ app.use("/api/forms", FormsRoutes);
 app.use("/api/org", organisationsRoutes);
 app.use("/api/domains", domainRoutes);
 app.use("/api/private", privateRoutes);
+app.use("/api/proxy", proxyRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
 app.use("/api/roles", rolesRouter);
