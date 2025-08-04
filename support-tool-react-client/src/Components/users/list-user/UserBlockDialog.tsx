@@ -64,9 +64,9 @@ export const UserBlockDialog: React.FC<UserBlockDialogProps> = ({
       setSuccess(true);
       
       // Auto-close dialog after successful operation
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      // setTimeout(() => {
+      //   onClose();
+      // }, 2000);
     } catch (err: any) {
       console.error("User block/unblock error:", err);
       setError(err.message || `Failed to ${isBlocking ? 'block' : 'unblock'} user. Please try again.`);

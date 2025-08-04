@@ -196,10 +196,8 @@ export const Domain = () => {
       const formData = { contextName: domainInput };
       const requestPayload = { request: formData };
 
-      const response = await domainService.addDomain(requestPayload);
-      // if(response) {
-      //   console.log("Domain added successfully:", response);
-      // }
+       await domainService.addDomain(requestPayload);
+      
       
       setSnackbar({
         open: true,

@@ -1,5 +1,4 @@
-import * as React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { 
   Box, 
   Button, 
@@ -21,6 +20,7 @@ import { FormFilter, FormFilterData } from "./form-filter";
 import { CreateForm } from "./create-form";
 import { appContextType } from "../../types";
 import { AppContext } from "../../Context/AppContext";
+import { useActionInterceptor } from '../../hooks/useActionInterceptor';
 
 export const Forms = () => {
   const [formsFilter, setFormsFilter] = useState<FormFilterData[]>([]);
@@ -29,6 +29,7 @@ export const Forms = () => {
   
   // Form data for the JSON editor
   const [formData, setFormData] = useState<any>(null);
+  const [initialFormData, setInitialFormData] = useState<any>(null);
   const [jsonEditorKey, setJsonEditorKey] = useState<number>(0);
   const [formLoaded, setFormLoaded] = useState<boolean>(false);
   
@@ -45,8 +46,17 @@ export const Forms = () => {
   
 
   // Get permissions from context
-  const { checkPermissions } = React.useContext(AppContext) as appContextType;
+  const { checkPermissions } = useContext(AppContext) as appContextType;
   const permissions = checkPermissions();
+
+  // Create a ref to hold the latest form data
+  const latestFormDataRef = useRef<{
+    formData: any;
+    activeFilter: FormFilterData | null;
+  }>({
+    formData: null,
+    activeFilter: null
+  });
 
   // Load form data on component mount
   useEffect(() => {
@@ -63,7 +73,6 @@ export const Forms = () => {
       if (response?.status === 200) {
         const data = response?.result?.rows || response?.result?.data || [];
         setFormsFilter(data);
-        console.log("Forms data loaded:", data.length, "records");
       } else {
         console.warn("Using sample data due to API error");
         setFormsFilter([]);
@@ -126,43 +135,29 @@ export const Forms = () => {
       // Store the selected filter values for persistence
       setActiveFilter(filterValues);
       
-      const response = await formsService.getFormReadData({
-        type: filterValues.type,
-        subtype: filterValues.subtype,
-        action: filterValues.action,
-        root_org: filterValues.root_org,
-        component: filterValues.component,
-        framework: filterValues.framework
-      });
+      const response = await formsService.getFormReadData(filterValues);
       
       if (response?.status === 200) {
-        console.log("Form read data loaded:", response.result);
         
         // Set the form data for the JSON editor
-        let data = response.result.formData && response.result.formData.data || {};
-        if(typeof data === "string") {
+        let data = response.result.formData?.data || {};
+        
+        // Parse string data if needed
+        if (typeof data === "string") {
           try { 
-            const parsedData = JSON.parse(data);
-            setFormData(parsedData);
-            // Validate JSON
-            validateJson(parsedData);
-            // Increment the key to force re-render of the JsonEditor
-            setJsonEditorKey(prev => prev + 1);
-            // Set form as loaded
-            setFormLoaded(true);
+            data = JSON.parse(data);
           } catch (e) {
             console.error("Error parsing form data:", e);
             setError("Failed to parse form data. Please check the format.");
+            return;
           }
-        } else {
-          setFormData(data);
-          // Validate JSON
-          validateJson(data);
-          // Increment the key to force re-render of the JsonEditor
-          setJsonEditorKey(prev => prev + 1);
-          // Set form as loaded
-          setFormLoaded(true);
         }
+        
+        setInitialFormData(data);
+        setFormData(data);
+        validateJson(data);
+        setJsonEditorKey(prev => prev + 1);
+        setFormLoaded(true);
       } else {
         console.warn("Error loading form data:", response?.message || "Unknown error");
         setError("Failed to load form data. " + (response?.message || "Please try again."));
@@ -180,6 +175,7 @@ export const Forms = () => {
     // Hide form data when filter changes by setting it to null (not empty object)
     // This ensures the editor and "formData" state are completely reset
     setFormData(null);
+    setInitialFormData(null);
     setFormLoaded(false);
     
     // Clear active filter to prevent saving with incorrect filters
@@ -191,8 +187,8 @@ export const Forms = () => {
     setJsonValidationMessage("");
   };
   
-  // Save existing form data
-  const handleSaveExistingForm = async () => {
+  // Modified handleSaveExistingForm to use the ref and interceptor pattern
+  const handleSaveExistingForm = useCallback(() => {
     if (!formData || !activeFilter) {
       setJsonValidationMessage("No form data to save");
       setJsonValid(false);
@@ -204,18 +200,43 @@ export const Forms = () => {
     if (!validateJson(formData)) {
       return;
     }
+
+    // Update the ref with latest data
+    latestFormDataRef.current = {
+      formData,
+      activeFilter
+    };
     
+    // Trigger the action interceptor
+    handleSaveFormSubmit();
+  }, [formData, activeFilter]);
+
+  // Action interceptor for form saving
+  const { handleAction: handleSaveFormSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => saveFormWithJira(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+  // Function that performs the actual save with jira ticket info
+  const saveFormWithJira = useCallback(async (interceptPayload: any, formInfo: any) => {
     setLoading(true);
+    
     try {
-      const response = await formsService.updateFormData({
-        type: activeFilter.type,
-        subtype: activeFilter.subtype,
-        action: activeFilter.action,
-        root_org: activeFilter.root_org,
-        component: activeFilter.component,
-        framework: activeFilter.framework,
-        data: formData
-      });
+      // Prepare the request payload with changed fields tracking
+     
+      
+      const request = {
+        payload: {
+          ...formInfo.activeFilter,
+          data: formInfo.formData
+        },
+        changedFields: '',
+        jiraLink: interceptPayload?.jiraLink || "",
+        module: "forms",
+      };
+      
+      const response = await formsService.updateFormData(request);
       
       if (response?.status === 200) {
         setJsonValidationMessage("Form data saved successfully!");
@@ -230,76 +251,26 @@ export const Forms = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Save new form data (from create form component)
-  const handleSaveNewForm = async (formMetadata: FormFilterData, jsonData: any) => {
-    // Validate JSON before saving
-    if (!validateJson(jsonData)) {
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const response = await formsService.createFormData({
-        type: formMetadata.type,
-        subtype: formMetadata.subtype,
-        action: formMetadata.action,
-        root_org: formMetadata.root_org,
-        component: formMetadata.component,
-        framework: formMetadata.framework,
-        data: jsonData
-      });
-      
-      if (response?.status === 200) {
-        setJsonValidationMessage("Form created successfully!");
-        setJsonValid(true);
-        setShowValidationMessage(true);
-        // Exit create mode and refresh form list
-        setCreateMode(false);
-        fetchFormData();
-      } else {
-        setError("Failed to create form: " + (response?.message || "Unknown error"));
-      }
-    } catch (err: any) {
-      console.error("Error creating form:", err);
-      setError("Failed to create form: " + (err.message || "Unknown error occurred"));
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+  }, [initialFormData, setLoading, setError, setJsonValidationMessage, setJsonValid, setShowValidationMessage]);
+
   // Enter create form mode
   const handleCreateForm = () => {
     setCreateMode(true);
     setFormLoaded(false);
     setActiveFilter(null);
     setFormData(null);
+    setInitialFormData(null);
     setJsonValid(true);
     setJsonValidationMessage("");
   };
-  
-  // Exit create form mode
-  const handleExitCreateMode = () => {
-    setCreateMode(false);
-  };
 
   const handleSaveForm = async (formMetadata: FormFilterData, jsonData: any) => {
-    // Validate JSON before saving
-    if (!validateJson(jsonData)) {
-      return;
-    }
+    if (!validateJson(jsonData)) return;
     
     setLoading(true);
     try {
-      
       const response = await formsService.createFormData({
-        type: formMetadata.type,
-        subtype: formMetadata.subtype,
-        action: formMetadata.action,
-        root_org: formMetadata.root_org,
-        component: formMetadata.component,
-        framework: formMetadata.framework,
+        ...formMetadata,
         data: jsonData
       });
       
@@ -307,7 +278,6 @@ export const Forms = () => {
         setJsonValidationMessage("Form created successfully!");
         setJsonValid(true);
         setShowValidationMessage(true);
-        // Exit create mode and refresh form list
         setCreateMode(false);
         fetchFormData();
       } else {
@@ -315,7 +285,7 @@ export const Forms = () => {
       }
     } catch (err: any) {
       console.error("Error creating form:", err);
-      let message = err?.response?.data?.message || err?.message || "Unknown error occurred";
+      const message = err?.response?.data?.message || err?.message || "Unknown error occurred";
       setError("Failed to create form: " + message);
       setCreateMode(false);
     } finally {
@@ -332,7 +302,7 @@ export const Forms = () => {
     setShowValidationMessage(false);
   };
   
-  if (loading && !formLoaded) {
+  if (loading && !formLoaded && !createMode) {
     return (
       <Box sx={{ width: '100%', mt: 4 }}>
         <LinearProgress />

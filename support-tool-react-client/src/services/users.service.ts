@@ -96,25 +96,11 @@ export const usersService = {
    * @param data Migration options
    * @returns API response
    */
-  migrateUser: async (userId: string, data: {
-    channel: string;
-    forceMigration: boolean;
-    softDeleteOldOrg: boolean;
-    notifyMigration: boolean;
-  }) => {
+  migrateUser: async (request: any) => {
     try {
-      debugger
       const response = await apiClient.patch(
         `/users/migrate`,
-        {
-          request: {
-            userId,
-            channel: data.channel,
-            forceMigration: data.forceMigration,
-            softDeleteOldOrg: data.softDeleteOldOrg,
-            notifyMigration: data.notifyMigration
-          }
-        }
+        request
       );
       return response.data;
     } catch (error) {
@@ -146,16 +132,10 @@ export const usersService = {
    * @param requestedById The ID of the admin user making the request
    * @returns API response
    */
-  blockUser: async (userId: string, requestedById: string) => {
+  blockUser: async (requestData: any) => {
     try {
       const response = await apiClient.post(
-        `/users/block`,
-        {
-          request: {
-            userId,
-            requestedBy: requestedById
-          }
-        }
+        `/users/block`,requestData
       );
       return response.data;
     } catch (error) {
@@ -169,16 +149,10 @@ export const usersService = {
    * @param requestedById The ID of the admin user making the request
    * @returns API response
    */
-  unblockUser: async (userId: string, requestedById: string) => {
+  unblockUser: async (requestData: any) => {
     try {
       const response = await apiClient.post(
-        `/users/unblock`,
-        {
-          request: {
-            userId,
-            requestedBy: requestedById
-          }
-        }
+        `/users/unblock`,requestData
       );
       return response.data;
     } catch (error) {

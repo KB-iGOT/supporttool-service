@@ -69,10 +69,10 @@ const JiraLinkPopup: React.FC = () => {
   return (
     <Dialog
       open={isIntercepting}
-      onClose={cancelAction}
       slotProps={{
         paper: {
           component: "form",
+          onSubmit: handleSubmit,
         },
       }}
     >
@@ -102,7 +102,7 @@ const JiraLinkPopup: React.FC = () => {
       </DialogContent>
       <DialogActions>
         <Button onClick={cancelAction}>Cancel</Button>
-        <Button onClick={handleSubmit}>Submit</Button>
+        <Button type="submit" disabled={!isValid}>Submit</Button>
       </DialogActions>
     </Dialog>
   );

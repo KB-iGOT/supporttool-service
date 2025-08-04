@@ -45,6 +45,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import CodeIcon from '@mui/icons-material/Code';
 import { usersService } from '../../../services/users.service';
+import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 
 // Type definitions for content data
 interface ContentEnrollment {
@@ -460,6 +461,7 @@ export const ReissueCertificate: React.FC = () => {
   // Use useLocation to access query parameters
   const location = useLocation();
   const navigate = useNavigate();
+  const moduleState = location.state;
   
   // Extract userId from query parameters
   const queryParams = new URLSearchParams(location.search);
@@ -510,7 +512,7 @@ export const ReissueCertificate: React.FC = () => {
       
       // Fetch content enrollments
       const contentResponse = await usersService.getUserContentEnrollList(userId);
-      debugger
+      
       if (contentResponse.result && contentResponse.result.courses && Array.isArray(contentResponse.result.courses)) {
         setContentEnrollments(contentResponse.result.courses);
         setFilteredContent(contentResponse.result.courses);
@@ -529,7 +531,6 @@ export const ReissueCertificate: React.FC = () => {
       
       // Fetch event enrollments
       const eventResponse = await usersService.getUserEventEnrollList(userId);
-      console.log('Event response:', eventResponse);
       
       if (eventResponse.result &&  eventResponse.result.events && Array.isArray(eventResponse.result.events)) {
         // Map the response to match our EventEnrollment interface
@@ -651,25 +652,50 @@ export const ReissueCertificate: React.FC = () => {
     setSelectedEnrollment(null);
   };
 
-  const handleReissueCertificate = async () => {
+    // Create a ref to hold the latest form data
+    const latestFormDataRef = React.useRef<any>({});
+  
+    const handleCertificateIssueAction = (data: any) => {
+      
+      // Update both state and ref
+      latestFormDataRef.current = data;
+      
+      // Call handleEditSubmit which will use the latest data from the ref
+      handleEditSubmit();
+    }
+  
+    // Modify your useActionInterceptor to use the ref instead
+    const { handleAction: handleEditSubmit } = useActionInterceptor({
+      actionType: 'Patch',
+      onComplete: (interceptPayload) => handleReissueCertificate(interceptPayload),
+      getPayload: () => ({})
+    });
+
+  const handleReissueCertificate = async (ticket: any) => {
     if (!selectedEnrollment) return;
     
     try {
       setProcessingReissue(true);
-      debugger
+      
       // Call API to reissue certificate
       // This is a placeholder - implement the actual API call
-      let requestPayload = {
-        "request": {
-            userIds: [userId],
-        courseId: selectedEnrollment.courseId || selectedEnrollment.contentId,
-        batchId: selectedEnrollment.batchId,
-        type: tabValue === 0 ? 'course' : 'event'
-      }
-    }
-      let response = await usersService.reissuecertificate(requestPayload);
-      console.log(response);
-      debugger
+      
+      const request = {
+        payload: {
+          "request": {
+              userIds: [userId],
+              courseId: selectedEnrollment.courseId || selectedEnrollment.contentId,
+              batchId: selectedEnrollment.batchId,
+              type: tabValue === 0 ? 'course' : 'event'
+            }
+          },
+          changedFields:"Resued Certificate",
+          module: moduleState?.name || 'users',
+          jiraLink: ticket?.jiraLink || "",
+          userId: userId
+        };
+      let response = await usersService.reissuecertificate(request);
+      
       if(response && response.result && response.result.result && response.result.result.result && response.result.result.result.status) {
         setReissueSuccess(true); 
         setReissueDialogOpen(false);
@@ -698,7 +724,7 @@ export const ReissueCertificate: React.FC = () => {
       
       // Call API to get certificate data
       const response = await usersService.downloadcertificate(certId);
-      debugger
+      
       if (response && response.result && response.result.printUri) {
         setCertificateData(response.result.printUri);
       } else {
@@ -1272,7 +1298,7 @@ export const ReissueCertificate: React.FC = () => {
           </Button>
           {!reissueSuccess && (
             <Button
-              onClick={handleReissueCertificate}
+              onClick={handleCertificateIssueAction}
               variant="contained"
               color="primary"
               disabled={processingReissue}

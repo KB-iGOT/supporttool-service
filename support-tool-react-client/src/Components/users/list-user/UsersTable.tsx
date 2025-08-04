@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -58,6 +58,12 @@ interface UsersTableProps {
   onUserUpdated?: () => void;
 }
 
+interface SnackbarState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'info';
+}
+
 export const UsersTable: React.FC<UsersTableProps> = ({
   users,
   usersCount,
@@ -76,65 +82,68 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const location = useLocation();
   const moduleState = location.state;
   const { user } = React.useContext(AppContext) as appContextType;
+
+  // Dialog states
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [passwordResetDialogOpen, setPasswordResetDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
+  // Menu states
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuUser, setMenuUser] = useState<UserProfile | null>(null);
 
-  const [roleChangesData, setRoleChangesData] = useState<any>(null);
-  const [copySnackbar, setCopySnackbar] = useState({
+  // Notification states
+  const [snackbar, setSnackbar] = useState<SnackbarState>({
     open: false,
-    message: ''
+    message: '',
+    severity: 'info'
   });
 
-  const handleRoleClick = (user: UserProfile) => {
-    setSelectedUser(user);
-    setRoleDialogOpen(true);
-    setAnchorEl(null);
-  };
+  // Refs for action interceptors
+  const latestFormDataRef = useRef<any>({});
+  const latestPasswordResetRef = useRef<{ userId: string; type: "email"; selectedUser?: UserProfile | null }>({ userId: "", type: "email" });
+  const passwordResetResolver = useRef<((value: string) => void) | null>(null);
 
-  const handleRoleDialogClose = () => {
-    // setRoleDialogOpen(false);
-    // setSelectedUser(null);
-  };
+  // Helper functions
+  const showNotification = useCallback((message: string, severity: 'success' | 'error' | 'info' = 'info') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  }, []);
 
-  const handleMigrationClick = (user: UserProfile) => {
-    setSelectedUser(user);
-    setMigrationDialogOpen(true);
-    setAnchorEl(null);
-  };
+  const closeNotification = useCallback(() => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  }, []);
 
-  const handleMigrationDialogClose = () => {
-    setMigrationDialogOpen(false);
+  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block') => {
+    switch (dialogType) {
+      case 'role':
+        setRoleDialogOpen(false);
+        break;
+      case 'migration':
+        setMigrationDialogOpen(false);
+        break;
+      case 'password':
+        setPasswordResetDialogOpen(false);
+        break;
+      case 'block':
+        setBlockDialogOpen(false);
+        break;
+    }
     setSelectedUser(null);
-  };
+  }, []);
 
-  const handlePasswordResetClick = (user: UserProfile) => {
-    setSelectedUser(user);
-    setPasswordResetDialogOpen(true);
-    setAnchorEl(null);
-  };
+  const refreshData = useCallback(() => {
+    if (onUserUpdated) {
+      onUserUpdated();
+    }
+  }, [onUserUpdated]);
 
-  const handlePasswordResetDialogClose = () => {
-    setPasswordResetDialogOpen(false);
-    setSelectedUser(null);
-  };
-
-  const handleBlockClick = (user: UserProfile) => {
-    setSelectedUser(user);
-    setBlockDialogOpen(true);
-    setAnchorEl(null);
-  };
-
-  const handleBlockDialogClose = () => {
-    setBlockDialogOpen(false);
-    setSelectedUser(null);
-  };
-
+  // Menu handlers
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: UserProfile) => {
     setAnchorEl(event.currentTarget);
     setMenuUser(user);
@@ -145,6 +154,27 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     setMenuUser(null);
   };
 
+  // Dialog open handlers
+  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block', user: UserProfile) => {
+    setSelectedUser(user);
+    switch (dialogType) {
+      case 'role':
+        setRoleDialogOpen(true);
+        break;
+      case 'migration':
+        setMigrationDialogOpen(true);
+        break;
+      case 'password':
+        setPasswordResetDialogOpen(true);
+        break;
+      case 'block':
+        setBlockDialogOpen(true);
+        break;
+    }
+    setAnchorEl(null);
+  }, []);
+
+  // Menu action handlers
   const handleEditFromMenu = () => {
     if (menuUser) {
       onEditUser(menuUser);
@@ -154,8 +184,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
   const handleRoleFromMenu = () => {
     if (menuUser) {
-      handleRoleClick(menuUser);
-      handleMenuClose();
+      openDialog('role', menuUser);
     }
   };
 
@@ -167,7 +196,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   };
 
   const handleReissueCertificate = () => {
-    if (menuUser && menuUser.identifier) {
+    if (menuUser?.identifier) {
       navigate(`/users/certificates?userId=${menuUser.identifier}`);
       handleMenuClose();
     }
@@ -175,56 +204,63 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
   const handleMigrationFromMenu = () => {
     if (menuUser) {
-      handleMigrationClick(menuUser);
-      handleMenuClose();
+      openDialog('migration', menuUser);
     }
   };
 
   const handlePasswordResetFromMenu = () => {
     if (menuUser) {
-      handlePasswordResetClick(menuUser);
-      handleMenuClose();
+      openDialog('password', menuUser);
     }
   };
 
   const handleBlockFromMenu = () => {
     if (menuUser) {
-      handleBlockClick(menuUser);
-      handleMenuClose();
+      openDialog('block', menuUser);
     }
   };
 
+  // Copy email functionality
+  const handleCopyEmail = useCallback((email: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    navigator.clipboard.writeText(email)
+      .then(() => {
+        showNotification(`Email ${email} copied to clipboard`, 'success');
+      })
+      .catch(err => {
+        console.error('Failed to copy email: ', err);
+        showNotification('Failed to copy email', 'error');
+      });
+  }, [showNotification]);
 
-  // Create a ref to hold the latest form data
-  const latestFormDataRef = React.useRef<any>({});
+  // Role assignment functionality
+  const handleRoleAssignAction = useCallback(async (userId: string, orgId: string, roles: string[], initialRoles: string[]): Promise<void> => {
+    latestFormDataRef.current = { 
+      userId, 
+      orgId, 
+      roles, 
+      initialRoles,
+      selectedUser: selectedUser // Include the selected user for reference
+    };
+    handleRoleChangesSubmit();
+  }, [selectedUser]);
 
-  const handleRoleAssignAction = async (userId: string, orgId: string, roles: string[], initialRoles: string[]): Promise<void> => {
-    // Update both state and ref
-    setRoleChangesData({ userId, orgId, roles, initialRoles });
-    latestFormDataRef.current = { userId, orgId, roles, initialRoles };
-    
-    // Call handleEditSubmit which will use the latest data from the ref
-      handleRoleChangesSubmit();
-  }
-
-  // Modify your useActionInterceptor to use the ref instead
   const { handleAction: handleRoleChangesSubmit } = useActionInterceptor({
     actionType: 'Patch',
     onComplete: (interceptPayload) => handleRoleAssign(interceptPayload, latestFormDataRef.current),
     getPayload: () => ({})
   });
-  
 
-  const handleRoleAssign = async (data: any, userData: any) => {
+  const handleRoleAssign = useCallback(async (data: any, userData: any) => {
     try {
-      let changedFields = {
+      const changedFields = {
         "roles": {
           "new": userData?.roles,
-           "original": userData?.initialRoles 
-          }
+          "original": userData?.initialRoles 
         }
+      };
       
-      let request = {
+      const request = {
         payload: {
           request: {
             userId: userData?.userId,
@@ -232,163 +268,181 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             roles: userData?.roles
           }
         },
-        changedFields: changedFields|| {},
+        changedFields,
         module: moduleState?.name || 'users',
-        jiraLink:data?.jiraLink || "",
-    }
-      await usersService.modifyUserRoles(request);
+        jiraLink: data?.jiraLink || "",
+      };
 
-      setRoleDialogOpen(false);
-      setSelectedUser(null);
-      setTimeout(() => {
-        if (onUserUpdated) {
-          console.log("Roles updated, triggering data refresh");
-          onUserUpdated();
-        }
-      }, 500);
+      await usersService.modifyUserRoles(request);
+      closeDialog('role');
+      showNotification('User roles updated successfully', 'success');
+      refreshData();
     } catch (error) {
       console.error("Error assigning roles:", error);
+      showNotification('Failed to update user roles', 'error');
       throw error;
     }
-  };
+  }, [moduleState?.name, closeDialog, showNotification, refreshData]);
 
-  const handleUserMigrate = async (
-    userId: string,
-    data: {
-      channel: string;
-      forceMigration: boolean;
-      softDeleteOldOrg: boolean;
-      notifyMigration: boolean;
-    }
-  ) => {
-    try {
-      await usersService.migrateUser(userId, data);
+  // User migration functionality
+  const handleUserMigrateAction = useCallback(async (userId: string, data: any): Promise<void> => {
+    // Store both the user data and the migration data
+    latestFormDataRef.current = { 
+      userId, 
+      ...data,
+      selectedUser: selectedUser // Include the selected user for reference
+    };
+    handleMigrationChangesSubmit();
+  }, [selectedUser]);
 
-      setTimeout(() => {
-        if (onUserUpdated) {
-          console.log("User migrated, triggering data refresh");
-
-          onUserUpdated();
-        }
-      }, 1000);
-    } catch (error) {
-      console.error("Error migrating user:", error);
-      throw error;
-    }
-  };
-
-
-  // Create a ref to hold the latest form data
-  const latestPasswordResetRef = React.useRef<{ userId: string; type: "email" }>({ userId: "", type: "email" });
-  let passwordResetResolver: ((value: string) => void) | null = null;
-
-
-  const handlePasswordResetAction = async (userId: string, notificationType: "email"): Promise<string> => {
-    // Update both state and ref
-    latestPasswordResetRef.current = { userId, type: notificationType };
-
-    // Create a promise that will be resolved by handlePasswordReset
-    const resetPromise = new Promise<string>((resolve) => {
-        passwordResetResolver = resolve;
-    });
-
-    // Call handleEditSubmit which will use the latest data from the ref
-    handleResetSubmit();
-    
-    return resetPromise;
-};
-
-
-  // Modify your useActionInterceptor to use the ref instead
-  const { handleAction: handleResetSubmit } = useActionInterceptor({
+  const { handleAction: handleMigrationChangesSubmit } = useActionInterceptor({
     actionType: 'Patch',
-    onComplete:  (interceptPayload) => handlePasswordReset(interceptPayload, latestPasswordResetRef.current),
+    onComplete: (interceptPayload) => handleUserMigrate(interceptPayload, latestFormDataRef.current),
     getPayload: () => ({})
   });
 
-
-  const handlePasswordReset = async (ticket: any, data: any): Promise<void> => {
-    console.log("Resetting password for user:", user, data);
+  const handleUserMigrate = useCallback(async (ticket: any, data: any) => {
     try {
-      debugger
-      let request = {
+      const changedFields = {
+        "roles": {
+          "new": data.channel,
+          "original":  data?.selectedUser?.channel
+        }
+      };
+      
+      const request = {
+        payload: {
+          request: {
+            userId: data.userId,
+            channel: data.channel,
+            forceMigration: data.forceMigration,
+            softDeleteOldOrg: data.softDeleteOldOrg,
+            notifyMigration: data.notifyMigration
+          }
+        },
+        jiraLink: ticket?.jiraLink || "",
+        changedFields,
+        userId: data.userId,
+        module: moduleState?.name || 'users',
+      };
+
+      await usersService.migrateUser(request);
+      showNotification('User migrated successfully', 'success');
+      closeDialog('migration');
+      refreshData();
+    } catch (error) {
+      console.error("Error migrating user:", error);
+      showNotification('Failed to migrate user', 'error');
+      throw error;
+    }
+  }, [moduleState?.name, showNotification, closeDialog, refreshData]);
+
+  // Password reset functionality
+  const handlePasswordResetAction = useCallback(async (userId: string, notificationType: "email"): Promise<string> => {
+    latestPasswordResetRef.current = { 
+      userId, 
+      type: notificationType,
+      selectedUser: selectedUser // Include the selected user for reference
+    };
+
+    const resetPromise = new Promise<string>((resolve) => {
+      passwordResetResolver.current = resolve;
+    });
+
+    handleResetSubmit();
+    return resetPromise;
+  }, [selectedUser]);
+
+  const { handleAction: handleResetSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handlePasswordReset(interceptPayload, latestPasswordResetRef.current),
+    getPayload: () => ({})
+  });
+
+  const handlePasswordReset = useCallback(async (ticket: any, data: any): Promise<void> => {
+    try {
+      const request = {
         payload: {
           request: {
             userId: data?.userId,
-            key: "test", // Default key value as specified in the API
+            key: "test",
             type: data?.type
           }
         },
         jiraLink: ticket?.jiraLink || "",
-        changedFields:'',
+        changedFields: '',
         module: moduleState?.name || 'users',
+      };
+
+      const response = await usersService.resetPassword(request);
+      
+      if (passwordResetResolver.current) {
+        passwordResetResolver.current(response.result.link);
+        passwordResetResolver.current = null;
       }
-        const response = await usersService.resetPassword(request);
-        console.log("Password reset requested:", response);
-        
-
-        
-        // Resolve the promise with the reset link
-        if (passwordResetResolver) {
-            passwordResetResolver(response.result.link);
-            passwordResetResolver = null;
-        }
+      
+      showNotification('Password reset link generated successfully', 'success');
     } catch (error) {
-        console.error("Error resetting password:", error);
-        if (passwordResetResolver) {
-            passwordResetResolver(""); // or handle error appropriately
-            passwordResetResolver = null;
-        }
-        throw error;
-    }
-};
-
-  const handleUserBlock = async (userId: string, currentStatus: number, requestedById: string) => {
-    try {
-      if (currentStatus === 1) {
-        await usersService.blockUser(userId, requestedById);
-      } else {
-        await usersService.unblockUser(userId, requestedById);
+      console.error("Error resetting password:", error);
+      if (passwordResetResolver.current) {
+        passwordResetResolver.current("");
+        passwordResetResolver.current = null;
       }
-
-      setTimeout(() => {
-        if (onUserUpdated) {
-          console.log("User block status updated, triggering data refresh");
-          onUserUpdated();
-        }
-      }, 1000);
-    } catch (error) {
-      console.error("Error updating user block status:", error);
+      showNotification('Failed to reset password', 'error');
       throw error;
     }
-  };
+  }, [moduleState?.name, showNotification]);
 
-  // Updated function to handle copying email to clipboard with feedback
-  const handleCopyEmail = (email: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent triggering other click events
-    navigator.clipboard.writeText(email)
-      .then(() => {
-        setCopySnackbar({
-          open: true,
-          message: `Email ${email} copied to clipboard`
-        });
-      })
-      .catch(err => {
-        console.error('Failed to copy email: ', err);
-        setCopySnackbar({
-          open: true,
-          message: 'Failed to copy email'
-        });
-      });
-  };
+  // User Block/Unblock functionality
+  const handleUserBlockUnblockAction = useCallback(async (userId: string, currentStatus: number, requestedById: string): Promise<void> => {
+    // Store both the user data and the migration data
+    latestFormDataRef.current = { 
+      userId, 
+      currentStatus,
+      requestedById,
+      selectedUser: selectedUser // Include the selected user for reference
+    };
+    handleUserBlockUnblockSubmit();
+  }, [selectedUser]);
 
-  // Function to handle closing the snackbar
-  const handleSnackbarClose = () => {
-    setCopySnackbar({
-      ...copySnackbar,
-      open: false
-    });
-  };
+  const { handleAction: handleUserBlockUnblockSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handleUserBlock(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+
+  // User block functionality
+  const handleUserBlock = useCallback(async (ticket: any, data: any) => {
+    try {
+
+      let request = {
+        payload: {
+          request: {
+            userId: data.userId,
+            requestedBy: data.requestedById
+          }
+        },
+        jiraLink: ticket?.jiraLink || "",
+        changedFields: {'status:': {'new': data.currentStatus === 1 ? 0 : 1, 'original': data.currentStatus}},
+        module: moduleState?.name || 'users',
+        userId: data.userId
+      }
+      if (data?.currentStatus === 1) {
+        await usersService.blockUser(request);
+        showNotification('User blocked successfully', 'success');
+      } else {
+        await usersService.unblockUser(request);
+        showNotification('User unblocked successfully', 'success');
+      }
+      closeDialog('block');
+      refreshData();
+    } catch (error) {
+      console.error("Error updating user block status:", error);
+      showNotification('Failed to update user block status', 'error');
+      throw error;
+    }
+  }, [showNotification, refreshData, selectedUser]);
 
   return (
     <Paper elevation={2}>
@@ -475,6 +529,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         </Alert>
       )}
 
+      {/* Action Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -549,51 +604,44 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <ListItemText>Re-issue Certificate</ListItemText>
           </MenuItem>
         )}
-
-        {/* {menuUser?.status !== 0 && permissions.canDelete && (
-          <MenuItem onClick={handleDeleteFromMenu}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Delete User</ListItemText>
-          </MenuItem>
-        )} */}
       </Menu>
 
+      {/* Notification Snackbar */}
       <Snackbar
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        open={copySnackbar.open}
-        autoHideDuration={2000}
-        onClose={handleSnackbarClose}
-        message={copySnackbar.message}
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={closeNotification}
+        message={snackbar.message}
       />
 
+      {/* Dialogs */}
       <RoleAssignmentDialog
         open={roleDialogOpen}
-        onClose={handleRoleDialogClose}
+        onClose={() => closeDialog('role')}
         user={selectedUser}
         onRoleAssign={handleRoleAssignAction}
       />
 
       <UserMigrationDialog
         open={migrationDialogOpen}
-        onClose={handleMigrationDialogClose}
+        onClose={() => closeDialog('migration')}
         user={selectedUser}
-        onMigrate={handleUserMigrate}
+        onMigrate={handleUserMigrateAction}
       />
 
       <PasswordResetDialog
         open={passwordResetDialogOpen}
-        onClose={handlePasswordResetDialogClose}
+        onClose={() => closeDialog('password')}
         user={selectedUser}
         onResetPassword={handlePasswordResetAction}
       />
 
       <UserBlockDialog
         open={blockDialogOpen}
-        onClose={handleBlockDialogClose}
+        onClose={() => closeDialog('block')}
         user={selectedUser}
-        onBlockUser={handleUserBlock}
+        onBlockUser={handleUserBlockUnblockAction}
         currentUserId={user?.userId || ""}
       />
     </Paper>

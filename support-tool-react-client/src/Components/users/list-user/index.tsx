@@ -27,8 +27,8 @@ import { Organization } from "./types";
 import { HelpDialog } from "./HelpDialog"; // Import the new HelpDialog component
 import { CreateUserDialog } from "./CreateUserDialog"; // Import the CreateUserDialog component
 import { useActionInterceptor } from "../../../hooks/useActionInterceptor";
-import { data, useLocation } from "react-router-dom";
-import { set } from "date-fns";
+import { useLocation } from "react-router-dom";
+
 
 // Configuration constants
 const FACETS_LIST = ["rootChannel"];
@@ -282,8 +282,6 @@ export const UsersList = () => {
         query: freeTextQuery
       };
       
-      // Log the request payload for debugging
-      console.log('API request payload:', requestPayload);
       
       const data = await usersService.getUsers(requestPayload);
       if (data.result) {
@@ -548,9 +546,6 @@ export const UsersList = () => {
           }
         }
       });
-
-      console.log('Modified fields:', changedFields);
-      console.log('Update payload:', updatePayload);
       
       setModifiedFields(changedFields);
       
@@ -614,11 +609,9 @@ export const UsersList = () => {
 
   // Add a function to force refresh user data after role updates
   const forceRefreshUsers = useCallback(() => {
-    console.log("Forcing user data refresh after role update");
-    setUsers([]); // Clear current users to trigger re-fetch
-    setTimeout(() => {
-      fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
-    },1000);
+ 
+    // Fetch users with current search parameters immediately
+    fetchUsers(page, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);
   }, [page, rowsPerPage, searchQuery, selectedFilters, selectedOrg, userStatus]);
 
   // Add function to handle help dialog
@@ -647,7 +640,6 @@ export const UsersList = () => {
         }
       };
       
-      console.log("Step 1: Creating user with payload:", createUserPayload);
       
       const createResponse = await usersService.createUser(createUserPayload);
       
@@ -670,7 +662,6 @@ export const UsersList = () => {
         }
       };
       
-      console.log("Step 2: Assigning roles with payload:", roleAssignPayload);
       
       const roleResponse = await usersService.assignUserRoles(
         userId, 
@@ -703,7 +694,6 @@ export const UsersList = () => {
         }
       };
       
-      console.log("Step 3: Updating profile with payload:", profileUpdatePayload);
       
       const updateResponse = await usersService.updateUserV1(userId, profileUpdatePayload);
       

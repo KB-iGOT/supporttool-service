@@ -121,10 +121,13 @@ export const FormFilter: React.FC<FormFilterProps> = ({
   // Focus search input when dropdown opens
   useEffect(() => {
     if (openDropdown && searchInputRefs[openDropdown]?.current) {
-      // Use a small delay to ensure the dropdown is fully rendered
       const timer = setTimeout(() => {
-        searchInputRefs[openDropdown]?.current?.focus();
-      }, 50);
+        // Non-null assertion operator after checking existence
+        const inputRef = searchInputRefs[openDropdown];
+        if (inputRef?.current) {
+          searchInputRefs[openDropdown]!.current!.focus();
+        }
+      }, 100);
       
       return () => clearTimeout(timer);
     }
@@ -234,10 +237,20 @@ export const FormFilter: React.FC<FormFilterProps> = ({
   // Handle dropdown open state
   const handleDropdownOpen = (field: keyof FormFilterData) => {
     setOpenDropdown(field);
+    
+    // Clear search text immediately
     setSearchValues(prev => ({
       ...prev,
       [field]: ""
     }));
+    
+    // Try to focus immediately as well (backup to the useEffect)
+    setTimeout(() => {
+      const inputRef = searchInputRefs[field];
+      if (inputRef && inputRef.current) {
+        searchInputRefs[field]!.current!.focus();
+      }
+    }, 10);
   };
   
   // Handle dropdown close
@@ -338,7 +351,17 @@ export const FormFilter: React.FC<FormFilterProps> = ({
             onChange={(e) => handleSelectChange(e.target.value, field)}
             renderValue={(selected) => selected}
             open={openDropdown === field}
-            onOpen={() => handleDropdownOpen(field)}
+            onOpen={() => {
+              handleDropdownOpen(field);
+              
+              // Focus with a small delay to ensure dropdown is open
+              setTimeout(() => {
+                const inputRef = searchInputRefs[field];
+                if (inputRef?.current) {
+                  inputRef.current.focus();
+                }
+              }, 50);
+            }}
             onClose={handleDropdownClose}
             // Block keyboard events from activating default MUI behaviors
             onKeyDown={(e) => {

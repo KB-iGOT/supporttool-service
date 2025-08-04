@@ -1034,7 +1034,6 @@ export const CadreEdit: React.FC = () => {
           
           const response = await systemSettingsService.updateConfig(request);
           if (response && response.responseCode === "OK") {
-            console.log("Configuration updated successfully");
             setSuccessMessage("Configuration updated successfully");
             
             // Wait a moment for the user to see the success message

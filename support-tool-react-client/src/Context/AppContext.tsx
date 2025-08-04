@@ -41,7 +41,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         
         let userDecodedData = decodeCookie(userData);
         if (userDecodedData && userDecodedData?.rolePermissions) {
-          // console.log("User Role Permissions: ", userDecodedData.rolePermissions);
           
           // Transform the rolePermissions array into an object with module_url as keys
           const permissionsMap: Record<string, any> = {};
@@ -61,7 +60,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
               permissionsMap[moduleUrl] = permission;
             }
           });
-          // console.log("Module Permissions Map: ", permissionsMap);
           setModulePermissions(permissionsMap);
         }
         
@@ -110,7 +108,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         ...currentAction.payload,
         jiraLink
       };
-      console.log("Enhanced Payload: ", enhancedPayload);
       currentHandler(enhancedPayload);
     }
     resetState();

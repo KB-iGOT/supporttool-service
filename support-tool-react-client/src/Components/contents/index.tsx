@@ -50,7 +50,6 @@ const filterConfig = {
 export const Contents = () => {
 const location = useLocation();
 const moduleState = location.state;
-  console.log("Module state:", moduleState, location.state);
   const [contents, setContents] = useState<Content[]>([]);
   const [contentsCount, setContentsCount] = useState<number>(0);
   const [facets, setFacets] = useState<Facets[]>([]);
@@ -125,13 +124,11 @@ const moduleState = location.state;
 
   // Handle confirming content deletion
   const deleteHandler = async (payload: any) => {
-    console.log("Delete payload:", payload);
     if (!contentToDelete) return;
 
     setLoading(true);
     try {
       // Call the retire API
-      console.log(moduleState);
       await contentsService.retireContent({...payload, module: moduleState?.name});
       
       // Show success message
@@ -281,7 +278,6 @@ const moduleState = location.state;
   useEffect(() => {
     // Initial load - update facets
     const permissions = checkPermissions();
-    // console.log("Current module permissions:", permissions);
     try {
       fetchContents(page, rowsPerPage, searchQuery, selectedFilters, true);
     } catch (error) {

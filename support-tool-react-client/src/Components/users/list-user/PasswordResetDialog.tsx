@@ -66,7 +66,6 @@ export const PasswordResetDialog: React.FC<PasswordResetDialogProps> = ({
 
     try {
       const link = await onResetPassword(user.identifier, notificationType);
-      debugger
       setResetLink(link);
     } catch (err: any) {
       console.error("Password reset error:", err);

@@ -99,7 +99,7 @@ export const UserMigrationDialog: React.FC<UserMigrationDialogProps> = ({
       });
       
       // Close dialog on success
-      onClose();
+      // onClose();
     } catch (err: any) {
       console.error("Migration error:", err);
       setError(err.message || "Failed to migrate user. Please try again.");

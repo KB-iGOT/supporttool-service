@@ -89,7 +89,6 @@ interface ContentUploadResponse {
 
 // Add this function to transform the artifactUrl
 const transformArtifactUrl = (url: string): string => {
-  console.log(env)
   if (!url) return '';
   // Replace the Google Cloud Storage URL with the content-store URL
   return url.replace(
@@ -192,7 +191,6 @@ export const UploadContents = () => {
 
   // Get user ID for createdBy field
   useEffect(() => {
-   console.log(transformArtifactUrl('https://storage.googleapis.com/igotuat/content/do_114341418278051840182/artifact/do_114341418278051840182_1750661705875_civicconnect.pdf'))
     if (user && user.userId) {
       setContentData(prev => ({
         ...prev,
@@ -259,7 +257,6 @@ export const UploadContents = () => {
         
         if (response.status === 200 && response.result?.result?.content) {
           const contentDetails = response.result.result.content;
-          console.log('Fetched content details:', contentDetails);
           
           // Parse location if it's a string
           let locationObj = { place: '' };
@@ -702,7 +699,6 @@ export const UploadContents = () => {
         }
       };
 
-      console.log('Sending update with modified fields:', changedFields);
       
       const response = await contentsService.privateContentUpdate(
         updateData, 
