@@ -78,11 +78,11 @@ export const usersService = {
    * @param payload The user data to create
    * @returns API response
    */
-  createUser: async (payload: any) => {
+  createUser: async (requestPayload: any) => {
     try {
       const response = await apiClient.post(
         `/users/profileDetails/createUser`,
-        payload
+        requestPayload
       );
       return response.data;
     } catch (error) {

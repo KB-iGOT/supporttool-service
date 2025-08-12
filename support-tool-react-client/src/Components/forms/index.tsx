@@ -8,10 +8,16 @@ import {
   Typography, 
   Alert, 
   Divider,
-  Snackbar
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formsService } from "../../services/forms.service";
@@ -44,6 +50,8 @@ export const Forms = () => {
   const [jsonValidationMessage, setJsonValidationMessage] = useState<string>("");
   const [showValidationMessage, setShowValidationMessage] = useState<boolean>(false);
   
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
 
   // Get permissions from context
   const { checkPermissions } = useContext(AppContext) as appContextType;
@@ -302,6 +310,80 @@ export const Forms = () => {
     setShowValidationMessage(false);
   };
   
+  // Delete form confirmation dialog
+  const handleDeleteForm = () => {
+    if (!activeFilter) {
+      setJsonValidationMessage("No form selected for deletion");
+      setJsonValid(false);
+      setShowValidationMessage(true);
+      return;
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirm delete form
+  const confirmDeleteForm = useCallback(() => {
+    if (!activeFilter) return;
+    
+    // Update the ref with latest data for action interceptor
+    latestFormDataRef.current = {
+      formData: null,
+      activeFilter
+    };
+    
+    setDeleteDialogOpen(false);
+    handleDeleteFormSubmit();
+  }, [activeFilter]);
+
+  // Action interceptor for form deletion
+  const { handleAction: handleDeleteFormSubmit } = useActionInterceptor({
+    actionType: 'Delete',
+    onComplete: (interceptPayload) => deleteFormWithJira(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+  // Function that performs the actual delete with jira ticket info
+  const deleteFormWithJira = useCallback(async (interceptPayload: any, formInfo: any) => {
+    setLoading(true);
+    
+    try {
+      const request = {
+        payload: formInfo.activeFilter,
+        jiraLink: interceptPayload?.jiraLink || "",
+        module: "forms",
+      };
+      
+      const response = await formsService.deleteFormData(request);
+      
+      if (response?.status === 200) {
+        setJsonValidationMessage("Form deleted successfully!");
+        setJsonValid(true);
+        setShowValidationMessage(true);
+        
+        // Reset form state after successful deletion
+        setFormData(null);
+        setInitialFormData(null);
+        setFormLoaded(false);
+        setActiveFilter(null);
+        
+        // Refresh the forms list
+        fetchFormData();
+      } else {
+        setError("Failed to delete form: " + (response?.message || "Unknown error"));
+      }
+    } catch (err: any) {
+      console.error("Error deleting form:", err);
+      setError("Failed to delete form: " + (err.message || "Unknown error occurred"));
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, setError, setJsonValidationMessage, setJsonValid, setShowValidationMessage, fetchFormData]);
+
+  // Cancel delete dialog
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+  };
+
   if (loading && !formLoaded && !createMode) {
     return (
       <Box sx={{ width: '100%', mt: 4 }}>
@@ -329,7 +411,6 @@ export const Forms = () => {
   
   // Otherwise show the regular form filter and editor
   return (
-    
     <Box>
       {error && (<Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>)}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -375,15 +456,14 @@ export const Forms = () => {
           <CardContent>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h5">Form Configuration Editor</Typography>
-              <Box display="flex" alignItems="center">
+              <Box display="flex" alignItems="center" gap={2}>
                 {/* JSON validation indicator */}
                 {formData !== null && (
                   <Box 
                     component="span" 
                     sx={{ 
                       display: 'flex', 
-                      alignItems: 'center', 
-                      mr: 2,
+                      alignItems: 'center',
                       color: jsonValid ? 'success.main' : 'warning.main'
                     }}
                   >
@@ -396,15 +476,30 @@ export const Forms = () => {
                     </Typography>
                   </Box>
                 )}
-                 {permissions.canWrite && (<Button 
-                  variant="contained" 
-                  color="primary" 
-                  onClick={handleSaveExistingForm}
-                  disabled={loading || !jsonValid}
-                  startIcon={<SaveIcon />}
-                >
-                  Save Configuration
-                </Button>)}
+                {permissions.canDelete &&(
+                  <Button 
+                      variant="outlined" 
+                      color="error" 
+                      onClick={handleDeleteForm}
+                      disabled={loading}
+                      startIcon={<DeleteIcon />}
+                    >
+                      Delete Form
+                    </Button>
+                )}
+                {permissions.canWrite && (
+                  <>
+                    <Button 
+                      variant="contained" 
+                      color="primary" 
+                      onClick={handleSaveExistingForm}
+                      disabled={loading || !jsonValid}
+                      startIcon={<SaveIcon />}
+                    >
+                      Save Configuration
+                    </Button>
+                  </>
+                )}
               </Box>
             </Box>
             
@@ -459,6 +554,41 @@ export const Forms = () => {
           {jsonValidationMessage}
         </Alert>
       </Snackbar>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={cancelDelete}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Confirm Form Deletion
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete this form configuration? This action cannot be undone.
+            {activeFilter && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Typography variant="body2"><strong>Type:</strong> {activeFilter.type}</Typography>
+                <Typography variant="body2"><strong>Subtype:</strong> {activeFilter.subtype}</Typography>
+                <Typography variant="body2"><strong>Action:</strong> {activeFilter.action}</Typography>
+                <Typography variant="body2"><strong>Component:</strong> {activeFilter.component}</Typography>
+                <Typography variant="body2"><strong>Framework:</strong> {activeFilter.framework}</Typography>
+                <Typography variant="body2"><strong>Root Org:</strong> {activeFilter.root_org}</Typography>
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={confirmDeleteForm} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

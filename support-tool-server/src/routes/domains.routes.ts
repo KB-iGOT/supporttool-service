@@ -14,6 +14,6 @@ domainRoutes.route("/add")
 }); 
 
 domainRoutes.route("/delete/:id")
-  .get(userSession, deleteDomain);
+  .post(userSession, deleteDomain);
 
 export default domainRoutes;

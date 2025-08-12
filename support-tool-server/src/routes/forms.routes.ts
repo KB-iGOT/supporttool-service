@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getFacetsForms , getFormRead, createFormData, updateFormData} from "../controllers/forms.controller";
+import { getFacetsForms , getFormRead, createFormData, updateFormData, deleteFormData} from "../controllers/forms.controller";
 import { userSession } from "../helpers/authHelper";
 
 const FormsRoutes = express.Router();
@@ -19,5 +19,8 @@ FormsRoutes.route("/create")
 
 FormsRoutes.route("/update")
 .post(userSession, updateFormData);
+
+FormsRoutes.route("/delete")
+  .post(userSession, deleteFormData);
 
 export default FormsRoutes ;

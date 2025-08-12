@@ -36,4 +36,8 @@ export const formsService = {
     const response = await apiClient.post(`/forms/create`, request);
     return response.data;
   },
+  deleteFormData: async (request: any) => {
+    const response = await apiClient.post(`/forms/delete`, request);
+    return response.data;
+  },
 };

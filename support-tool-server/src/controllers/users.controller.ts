@@ -198,14 +198,40 @@ export const updateSuperUser: RequestHandler = async (req: any, res: Response) =
 };
 
 export const createUsers: RequestHandler = async (req: any, res: Response) => {
-  const userEmail = req.body.personalDetails?.email || 'unknown email';
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  } = req.body;
+  const user_id = req.headers["x-user-id"];
+  
+  // Support both direct request and audit-wrapped request formats
+  const actualPayload = payload || req.body;
+  const userEmail = actualPayload.personalDetails?.email || 
+                   actualPayload.request?.email || 
+                   actualPayload.email || 
+                   'unknown email';
+  
+  const auditObject = createAuditObject(
+    user_id,
+    module || "USER_MANAGEMENT",
+    "CREATE_USER",
+    "CREATE",
+    userId || userEmail,
+    actualPayload,
+    changedFields || {},
+    jiraLink
+  );
+
   logger.info(`Creating new user with email: ${userEmail}`);
   
   try {
     const adminToken = await fetchAdminAccessToken();
     
     if (process.env.NODE_ENV !== 'production') {
-      const sanitizedPayload = sanitizeUserPayload(req.body);
+      const sanitizedPayload = sanitizeUserPayload(actualPayload);
       logger.debug(`User creation payload: ${JSON.stringify(sanitizedPayload)}`);
     }
     
@@ -213,12 +239,20 @@ export const createUsers: RequestHandler = async (req: any, res: Response) => {
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/user/v3/create`,
       headers: createApiHeaders(adminToken),
-      data: req.body
+      data: actualPayload
     });
 
     logger.info(`User created successfully with email: ${userEmail}`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "User created successfully",
+    });
+    
     res.status(200).send(response.data);
   } catch (error) {
+    await auditLogApiError(error, res, `Error creating user ${userEmail}`, auditObject);
     handleApiError(error, res, `Error creating user ${userEmail}`);
   }
 };
@@ -643,6 +677,7 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
   const auditObject = createAuditObject(
     user_id,
     module,
+    "RESET_PASSWORD",
     "UPDATE",
     userId,
     payload,

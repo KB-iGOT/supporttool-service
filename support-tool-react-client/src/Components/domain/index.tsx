@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Box, 
   Table, 
@@ -33,6 +33,7 @@ import { FormData as CustomFormData } from "../../types/forms";
 import { domainService } from "../../services/domain.service";
 import { appContextType } from "../../types";
 import { AppContext } from "../../Context/AppContext";
+import { useActionInterceptor } from '../../hooks/useActionInterceptor';
 
 interface Domain {
   id: string;
@@ -135,15 +136,44 @@ export const Domain = () => {
     setOpenDialog(true);
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(() => {
     if (!domainToDelete) return;
+    
+    // Update the ref with latest data
+    latestDeleteDataRef.current = {
+      domainToDelete
+    };
+    
+    // Close the dialog first
+    setOpenDialog(false);
+    
+    // Trigger the action interceptor
+    handleDeleteDomainWithJira();
+  }, [domainToDelete]);
+
+  // Action interceptor for domain deletion
+  const { handleAction: handleDeleteDomainWithJira } = useActionInterceptor({
+    actionType: 'Delete',
+    onComplete: (interceptPayload) => deleteDomainWithJira(interceptPayload, latestDeleteDataRef.current),
+    getPayload: () => ({})
+  });
+
+  // Function that performs the actual delete with jira ticket info
+  const deleteDomainWithJira = useCallback(async (interceptPayload: any, deleteInfo: any) => {
+    if (!deleteInfo.domainToDelete) return;
     
     setLoading(true);
     try {
-      const response = await domainService.deleteDomain(domainToDelete.contextName);
+      const auditPayload = {
+        jiraLink: interceptPayload?.jiraLink || "",
+        module: "domains"
+      };
+
+      await domainService.deleteDomain(deleteInfo.domainToDelete.contextName, auditPayload);
+      
       setSnackbar({
         open: true,
-        message: `Domain '${domainToDelete.contextName}' deleted successfully`,
+        message: `Domain '${deleteInfo.domainToDelete.contextName}' deleted successfully`,
         severity: "success",
       });
       
@@ -158,10 +188,24 @@ export const Domain = () => {
       });
     } finally {
       setLoading(false);
-      setOpenDialog(false);
       setDomainToDelete(null);
     }
-  };
+  }, [setLoading, fetchDomains, setSnackbar, setDomainToDelete]);
+
+  // Create refs to hold the latest data for action interceptors
+  const latestDomainDataRef = useRef<{
+    domainInput: string;
+    requestPayload: any;
+  }>({
+    domainInput: '',
+    requestPayload: null
+  });
+
+  const latestDeleteDataRef = useRef<{
+    domainToDelete: Domain | null;
+  }>({
+    domainToDelete: null
+  });
 
   // Handle domain input change
   const handleDomainInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,8 +222,8 @@ export const Domain = () => {
     }
   };
 
-  // Handle add domain submission
-  const handleAddDomainSubmit = async () => {
+  // Modified handleAddDomainSubmit to use action interceptor
+  const handleAddDomainSubmit = useCallback(() => {
     // Validate domain before submitting
     if (!domainInput) {
       setDomainInputError("Domain name is required");
@@ -190,18 +234,44 @@ export const Domain = () => {
       setDomainInputError("Please enter a valid domain name (e.g., yahoo.com, gmail.com)");
       return;
     }
+
+    // Update the ref with latest data
+    const formData = { contextName: domainInput };
+    const requestPayload = { 
+      request: formData,
+      module: "domains"
+    };
     
+    latestDomainDataRef.current = {
+      domainInput,
+      requestPayload
+    };
+    
+    // Trigger the action interceptor
+    handleAddDomainSubmitWithJira();
+  }, [domainInput, domainNamePattern]);
+
+  // Action interceptor for domain addition
+  const { handleAction: handleAddDomainSubmitWithJira } = useActionInterceptor({
+    actionType: 'Post',
+    onComplete: (interceptPayload) => addDomainWithJira(interceptPayload, latestDomainDataRef.current),
+    getPayload: () => ({})
+  });
+
+  // Function that performs the actual add with jira ticket info
+  const addDomainWithJira = useCallback(async (interceptPayload: any, domainInfo: any) => {
     setLoading(true);
     try {
-      const formData = { contextName: domainInput };
-      const requestPayload = { request: formData };
+      const requestPayloadWithJira = {
+        ...domainInfo.requestPayload,
+        jiraLink: interceptPayload?.jiraLink || ""
+      };
 
-       await domainService.addDomain(requestPayload);
-      
+      await domainService.addDomain(requestPayloadWithJira);
       
       setSnackbar({
         open: true,
-        message: `Domain '${domainInput}' added successfully`,
+        message: `Domain '${domainInfo.domainInput}' added successfully`,
         severity: "success",
       });
       
@@ -218,10 +288,10 @@ export const Domain = () => {
       
       // Check for conflict status (409) which indicates duplicate domain
       if (error.response && error.response.status === 409) {
-        setDomainInputError(`Domain '${domainInput}' already exists`);
+        setDomainInputError(`Domain '${domainInfo.domainInput}' already exists`);
         setSnackbar({
           open: true,
-          message: `Domain '${domainInput}' already exists`,
+          message: `Domain '${domainInfo.domainInput}' already exists`,
           severity: "error",
         });
       } else {
@@ -235,7 +305,7 @@ export const Domain = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setLoading, fetchDomains, setPage, setSnackbar, setOpenAddDialog, setDomainInput, setDomainInputError]);
 
   const handleOpenAddDialog = () => {
     setOpenAddDialog(true);

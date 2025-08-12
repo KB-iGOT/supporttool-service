@@ -687,6 +687,170 @@ export const updateFormData: RequestHandler = async (
     }
 };
 
+export const deleteFormData: RequestHandler = async (
+    req: any,
+    res: Response
+) => {
+    logger.info("Deleting form data from Cassandra");
+    
+    const {
+        payload,
+        jiraLink,
+        module,
+    } = req.body;
+    const user_id = req.headers["x-user-id"];
+
+    try {
+        // Extract all required parameters from request body
+        const { 
+            type,
+            subtype,
+            action,
+            root_org,
+            component,
+            framework
+        } = payload;
+        
+        // Validate required parameters
+        if (!type || !subtype || !action || !root_org || !component || !framework) {
+            logger.warn("Missing required parameters for form data deletion");
+            res.status(400).json({
+                status: 400,
+                message: "All parameters (type, subtype, action, root_org, component, framework) are required"
+            });
+            return;
+        }
+        
+        // First, fetch the existing form data to track what's being deleted
+        const fetchQuery = `
+            SELECT * FROM qmzbm_form_service.form_data 
+            WHERE type = ? 
+            AND subtype = ? 
+            AND action = ? 
+            AND root_org = ? 
+            AND component = ? 
+            AND framework = ?
+        `;
+        
+        const fetchParams = [type, subtype, action, root_org, component, framework];
+        const fetchResult = await cassandraClient.execute(fetchQuery, fetchParams, { prepare: true });
+        
+        // If no form exists with these parameters, return an error
+        if (!fetchResult.rows || fetchResult.rows.length === 0) {
+            logger.warn(`Form with the specified parameters does not exist and cannot be deleted.`);
+            res.status(404).json({
+                status: 404,
+                message: "No form found with these parameters. Nothing to delete."
+            });
+            return;
+        }
+        
+        // Get the existing form data for audit logging
+        const existingForm = fetchResult.rows[0];
+        
+        // Create audit object for deletion
+        const auditObject = createAuditObject(
+            user_id,
+            module || 'forms',
+            'FORM_DELETE',
+            "DELETE",
+            `${type}:${subtype}:${action}:${root_org}:${component}:${framework}`, // composite ID
+            payload,
+            { deletedData: existingForm }, // Store what was deleted
+            jiraLink
+        );
+        
+        // Prepare the delete query
+        const deleteQuery = `
+            DELETE FROM qmzbm_form_service.form_data 
+            WHERE type = ? 
+            AND subtype = ? 
+            AND action = ? 
+            AND root_org = ? 
+            AND component = ? 
+            AND framework = ?
+        `;
+        
+        // Parameters in the order they appear in the query
+        const deleteParams = [type, subtype, action, root_org, component, framework];
+        
+        logger.info(`Deleting form data with parameters: type=${type}, subtype=${subtype}, action=${action}, root_org=${root_org}, component=${component}, framework=${framework}`);
+        
+        // Execute the delete query
+        await cassandraClient.execute(deleteQuery, deleteParams, { prepare: true });
+        
+        logger.info(`Successfully deleted form data`);
+        
+        // Response object
+        const response = {
+            type,
+            subtype,
+            action,
+            root_org,
+            component,
+            framework,
+            deleted_at: new Date().toISOString()
+        };
+        
+        // Log the audit entry
+        await logAudit({
+            ...auditObject,
+            status: "SUCCESS",
+            response_payload: JSON.stringify(response),
+            message: "Form data deleted successfully",
+        });
+        
+        // Send success response
+        res.status(200).json({
+            status: 200,
+            message: "Form data deleted successfully",
+            result: response
+        });
+        
+    } catch (error) {
+        logger.error("Error deleting form data from Cassandra: " + error);
+        
+        // Handle audit logging for failure
+        try {
+            const auditErrorObject = createAuditObject(
+                user_id,
+                module || 'forms',
+                'FORM_DELETE',
+                "DELETE",
+                `${payload?.type || ''}:${payload?.subtype || ''}:${payload?.action || ''}:${payload?.root_org || ''}:${payload?.component || ''}:${payload?.framework || ''}`,
+                payload,
+                { error: (error as any).message },
+                jiraLink
+            );
+            
+            await logAudit({
+                ...auditErrorObject,
+                status: "FAILURE",
+                response_payload: JSON.stringify({
+                    message: (error as any).message || "Unknown error"
+                }),
+                message: "Form data deletion failed",
+            });
+        } catch (auditError) {
+            logger.error("Failed to log audit for failed form deletion: " + auditError);
+        }
+        
+        // Provide detailed error information for debugging
+        const errorMessage = (error as any).message || "Unknown error";
+        const errorCode = (error as any).code || "UNKNOWN";
+        
+        logger.error(`Cassandra error details - Code: ${errorCode}, Message: ${errorMessage}`);
+        
+        // Send error response
+        res.status(500).json({
+            status: 500,
+            message: "Error deleting form data",
+            error: errorMessage,
+            code: errorCode
+        });
+    }
+};
+
 export const getFacetsFormsbackup: RequestHandler = async (
     req: any,
     res: Response

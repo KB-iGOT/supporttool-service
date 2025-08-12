@@ -204,6 +204,7 @@ export const UsersList = () => {
   
   // Create a ref to hold the latest form data
   const latestFormDataRef = useRef<CustomFormData>({});
+  const latestCreateDataRef = useRef<any>({});
 
   const handleEditAction = (data: CustomFormData) => {
     // Update both state and ref
@@ -214,10 +215,25 @@ export const UsersList = () => {
     handleEditSubmit();
   }
 
+  const handleCreateAction = (data: any) => {
+    // Update the ref with create data
+    latestCreateDataRef.current = data;
+    
+    // Call handleCreateSubmit which will use the latest data from the ref
+    handleCreateSubmit();
+  }
+
   // Modify your useActionInterceptor to use the ref instead
   const { handleAction: handleEditSubmit } = useActionInterceptor({
     actionType: 'Patch',
     onComplete: (interceptPayload) => handleSubmit(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+  // Add useActionInterceptor for create user
+  const { handleAction: handleCreateSubmit } = useActionInterceptor({
+    actionType: 'Post',
+    onComplete: (interceptPayload) => handleCreateUser(interceptPayload, latestCreateDataRef.current),
     getPayload: () => ({})
   });
 
@@ -625,19 +641,30 @@ export const UsersList = () => {
 
   // Modify the handleCreateUser function to call all three APIs in sequence
 
-  const handleCreateUser = async (data: any) => {
+  const handleCreateUser = async (interceptPayload: CustomFormData, data: any) => {
     try {
       setCreatingUser(true);
       
-      // Step 1: Create the user
+      // Step 1: Create the user with audit logging support
       const createUserPayload = {
-        request: {
-          email: data.email,
-          firstName: data.firstName,
-          lastName: "",
-          password: "Password@123", // Default password, should be changed by user later
-          channel: data.channel
-        }
+        payload: {
+          request: {
+            email: data.email,
+            firstName: data.firstName,
+            lastName: "",
+            password: "Password@123", // Default password, should be changed by user later
+            channel: data.channel
+          }
+        },
+        changedFields: {
+          'New User': {
+            original: '',
+            new: `${data.firstName} (${data.email})`
+          }
+        },
+        userId: data.email, // Use email as identifier for audit
+        jiraLink: interceptPayload.jiraLink, // Use jiraLink from interceptor
+        module: moduleState?.name || 'users',
       };
       
       
@@ -856,7 +883,7 @@ export const UsersList = () => {
       <CreateUserDialog
         open={createUserDialogOpen}
         onClose={() => setCreateUserDialogOpen(false)}
-        onSubmit={handleCreateUser}
+        onSubmit={handleCreateAction}
         processing={creatingUser}
       />
     </>
