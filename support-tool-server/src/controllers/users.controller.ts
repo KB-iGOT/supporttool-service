@@ -124,7 +124,7 @@ export const updateUser: RequestHandler = async (req: any, res: Response) => {
     module,
     "UPDATE_USER",
     "UPDATE",
-    userId,
+    userId || '',
     payload,
     changedFields,
     jiraLink
