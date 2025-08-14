@@ -271,6 +271,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         changedFields,
         module: moduleState?.name || 'users',
         jiraLink: data?.jiraLink || "",
+            userId: userData?.userId,
       };
 
       await usersService.modifyUserRoles(request);
@@ -371,6 +372,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         },
         jiraLink: ticket?.jiraLink || "",
         changedFields: '',
+        userId: data?.userId,
         module: moduleState?.name || 'users',
       };
 

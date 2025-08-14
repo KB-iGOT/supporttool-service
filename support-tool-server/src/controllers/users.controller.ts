@@ -130,7 +130,7 @@ export const updateUser: RequestHandler = async (req: any, res: Response) => {
     jiraLink
   );
 
-  if (!userId) {
+  if (!user_id) {
     const error: ApiResponse = {
       status: 400,
       responseCode: "CLIENT_ERROR",

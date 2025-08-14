@@ -110,6 +110,12 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
       '/forms/edit/:id',
       '/forms/create',
       '/roles',
+      '/api-cals',
+      '/non-logged-in-page',
+      '/non-logged-in-page/:id',
+      '/non-logged-in-page/:id/upload-contents',
+      'non-logged-in-page/:id/edit/:doId'
+
     ],
     isAuthenticated,
     (req: Request, res: Response) => {
