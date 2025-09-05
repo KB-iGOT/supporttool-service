@@ -19,12 +19,14 @@ import UsersRoutes from "./routes/users.routes";
 import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
 import organisationsRoutes from "./routes/organisations.routes";
+import auditLogsRoutes from "./routes/audit-logs.routes";
 import clientRoutes from "./helpers/clientRoutes";
 import { connectCassandra } from "./utils/cassandra";
 import domainRoutes from "./routes/domains.routes";
 import privateRoutes from "./routes/private.routes";
 import rolesRouter from "./routes/roles.routes";
 import proxyRoutes from "./routes/proxy.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 
 
 const app = express();
@@ -153,6 +155,7 @@ clientRoutes(app, isAuthenticated);
 app.use('/api/auth', authRoutes);
 app.use("/api/support-users", supportUserRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/analytics", analyticsRoutes); // Analytics uses same endpoints as dashboard
 app.use("/api/modules", moduleRoutes);
 app.use("/api/channels", channelsRoutes);
 app.use("/api/contents", ContentsRoutes);
@@ -162,6 +165,7 @@ app.use("/api/org", organisationsRoutes);
 app.use("/api/domains", domainRoutes);
 app.use("/api/private", privateRoutes);
 app.use("/api/proxy", proxyRoutes);
+app.use("/api/audit-logs", auditLogsRoutes);
 
 app.use("/api/system/settings", SystemSettingsRoutes);
 app.use("/api/roles", rolesRouter);

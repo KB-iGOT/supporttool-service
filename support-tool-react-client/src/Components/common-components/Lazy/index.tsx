@@ -122,6 +122,20 @@ const ApiCalls = lazy(() =>
   }))
 );
 
+const AuditLogs = lazy(() =>
+  import("../../audit-logs").then((module) => ({
+    default: module.AuditLogs,
+  }))
+);
+
+const Analytics = lazy(() =>
+  import("../../analytics").then((module) => ({
+    default: module.Analytics,
+  }))
+);
+
+
+
 const LazyApp = () => {
   return (
       <Suspense fallback={<div>Loading route...</div>}>
@@ -244,6 +258,23 @@ const LazyApp = () => {
         /> */}
 
         <Route path="/api-cals" element={<ApiCalls />} />
+        <Route
+            path="/audit-logs"
+            element={
+              <ProtectedRoute>
+                <AuditLogs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          
         <Route
             path="/non-logged-in-page"
             element={

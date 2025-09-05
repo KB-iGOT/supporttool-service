@@ -111,6 +111,8 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
       '/forms/create',
       '/roles',
       '/api-cals',
+      '/audit-logs',
+      '/analytics',
       '/non-logged-in-page',
       '/non-logged-in-page/:id',
       '/non-logged-in-page/:id/upload-contents',
