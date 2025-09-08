@@ -235,9 +235,9 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
       await onRoleAssign(user.identifier, user.rootOrgId, selectedRoles,initialRoles);
       
       // Add a small delay to ensure the server has time to process the update
-      setTimeout(() => {
-        onClose();
-      }, 500);
+      // setTimeout(() => {
+      //   onClose();
+      // }, 500);
     } catch (error) {
       console.error('Error assigning roles:', error);
       setError('Failed to assign roles');
@@ -264,7 +264,7 @@ export const RoleAssignmentDialog: React.FC<RoleAssignmentDialogProps> = ({
   return (
     <Dialog 
       open={open} 
-      onClose={onClose}
+      onClose={(event, reason) => reason !== 'backdropClick' && (loading ? undefined : onClose())}
       maxWidth="md"
       fullWidth
     >

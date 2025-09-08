@@ -35,6 +35,7 @@ export const DeleteOrg = () => {
 
   // Get permissions from context
   const { checkPermissions } = React.useContext(AppContext) as appContextType;
+  
   const permissions = checkPermissions();
 
   const handleFetchOrg = async () => {

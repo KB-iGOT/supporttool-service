@@ -19,8 +19,8 @@ const apiClient = axios.create({
 // API Service for Modules
 export const organisationService = {
   // Fetch all Modules
-  fetchOrganisations: async () => {
-    const response = await apiClient.get(`/org`);
+  fetchOrganisations: async (request: any) => {
+    const response = await apiClient.post(`/org`, request);
     return response.data;
   },
   fetchOrganisationsData: async (request:any) => {

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { RequestHandler } from "express";
-import request from "request";
+import axios from "axios";
 import { connectPostgres } from "../utils/postgres";
 import logger from "../utils/logger";
 
@@ -8,51 +8,34 @@ export const fetchOrganisations: RequestHandler = async (
   req: Request,
   res: Response
 ) => {
-  logger.info("Fetching all organizations...");
+  logger.info("Fetching organizations with search criteria...");
 
   try {
-    var options = {
+    const options = {
       method: "POST",
       url: `${process.env.KONG_API_URL}api/org/v1/search`,
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
       },
-      body: JSON.stringify({
-        request: {
-          filters: {
-            isRootOrg: true,
-          },
-          offset: 0,
-          limit: 1000,
-          sort_by: {},
-          fields: [],
-        },
-      }),
+      data: req.body, // Pass the request body from the client
     };
 
     logger.debug(`API request options: ${JSON.stringify(options)}`);
 
-    request(options, function (error, response, body) {
-      if (error) {
-        logger.error("Error fetching organisations:"+ error);
-        res
-          .status(500)
-          .send({ message: "Internal server error", error: error.message });
-      } 
-      
-      if (body) {
-        logger.info(`Successfully fetched ${JSON.parse(body).result?.response?.count || 0} organizations`);
-        res.status(200).send(body);
-      } else {
-        logger.error("Empty response body from organization API");
-        res.status(500).send({ status: 500, message: "Internal server error" });
-      }
-    });
+    const response = await axios(options);
+
+    if (response.data) {
+      logger.info(`Successfully fetched ${response.data.result?.response?.count || 0} organizations`);
+      res.status(200).send(response.data);
+    } else {
+      logger.error("Empty response body from organization API");
+      res.status(500).send({ status: 500, message: "Internal server error" });
+    }
   } catch (error) {
-    logger.error("❌ Error in fetchOrganisations controller:"+ error);
-     res.status(500).send({ 
-      message: "Internal server error", 
+    logger.error("❌ Error in fetchOrganisations controller:" + error);
+    res.status(500).send({
+      message: "Internal server error",
       error: error instanceof Error ? error.message : String(error)
     });
   }
@@ -192,42 +175,26 @@ export const fetchOrganisationsData: RequestHandler = async (
   res: Response
 ) => {
   logger.info("Fetching organizations data...");
-
   try {
-    // Notice how fetchOrganisations function stringifies the body, but this one doesn't
-    var options = {
+    const options = {
       method: "POST",
       url: `${process.env.KONG_API_URL}api/org/v1/search`,
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
       },
-      body: JSON.stringify(req.body)  // Add JSON.stringify here
-    }
+      data: req.body,
+    };
     logger.debug(`API request options: ${JSON.stringify(options)}`);
 
-    request(options, function (error, response, body) {
-      if (error) {
-        logger.error("Error fetching organisations:"+ error);
-        res
-          .status(500)
-          .send({ message: "Internal server error", error: error.message });
-        return;
-      } 
-      
-      if (body) {
-        logger.info(`Successfully fetched ${JSON.parse(body).result?.response?.count || 0} organizations`);
-        res.status(200).send(body);
-      } else {
-        logger.error("Empty response body from organization API");
-        res.status(500).send({ status: 500, message: "Internal server error" });
-      }
-    });
-    
+    const response = await axios(options);
+
+    logger.info(`Successfully fetched ${response.data.result?.response?.count || 0} organizations`);
+    res.status(200).send(response.data);
   } catch (error) {
-    logger.error("❌ Error in fetchOrganisationsData controller:"+ error);
-    res.status(500).send({ 
-      message: "Internal server error", 
+    logger.error("❌ Error in fetchOrganisationsData controller:" + error);
+    res.status(500).send({
+      message: "Internal server error",
       error: error instanceof Error ? error.message : String(error)
     });
   }

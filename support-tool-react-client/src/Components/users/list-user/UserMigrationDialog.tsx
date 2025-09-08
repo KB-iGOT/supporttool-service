@@ -111,7 +111,7 @@ export const UserMigrationDialog: React.FC<UserMigrationDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={processing ? undefined : onClose}
+      onClose={(event, reason) => reason !== 'backdropClick' && (processing ? undefined : onClose())}
       maxWidth="md"
       fullWidth
     >

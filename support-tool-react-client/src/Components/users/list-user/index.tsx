@@ -75,7 +75,7 @@ const sampleFields: FieldDefinition[] = [
     name: 'phone',
     displayName: 'Phone Number',
     fieldType: 'tel',
-    optional: false,
+    optional: true,
     selected: true,
     order: 3,
     placeholder: 'Enter phone number',
@@ -191,7 +191,7 @@ export const UsersList = () => {
   const [creatingUser, setCreatingUser] = useState(false);
 
   // Add new state for user status
-  const [userStatus, setUserStatus] = useState<UserStatusType>('active');
+  const [userStatus, setUserStatus] = useState<UserStatusType>('all');
 
   // Refs
   const initialLoadComplete = useRef(false);
@@ -249,6 +249,7 @@ export const UsersList = () => {
   ) => {
     setLoading(true);
     let freeTextQuery : string = '';
+    console.log(permissions,'permissionspermissionspermissions')
     try {
       // Build the filter object based on search type and query
       let searchFilters = { ...filters };
@@ -464,7 +465,7 @@ export const UsersList = () => {
   const handleClearSearch = () => {
     setSearchQuery("");
     setSelectedOrg(null);
-    setUserStatus('active');
+    setUserStatus('all');
     setPage(0);
     setUsers([]);
   };
@@ -532,7 +533,7 @@ export const UsersList = () => {
             const pathParts = field.fieldPath.split('.');
             
             // Special handling for email field which needs to be at the top level and in personalDetails
-            if (field.identifier === 'email') {
+            if (field.identifier === 'email' && newValue) {
               // Email needs to be in both root level and in personalDetails
               updatePayload.request.email = newValue;
               
@@ -542,6 +543,16 @@ export const UsersList = () => {
               }
               // Set email in personalDetails
               updatePayload.request.profileDetails.personalDetails.primaryEmail = newValue;
+            } else if (field.identifier === 'phone' && newValue) {
+              // Email needs to be in both root level and in personalDetails
+              updatePayload.request.phone = newValue;
+              
+              // Ensure personalDetails exists
+              if (!updatePayload.request.profileDetails.personalDetails) {
+                updatePayload.request.profileDetails.personalDetails = {};
+              }
+              // Set email in personalDetails
+              updatePayload.request.profileDetails.personalDetails.mobile = newValue;
             } else {
               // For other fields, navigate the path and set the value
               let current = updatePayload.request;
@@ -575,6 +586,7 @@ export const UsersList = () => {
         setOpen(false);
         return;
       }
+      // updatePayload = {email: '',}
       let request  = {
         payload: updatePayload,
         changedFields,
@@ -877,6 +889,7 @@ export const UsersList = () => {
         fields={sampleFields}
         initialData={originalUserData}
         onSubmit={handleEditAction}
+        onBackDropClose={true}
       />
 
       {/* Create User Dialog */}

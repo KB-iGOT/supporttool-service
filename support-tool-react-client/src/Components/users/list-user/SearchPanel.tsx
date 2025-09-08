@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
   Paper,
@@ -56,7 +56,7 @@ export const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
     type: 'email',
     label: 'Email',
     placeholder: 'Enter user email',
-    path: 'profileDetails.personalDetails.primaryEmail',
+    path: 'email',
     icon: <EmailIcon />
   },
   phone: {
@@ -136,15 +136,11 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   // State for validation
   const [searchErrors, setSearchErrors] = useState<Record<string, string | undefined>>({});
   
-  // Available roles options
-  const rolesOptions = [
-    "PUBLIC",
-    "CONTENT_CREATOR", 
-    "CONTENT_REVIEWER",
-    "ORG_ADMIN",
-    "MDO_ADMIN",
-    "MDO_LEADER",
-  ];
+  // Available roles options from environment variables
+  const rolesOptions: string[] = useMemo(() => {
+    const rolesString = process.env.REACT_APP_ROLES_LIST || '';
+    return rolesString ? rolesString.split(',').sort() : [];
+  }, []);
 
   // Validation functions
   const validateInput = (value: string, type: SearchFieldType): boolean => {
@@ -342,7 +338,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                       ) : null
                     }
                   >
-                    {rolesOptions.map((role) => (
+                    {rolesOptions && rolesOptions.map((role:any) => (
                       <MenuItem key={role} value={role}>
                         {role}
                       </MenuItem>

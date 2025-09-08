@@ -18,7 +18,8 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
-  Snackbar
+  Snackbar,
+  Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PencilIcon from "@mui/icons-material/Edit";
@@ -31,6 +32,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { UserProfile } from "../../../types/users";
+import { JsonViewerDialog } from "../../common-components/JsonViewerDialog";
 import { RoleAssignmentDialog } from "./RoleAssignmentDialog";
 import { UserMigrationDialog } from "./UserMigrationDialog";
 import { PasswordResetDialog } from "./PasswordResetDialog";
@@ -38,6 +40,7 @@ import { UserBlockDialog } from "./UserBlockDialog";
 import { usersService } from "../../../services/users.service";
 import { AppContext } from "../../../Context/AppContext";
 import { appContextType } from "../../../types";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useActionInterceptor } from "../../../hooks/useActionInterceptor";
 
 interface UsersTableProps {
@@ -88,6 +91,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [passwordResetDialogOpen, setPasswordResetDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   // Menu states
@@ -119,7 +123,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
-  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block') => {
+  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view') => {
     switch (dialogType) {
       case 'role':
         setRoleDialogOpen(false);
@@ -132,6 +136,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         break;
       case 'block':
         setBlockDialogOpen(false);
+        break;
+      case 'view':
+        setViewDetailsDialogOpen(false);
         break;
     }
     setSelectedUser(null);
@@ -155,7 +162,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   };
 
   // Dialog open handlers
-  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block', user: UserProfile) => {
+  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view', user: UserProfile) => {
     setSelectedUser(user);
     switch (dialogType) {
       case 'role':
@@ -169,6 +176,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         break;
       case 'block':
         setBlockDialogOpen(true);
+        break;
+      case 'view':
+        setViewDetailsDialogOpen(true);
         break;
     }
     setAnchorEl(null);
@@ -217,6 +227,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const handleBlockFromMenu = () => {
     if (menuUser) {
       openDialog('block', menuUser);
+    }
+  };
+
+  const handleViewDetailsFromMenu = () => {
+    if (menuUser) {
+      openDialog('view', menuUser);
     }
   };
 
@@ -458,7 +474,8 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   <TableCell>Organization</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Phone</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell>User Status</TableCell>
+                  <TableCell>Profile Status</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -495,6 +512,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                     <TableCell>
                       {row?.profileDetails?.personalDetails?.mobile || "-"}
                     </TableCell>
+                    <TableCell><Chip 
+                        label={row?.status === 1 ? "Active" : "Inactive"}
+                        color={row?.status === 1 ? "success" : "error"}
+                        size="small"
+                        sx={{ mr: { xs: 0, sm: 1 } }}
+                      />
+                </TableCell>
                     <TableCell>{row?.profileDetails?.profileStatus || "-"}</TableCell>
                     <TableCell align="right">
                       <Tooltip title="User Actions">
@@ -598,6 +622,15 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
+        {permissions.canWrite && (
+          <MenuItem onClick={handleViewDetailsFromMenu}>
+            <ListItemIcon>
+              <VisibilityIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>View Full Details</ListItemText>
+          </MenuItem>
+        )}
+
         {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleReissueCertificate}>
             <ListItemIcon>
@@ -645,6 +678,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         user={selectedUser}
         onBlockUser={handleUserBlockUnblockAction}
         currentUserId={user?.userId || ""}
+      />
+
+      <JsonViewerDialog
+        open={viewDetailsDialogOpen}
+        onClose={() => closeDialog('view')}
+        title={`User Details: ${selectedUser?.firstName || ''}`}
+        data={selectedUser}
       />
     </Paper>
   );

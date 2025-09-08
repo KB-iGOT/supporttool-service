@@ -61,6 +61,7 @@ export const checkModulePermission = (
   modulePermissions: Record<string, any>,
   path: string
 ) => {
+  
   const basePath = getBasePath(path);
   const permissions = modulePermissions[basePath] || {};
   

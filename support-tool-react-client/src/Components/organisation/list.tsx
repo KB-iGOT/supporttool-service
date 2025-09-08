@@ -1,255 +1,273 @@
+import * as React from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  LinearProgress,
+  Alert,
+  Chip,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  TextField,
+} from '@mui/material';
+import BusinessIcon from '@mui/icons-material/Business';
+import SearchIcon from '@mui/icons-material/Search';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import { useNavigate } from 'react-router-dom';
+import { organisationService } from '../../services/organisations.service';
+import { JsonViewerDialog } from '../common-components/JsonViewerDialog';
 
-import * as React from "react";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TablePagination from '@mui/material/TablePagination';
-import Paper from "@mui/material/Paper";
-import { useEffect, useState, useMemo } from "react";
-import LinearProgress from "@mui/material/LinearProgress";
-import IconButton from "@mui/material/IconButton";
-import PencilIcon from "@mui/icons-material/Edit";
-import Box from "@mui/material/Box";
-import Alert, { AlertColor } from "@mui/material/Alert";
-import Snackbar from "@mui/material/Snackbar";
-import { Button, FormControl, TextField, Typography } from "@mui/material";
-import ClearIcon from "@mui/icons-material/Clear";
-import { organisationService } from "../../services/organisations.service";
-import { Outlet, useNavigate } from "react-router-dom";
-import AddIcon from "@mui/icons-material/Add";
+const DEBOUNCE_DELAY = 500;
 
-interface IOrg {
+// Type definitions for organization data
+interface Organisation {
   id: string;
-  orgName: string;
   channel: string;
-  slug: string;
+  orgName: string;
+  status: number;
+  isTenant: boolean;
+  createdDate: string;
+  imgUrl: string;
+  ministryOrStateType: string;
+  ministryOrStateName: string;
+  description: string;
+  [key: string]: any;
 }
 
-export const OrganisationList = () => {
-  // Store all settings data from API
+export const OrganisationList: React.FC = () => {
   const navigate = useNavigate();
-  const [orgsList, setOrgsList] = useState<IOrg[]>([]);
-  
+
+  // State declarations
   const [loading, setLoading] = useState(false);
-  const [toasts, setToasts] = useState<{
-    message: string;
-    open: boolean;
-    severity: AlertColor | undefined;
-  }>({ message: "", open: false, severity: undefined });
-  
+  const [error, setError] = useState<string | null>(null);
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // Use memoized filtered data based on search query
-  const filteredSettings = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return orgsList;
-    }
-    
-    const query = searchQuery.toLowerCase();
-    return orgsList.filter(setting => 
-      setting.orgName.toLowerCase().includes(query) || 
-      setting.id.toLowerCase().includes(query) ||
-      (setting.channel.toLowerCase().includes(query) || 
-      setting.slug.toLowerCase().includes(query))
-    );
-  }, [orgsList, searchQuery]);
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Current page data (pagination slice of filtered data)
-  const currentPageData = useMemo(() => {
-    const startIndex = page * rowsPerPage;
-    return filteredSettings.slice(startIndex, startIndex + rowsPerPage);
-  }, [filteredSettings, page, rowsPerPage]);
+  // Menu and Dialog state
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuOrg, setMenuOrg] = useState<Organisation | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Handler for search input changes
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-    setPage(0); // Reset to first page when search changes
-  };
-
-  const handleToastClose = () =>
-    setToasts({ message: "", open: false, severity: undefined });
-
-  const fetchSystemSettings = async () => {
-    setLoading(true);
+  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string) => {
     try {
-      const data = await organisationService.fetchOrganisations();
-      if (data.result && data.result.response.count > 0) {
-        setOrgsList(data.result.response.content);
-      }
-    } catch (error) {
-      console.error("Error fetching organisations:", error);
-      setToasts({
-        message: "Failed to load organisations",
-        open: true,
-        severity: "error",
-      });
-    }
-    setLoading(false);
-  };
+      setLoading(true);
+      setError(null);
 
-  // Pagination handlers
-  const handleChangePage = (event: unknown, newPage: number) => {
+      const requestPayload = {
+        "request": {
+          "filters": {
+            "isTenant": true,
+            "status": 1,
+            "isMdo": true
+          },
+          "sort_by": {
+            "createdDate": "desc"
+          },
+          "limit": limit,
+          "offset": offset,
+          "query": query
+        }
+      };
+
+      const response = await organisationService.fetchOrganisationsData(requestPayload);
+
+      if (response.result && response.result.response && Array.isArray(response.result.response.content)) {
+        setOrganisations(response.result.response.content);
+        setTotalCount(response.result.response.count);
+      } else {
+        throw new Error("Invalid response structure from API");
+      }
+    } catch (err) {
+      console.error('Error fetching organisations:', err);
+      setError('Failed to fetch organisation information');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPage(0); // Reset to first page on new search
+      fetchOrganisations(rowsPerPage, 0, searchQuery);
+    }, DEBOUNCE_DELAY);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, rowsPerPage, fetchOrganisations]);
+
+  useEffect(() => {
+    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery);
+  }, [page, fetchOrganisations]); // Removed rowsPerPage and searchQuery as they are handled above
+
+  const handlePageChange = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
-    setRowsPerPage(newRowsPerPage);
-    setPage(0); // Reset to first page when changing rows per page
-  };
-
-  // Clear search input
-  const handleClearSearch = () => {
-    setSearchQuery("");
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  useEffect(() => {
-    fetchSystemSettings();
-  }, []); // Empty dependency array to run only once on mount
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, org: Organisation) => {
+    setAnchorEl(event.currentTarget);
+    setMenuOrg(org);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleViewDetails = () => {
+    if (menuOrg) {
+      setDialogOpen(true);
+      handleMenuClose();
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setMenuOrg(null);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
 
   return (
-    <>
-      {loading ? (
-        <LinearProgress />
-      ) : (
-        <>
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-            <div>
-                <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Organisations</Typography>
-                <Typography variant="body2">List of organisations onboarded in the platform.</Typography>                
-            </div>
+    <Box sx={{pt: 3, pb: 5}}>
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <TextField
+          fullWidth
+          label="Search Organisations"
+          variant="outlined"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by Organisation Name or Channel..."
+          InputProps={{
+            startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
+          }}
+        />
+      </Paper>
+      
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-            <Button
-              variant="contained"
-              onClick={() => navigate("/system-settings/create")}
-              startIcon={<AddIcon />}
-            >
-              Add new Organisation
-            </Button>
-          </Box>
-
-          <div className="bg-gray-100 p-4">
-            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2}>
-              <FormControl sx={{ flexGrow: 1 }}>
-                <TextField
-                  autoComplete="off"
-                  margin="dense"
-                  id="searchSettings"
-                  name="searchSettings"
-                  label="Search by ID, field or value"
-                  type="text"
-                  fullWidth
-                  variant="filled"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  color="primary"
-                  InputProps={{
-                    endAdornment: searchQuery ? (
-                      <IconButton
-                        aria-label="clear search"
-                        onClick={handleClearSearch}
-                        edge="end"
-                      >
-                        <ClearIcon />
-                      </IconButton>
-                    ) : null,
-                  }}
-                  sx={{
-                    backgroundColor: "white",
-                    borderRadius: "4px",
-                    '& .MuiFilledInput-root': {
-                      backgroundColor: "white",
-                      '&:hover': {
-                        backgroundColor: "white",
-                        opacity: 0.9
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: "white"
-                      }
-                    }
-                  }}
-                />
-              </FormControl>
-            </Box>
-          </div>
-          
-          {filteredSettings.length > 0 ? (
-            <>
-              <TableContainer component={Paper}>
-                <Table sx={{ minWidth: 650 }} aria-label="Organisation table">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Org Name</TableCell>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Channel</TableCell>
-                      <TableCell>Slug</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {currentPageData.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                      >
-                        <TableCell component="th" scope="row">
-                          {row.orgName}
-                        </TableCell>
-                        <TableCell>{row.id}</TableCell>
-                        <TableCell>{row.channel}</TableCell>
-                        <TableCell>{row.slug}</TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            aria-label="edit"
-                            size="small"
-                            onClick={() => navigate(`/system-settings/edit/${row.id}`)}  
-                          >
-                            <PencilIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              {/* Table Pagination Component */}
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 50, 100]}
-                component="div"
-                count={filteredSettings.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
-            </>
-          ) : (
-            <Alert severity="info">
-              No organisation found matching your search criteria.
-            </Alert>
-          )}
-          <Snackbar
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-            open={toasts.open}
-            autoHideDuration={6000}
-            onClose={handleToastClose}
-          >
-            <Alert variant="filled" severity={toasts.severity}>
-              {toasts.message}
-            </Alert>
-          </Snackbar>
-          <Outlet />
-        </>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
-    </>
+
+      <Paper elevation={3}>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Logo</TableCell>
+                <TableCell>Organisation Name</TableCell>
+                <TableCell>Ministry/State Type</TableCell>
+                <TableCell>Ministry/State Name</TableCell>
+                <TableCell>Channel</TableCell>
+                <TableCell>Created Date</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {organisations.map((org) => (
+                <TableRow key={org.id} hover>
+                  <TableCell>
+                    {org.logo ? (
+                      <img 
+                        src={org.logo} 
+                        alt={org.orgName} 
+                        style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: '4px' }} 
+                      />
+                    ) : (
+                      <Box sx={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.200', borderRadius: '4px' }}>
+                        <BusinessIcon color="action" />
+                      </Box>
+                    )}
+                  </TableCell>
+                  <TableCell>{org.orgName}</TableCell>
+                  <TableCell>
+                    <Chip label={org.ministryOrStateType || 'N/A'} size="small" />
+                  </TableCell>
+                  <TableCell>{org.ministryOrStateName || 'N/A'}</TableCell>
+                  <TableCell>{org.channel}</TableCell>
+                  <TableCell>{formatDate(org.createdDate)}</TableCell>
+                  <TableCell>
+                    <Chip label={org.status === 1 ? 'Active' : 'Inactive'} color={org.status === 1 ? 'success' : 'default'} size="small" />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      aria-label="actions"
+                      size="small"
+                      onClick={(event) => handleMenuOpen(event, org)}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50]}
+          component="div"
+          count={totalCount}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+        />
+      </Paper>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleViewDetails}>
+          <ListItemIcon>
+            <VisibilityIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>View Full Details</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      <JsonViewerDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        title={`Organisation Details: ${menuOrg?.orgName || ''}`}
+        data={menuOrg}
+      />
+    </Box>
   );
 };

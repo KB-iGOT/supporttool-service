@@ -609,7 +609,7 @@ export const reissueCertificate: RequestHandler = async (req: any, res: Response
     module,
   } = req.body;
   const user_id = req.headers["x-user-id"];
-  const { courseId, batchId, userIds, type } = payload.request|| {};
+  const { courseId, batchId, userIds, type, eventId } = payload.request|| {};
   const requestBody = { ...payload };
   if (requestBody.request?.type) {
     delete requestBody.request.type;
@@ -624,7 +624,7 @@ export const reissueCertificate: RequestHandler = async (req: any, res: Response
     changedFields,
     jiraLink
   );
-  if (!courseId || !batchId || !userIds || !Array.isArray(userIds) || userIds.length === 0) {
+  if (!( !eventId || !courseId )|| !batchId || !userIds || !Array.isArray(userIds) || userIds.length === 0) {
     res.status(400).json({
       responseCode: "CLIENT_ERROR",
       responseMessage: "Course ID, batch ID and at least one user ID are required"
@@ -633,16 +633,17 @@ export const reissueCertificate: RequestHandler = async (req: any, res: Response
   }
 
   try {
-   
-  
+    let url = type === 'course' ? 'api/course/batch/cert/v1/issue?reIssue=true' : 'api/course/event/batch/cert/v1/issue?reIssue=true';
+    console.log("url",`${process.env.KONG_API_URL}${url}`);
+    console.log("requestBody",requestBody);
     const adminToken = await fetchAdminAccessToken();
+    console.log("admin token",adminToken);
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/${type === 'course' ? 'course' : 'event'}/batch/cert/v1/issue?reIssue=true`,
+      url: `${process.env.KONG_API_URL}${url}`,
       headers: createApiHeaders(adminToken),
       data: requestBody
     });
-
     logger.info(`Certificate reissue request successfully submitted for course: ${courseId}, batch: ${batchId}`);
     await logAudit({
       ...auditObject,

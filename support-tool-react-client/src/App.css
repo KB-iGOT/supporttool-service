@@ -1,8 +1,29 @@
 html,
 body {
-  background-color: rgb(252 229 204 / 50%);
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* Environment-based background colors */
+body.env-production {
+  background-color:  #e1e8f5; /* Blue tint from primary #1f3c85 */
+}
+
+body.env-development {
+  background-color:  #fbe9d0; /* Orange tint from primary #f0951e */
+}
+
+body.env-development {
+  background-color: #e1e8f5; /* Blue tint from primary #1f3c85 */
+}
+
+/* Login page environment-based gradients */
+.login-left-panel.env-production {
+  background-image: linear-gradient(238deg, #f0951e 0%, #d4841a 100%);
+}
+
+.login-left-panel.env-development {
+  background-image: linear-gradient(238deg, #1f3c85 0%, #1a3470 100%);
 }
 
 .flex-container {
@@ -10,18 +31,23 @@ body {
 }
 
 .content-container {
-  padding: 1rem 2rem 2rem;
-  width: calc(100vw - 254px);
+  padding: 2rem 8rem 8rem;
+  width: 100vw;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   margin-top: 68.5px;
-  margin-left: 254px;
+  margin-left: 0;
 }
+.login-container {
 
-.sidebar-collapsed .content-container {
-  width: calc(100vw - 80px);
-  margin-left: 80px;
+  padding: 0;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0;
+  margin-left: 0;
 }
 
 .dialog-content-container {

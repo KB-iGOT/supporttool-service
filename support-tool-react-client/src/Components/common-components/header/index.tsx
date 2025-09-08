@@ -21,12 +21,12 @@ const settings = ["Logout"];
 const useStyles = makeStyles(() =>
   createStyles({
     logo: {
-      width: "250px",
-      height: "100%",
-      cursor: "pointer", // Add cursor pointer to indicate clickable
+      height: "38px",
+      cursor: "pointer",
+       // Add cursor pointer to indicate clickable
     },
     container: {
-      padding: '0 2rem',
+      padding: '0 8rem',
       background: '#FFF'
     },
     customHeader: {

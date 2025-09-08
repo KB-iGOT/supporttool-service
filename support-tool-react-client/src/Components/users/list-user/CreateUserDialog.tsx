@@ -97,7 +97,12 @@ export const CreateUserDialog: React.FC<CreateUserDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(event, reason) => reason !== 'backdropClick' && onClose()}
+      disableEscapeKeyDown
+      maxWidth="sm"
+      fullWidth>
       <DialogTitle>Create New User</DialogTitle>
       <DialogContent>
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>

@@ -19,6 +19,7 @@ interface DynamicFormDialogProps {
   onSubmit: (data: FormData) => void;
   title?: string;
   submitButtonText?: string;
+  onBackDropClose?: boolean; // If true, prevents closing on backdrop click
 }
 
 export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
@@ -28,7 +29,8 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
   initialData,
   onSubmit,
   title,
-  submitButtonText
+  submitButtonText,
+  onBackDropClose
 }) => {
   const [formData, setFormData] = useState<FormData>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -133,7 +135,11 @@ export const DynamicFormDialog: React.FC<DynamicFormDialogProps> = ({
   const sortedFields = [...fields].sort((a: any, b: any) => a.order - b.order);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onBackDropClose ? (event, reason) => reason !== 'backdropClick' && onClose() : onClose}
+      maxWidth="sm"
+      fullWidth>
       <DialogTitle>{title || 'Edit User'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>

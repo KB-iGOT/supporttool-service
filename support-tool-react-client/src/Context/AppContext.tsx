@@ -37,6 +37,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   const setUserFromCookie = (value: boolean) => {
     if (value) {
       const userData = getCookie('user');
+      
       if (userData) {
         
         let userDecodedData = decodeCookie(userData);
@@ -88,6 +89,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
 
   // Module permission check function that can be used anywhere
   const checkPermissions = (path?: string) => {
+    
     const currentPath = path || window.location.pathname;
     return checkModulePermission(modulePermissions, currentPath);
   };

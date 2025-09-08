@@ -680,13 +680,15 @@ export const ReissueCertificate: React.FC = () => {
       // Call API to reissue certificate
       // This is a placeholder - implement the actual API call
       
+      const idKey = tabValue === 0 ? 'courseId' : 'eventId';
+
       const request = {
         payload: {
           "request": {
               userIds: [userId],
-              courseId: selectedEnrollment.courseId || selectedEnrollment.contentId,
+              [idKey]: selectedEnrollment.courseId || selectedEnrollment.contentId,
               batchId: selectedEnrollment.batchId,
-              type: tabValue === 0 ? 'course' : 'event'
+              type: tabValue === 0 ? 'course' : 'event',
             }
           },
           changedFields:"Resued Certificate",

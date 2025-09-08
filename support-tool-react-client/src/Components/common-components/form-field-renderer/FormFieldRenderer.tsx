@@ -71,7 +71,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             </MenuItem>
           ))}
         </Select>
-        {error && <FormHelperText>{error}</FormHelperText>}
+        <FormHelperText>{error || field.placeholder}</FormHelperText>
       </FormControl>
     );
   }

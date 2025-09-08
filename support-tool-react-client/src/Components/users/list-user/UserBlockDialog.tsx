@@ -78,7 +78,7 @@ export const UserBlockDialog: React.FC<UserBlockDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={processing ? undefined : onClose}
+      onClose={(event, reason) => reason !== 'backdropClick' && (processing ? undefined : onClose())}
       maxWidth="sm"
       fullWidth
     >
@@ -116,7 +116,7 @@ export const UserBlockDialog: React.FC<UserBlockDialogProps> = ({
             <Typography variant="body1">
               <strong>Organization:</strong> {user?.rootOrgName || '-'}
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body1" component="div">
               <strong>Current Status:</strong> {' '}
               <Chip 
                 label={user?.status === 1 ? 'Un-blocked': 'Blocked' } 

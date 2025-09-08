@@ -12,5 +12,6 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
     "x-user-id": userId ?? '',
   },
+  withCredentials: true, // <-- This enables cookies to be set from cross-origin responses
 });
 export default apiClient;
