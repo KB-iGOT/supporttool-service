@@ -39,7 +39,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         onBlur={onBlur} // Make sure this is here
         required={!field.optional}
         error={!!error}
-        helperText={error || field.placeholder}
+        helperText={error || field.description || ''}
         margin="normal"
         type={field.fieldType} // Use the field type for the input type
         placeholder={field.placeholder}
@@ -71,7 +71,7 @@ export const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             </MenuItem>
           ))}
         </Select>
-        <FormHelperText>{error || field.placeholder}</FormHelperText>
+        <FormHelperText>{error || field.description || field.placeholder}</FormHelperText>
       </FormControl>
     );
   }

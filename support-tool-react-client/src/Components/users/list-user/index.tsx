@@ -86,7 +86,41 @@ const sampleFields: FieldDefinition[] = [
       pattern: '^\\+?[0-9]{10,15}$',
       errorMessage: 'Please enter a valid phone number (10-15 digits, may include + prefix)'
     }
-  }
+  },
+  {
+    identifier: 'externalSystemId',
+    name: 'externalSystemId',
+    displayName: 'External System ID',
+    fieldType: 'text',
+    optional: true,
+    description: "This is the user's unique ID from an external system like eHRMS.",
+    selected: true,
+    order: 4,
+    placeholder: 'Enter External System ID',
+    fieldPath: 'profileDetails.additionalProperties.externalSystemId',
+    validation: {
+      minLength: 1,
+      maxLength: 50,
+      errorMessage: 'Please enter a valid External System ID'
+    }
+  },
+  {
+    identifier: 'externalSystem',
+    name: 'externalSystem',
+    displayName: 'External System',
+    description: "If the External System name is not present, check with the user and add or update it with 'eHRMS ID'.",
+    fieldType: 'text',
+    optional: true,
+    selected: true,
+    order: 5,
+    placeholder: 'Enter External System Name',
+    fieldPath: 'profileDetails.additionalProperties.externalSystem',
+    validation: {
+      minLength: 2,
+      maxLength: 50,
+      errorMessage: 'Please enter a valid External System Name'
+    }
+  },
 ];
 
 // Remove the channel field from createUserFields as we'll use a custom component for it

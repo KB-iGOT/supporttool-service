@@ -1,31 +1,29 @@
 export interface FieldDefinition {
-    identifier: string;
-    name: string;
-    displayName: string;
-    fieldType: "text" | "dropdown" | "email" | "tel"|"number" | "password" | "textarea"| "select";
-    optional: boolean;
-    selected?: boolean;
-    order?: number;
-    fieldPath?: string;
-    placeholder: string;
-    defaultValue?: string | string[];
-    validation?: {
-      minLength?: number;
-      maxLength?: number;
-      pattern?: string;
-      errorMessage?: string;
-    };
-    options?: {
-      label: string;
-      value: string;
-    }[];
-  }
-  
-  export interface FormData {
-    [key: string]: any;
-  }
+  identifier: string;
+  name: string;
+  displayName: string;
+  fieldType: 'text' | 'email' | 'tel' | 'number' | 'password' | 'dropdown' | 'select';
+  optional: boolean;
+  selected: boolean;
+  order: number;
+  placeholder?: string;
+  description?: string; // New field for helper text
+  fieldPath?: string;
+  defaultValue?: any;
+  options?: { label: string; value: any }[];
+  validation?: {
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    errorMessage?: string;
+  };
+}
 
-  export interface ValidationError {
-    message: string;
-    type: 'required' | 'minLength' | 'maxLength' | 'pattern';
-  }
+export interface FormData {
+  [key: string]: any;
+}
+
+export interface Facet {
+  name: string;
+  values: { name: string; count: number }[];
+}

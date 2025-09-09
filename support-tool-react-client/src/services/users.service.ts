@@ -37,6 +37,11 @@ export const usersService = {
     const response = await apiClient.patch(`/users/update/${userId}`, requestPayload);
     return response.data;
   },
+  updateUserExt: async (requestPayload: any) => {
+    // Construct the request payload as expected by your API
+    const response = await apiClient.post(`/users/admin/extPatch`, requestPayload);
+    return response.data;
+  },
   assignUserRoles: async (userId: string, organisationId: string, roles: string[]) => {
     // Construct the request payload as expected by your API
     const response = await apiClient.post(`/users/role/assign`, {

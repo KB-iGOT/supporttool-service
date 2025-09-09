@@ -197,6 +197,50 @@ export const updateSuperUser: RequestHandler = async (req: any, res: Response) =
   }
 };
 
+export const updateUserExt: RequestHandler = async (req: any, res: Response) => {
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  const auditObject = createAuditObject(
+    user_id,
+    module,
+    "UPDATE_USER_STATUS",
+    "UPDATE",
+    userId || '',
+    payload,
+    changedFields,
+    jiraLink
+  );
+
+  try {
+    const adminToken = await fetchAdminAccessToken();
+    const response = await axios({
+      method: "POST", // As per curl, this seems to be a POST
+      url: `${process.env.KONG_API_URL}/api/user/v1/admin/extPatch`,
+      headers: createApiHeaders(adminToken),
+      data: payload,
+    });
+
+    logger.info(`User external details for ${userId} updated successfully`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "User external details updated successfully",
+    });
+    res.status(200).json(response.data);
+  } catch (error) {
+    await auditLogApiError(error, res, `Error updating user external details for ${userId}`, auditObject);
+    handleApiError(error, res, `Error updating user external details for ${userId}`);
+  }
+};
+
 export const createUsers: RequestHandler = async (req: any, res: Response) => {
   const {
     payload,

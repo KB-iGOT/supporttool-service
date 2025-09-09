@@ -29,6 +29,8 @@ import CardMembershipIcon from "@mui/icons-material/CardMembership";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import BlockIcon from "@mui/icons-material/Block";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { UserProfile } from "../../../types/users";
@@ -36,6 +38,7 @@ import { JsonViewerDialog } from "../../common-components/JsonViewerDialog";
 import { RoleAssignmentDialog } from "./RoleAssignmentDialog";
 import { UserMigrationDialog } from "./UserMigrationDialog";
 import { PasswordResetDialog } from "./PasswordResetDialog";
+import { UserStatusUpdateDialog } from "./UserStatusUpdateDialog";
 import { UserBlockDialog } from "./UserBlockDialog";
 import { usersService } from "../../../services/users.service";
 import { AppContext } from "../../../Context/AppContext";
@@ -91,6 +94,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [passwordResetDialogOpen, setPasswordResetDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
@@ -123,7 +127,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
-  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view') => {
+  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate') => {
     switch (dialogType) {
       case 'role':
         setRoleDialogOpen(false);
@@ -136,6 +140,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         break;
       case 'block':
         setBlockDialogOpen(false);
+        break;
+      case 'statusUpdate':
+        setStatusUpdateDialogOpen(false);
         break;
       case 'view':
         setViewDetailsDialogOpen(false);
@@ -151,7 +158,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   }, [onUserUpdated]);
 
   // Menu handlers
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: UserProfile) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: UserProfile) => { 
     setAnchorEl(event.currentTarget);
     setMenuUser(user);
   };
@@ -162,7 +169,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   };
 
   // Dialog open handlers
-  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view', user: UserProfile) => {
+  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate', user: UserProfile) => {
     setSelectedUser(user);
     switch (dialogType) {
       case 'role':
@@ -176,6 +183,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         break;
       case 'block':
         setBlockDialogOpen(true);
+        break;
+      case 'statusUpdate':
+        setStatusUpdateDialogOpen(true);
         break;
       case 'view':
         setViewDetailsDialogOpen(true);
@@ -227,6 +237,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const handleBlockFromMenu = () => {
     if (menuUser) {
       openDialog('block', menuUser);
+    }
+  };
+
+  const handleStatusUpdateFromMenu = () => {
+    if (menuUser) {
+      openDialog('statusUpdate', menuUser);
     }
   };
 
@@ -462,6 +478,48 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     }
   }, [showNotification, refreshData, selectedUser]);
 
+  // User Status Update functionality
+  const handleUserStatusUpdateAction = useCallback(async (userId: string, newStatus: 'NOT-MY-USER' | 'NOT-VERIFIED'): Promise<void> => {
+    latestFormDataRef.current = {
+      userId,
+      newStatus,
+      selectedUser: selectedUser
+    };
+    handleUserStatusUpdateSubmit();
+  }, [selectedUser]);
+
+  const { handleAction: handleUserStatusUpdateSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handleUserStatusUpdate(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+  const handleUserStatusUpdate = useCallback(async (ticket: any, data: any) => {
+    try {
+      const request = {
+        payload: {
+          request: {
+            userId: data.userId,
+            profileDetails: {
+              profileStatus: data.newStatus
+            }
+          }
+        },
+        jiraLink: ticket?.jiraLink || "",
+        changedFields: { 'profileStatus': { 'new': data.newStatus, 'original': data.selectedUser?.profileDetails?.profileStatus } },
+        module: moduleState?.name || 'users',
+        userId: data.userId
+      };
+      await usersService.updateUserExt(request);
+      showNotification('User status updated successfully', 'success');
+      refreshData();
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      showNotification('Failed to update user status', 'error');
+      throw error;
+    }
+  }, [moduleState?.name, showNotification, refreshData]);
+
   return (
     <Paper elevation={2}>
       {users && users.length > 0 ? (
@@ -622,6 +680,24 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
+        {permissions.canWrite && menuUser?.profileDetails?.profileStatus === 'NOT-VERIFIED' && (
+          <MenuItem onClick={handleStatusUpdateFromMenu}>
+            <ListItemIcon>
+              <ReportProblemIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Not My User</ListItemText>
+          </MenuItem>
+        )}
+
+        {permissions.canWrite && menuUser?.profileDetails?.profileStatus === 'NOT-MY-USER' && (
+          <MenuItem onClick={handleStatusUpdateFromMenu}>
+            <ListItemIcon>
+              <AssignmentTurnedInIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Reassign User</ListItemText>
+          </MenuItem>
+        )}
+
         {permissions.canWrite && (
           <MenuItem onClick={handleViewDetailsFromMenu}>
             <ListItemIcon>
@@ -678,6 +754,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         user={selectedUser}
         onBlockUser={handleUserBlockUnblockAction}
         currentUserId={user?.userId || ""}
+      />
+
+      <UserStatusUpdateDialog
+        open={statusUpdateDialogOpen}
+        onClose={() => closeDialog('statusUpdate')}
+        user={selectedUser}
+        onConfirm={handleUserStatusUpdateAction}
       />
 
       <JsonViewerDialog
