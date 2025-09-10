@@ -94,39 +94,18 @@ export default (app: Express, isAuthenticated: (req: Request, res: Response, nex
     next();
   });
 
-  // Authenticated routes
-  app.all(
-    [
-      '/home',
-      '/contents',
-      '/users',
-      '/modules',
-      '/support-users',
-      '/system-settings',
-      '/system-settings/edit/:id',
-      '/organisations',
-      '/system-settings/cadre-edit/:id',
-      '/forms',
-      '/forms/edit/:id',
-      '/forms/create',
-      '/roles',
-      '/api-cals',
-      '/audit-logs',
-      '/analytics',
-      '/non-logged-in-page',
-      '/non-logged-in-page/:id',
-      '/non-logged-in-page/:id/upload-contents',
-      'non-logged-in-page/:id/edit/:doId'
-
-    ],
-    isAuthenticated,
-    (req: Request, res: Response) => {
-      renderDefaultIndexPage(req, res);
-    }
-  );
-
-  // Login page
+  // Specific login route
   app.all(['/login'], (req: Request, res: Response) => {
+    renderDefaultIndexPage(req, res);
+  });
+
+  // Catch-all route for client-side routing - serve React app for all non-API routes
+  app.get('*', (req: Request, res: Response) => {
+    // Skip API routes - they should have been handled already
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({ error: 'API endpoint not found' });
+      return;
+    }
     renderDefaultIndexPage(req, res);
   });
 };

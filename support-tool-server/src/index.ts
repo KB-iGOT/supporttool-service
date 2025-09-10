@@ -150,8 +150,7 @@ const createTable = async () => {
   }
 };
 
-clientRoutes(app, isAuthenticated);
-
+// Register API routes FIRST (before client routes)
 app.use('/api/auth', authRoutes);
 app.use("/api/support-users", supportUserRoutes);
 app.use("/api/dashboard", dashboardRoutes);
@@ -166,13 +165,11 @@ app.use("/api/domains", domainRoutes);
 app.use("/api/private", privateRoutes);
 app.use("/api/proxy", proxyRoutes);
 app.use("/api/audit-logs", auditLogsRoutes);
-
 app.use("/api/system/settings", SystemSettingsRoutes);
 app.use("/api/roles", rolesRouter);
 
-app.get('*', (req, res) => {
-  res.redirect("/login");
-});
+// Register client routes AFTER API routes (this includes the catch-all route)
+clientRoutes(app, isAuthenticated);
 
 const port = process.env.PORT || '5000';
 
