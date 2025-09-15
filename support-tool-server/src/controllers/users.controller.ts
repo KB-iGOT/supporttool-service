@@ -867,3 +867,19 @@ async function auditLogApiError(error: any, res: Response, logMessage: string, a
     message: logMessage,
   });
 }
+
+export const fetchGroups: RequestHandler = async (req: any, res: Response) => {
+  logger.info(`Fetching user groups`);
+  try {
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/user/v1/groups`,
+      headers: createApiHeaders(),
+    });
+
+    logger.info(`Successfully fetched user groups`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    handleApiError(error, res, "Error fetching user groups");
+  }
+};

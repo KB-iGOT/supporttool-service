@@ -1,9 +1,9 @@
-import { OrganisationList } from "./list";
+import { Outlet } from "react-router-dom";
 
 export const Organisations = () => {
     return (
         <>
-            <OrganisationList />
+            <Outlet />
         </>
     )
 }

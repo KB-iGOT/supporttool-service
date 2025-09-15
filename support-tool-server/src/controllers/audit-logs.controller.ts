@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import pool from "../config/database";
 import logger from "../utils/logger";
+import { Parser } from 'json2csv';
 
 interface AuditLogFilters {
   module?: string;
@@ -67,8 +68,8 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     }
 
     if (userId) {
-      conditions.push(`user_id ILIKE $${paramIndex}`);
-      values.push(`%${userId}%`);
+      conditions.push(`user_id = $${paramIndex}`);
+      values.push(userId);
       paramIndex++;
     }
 
@@ -124,24 +125,44 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     
     const dataResult = await pool.query(dataQuery, values);
 
+    const userIds = Array.from(new Set(dataResult.rows.map(row => row.user_id).filter(Boolean)));
+    const userMap = new Map<string, { userName: string, firstName: string }>();
+
+    if (userIds.length > 0) {
+      const userQuery = `
+        SELECT "userId", "userName", "firstName"
+        FROM users
+        WHERE "userId" = ANY($1::text[])
+      `;
+      const userResult = await pool.query(userQuery, [userIds]);
+      userResult.rows.forEach(row => {
+        userMap.set(row.userId, { userName: row.userName, firstName: row.firstName });
+      });
+    }
+
     // Transform the data to match the frontend interface
-    const auditLogs = dataResult.rows.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      module: row.module,
-      subModule: row.sub_module,
-      action: row.action,
-      entityId: row.entity_id,
-      requestPayload: row.request_payload,
-      modifiedPayload: row.modified_payload,
-      responsePayload: row.response_payload,
-      ipAddress: row.ip_address,
-      userAgent: row.user_agent,
-      status: row.status,
-      message: row.message,
-      createdAt: row.created_at,
-      jiraLink: row.jira_link,
-    }));
+    const auditLogs = dataResult.rows.map(row => {
+      const user = userMap.get(row.user_id);
+      return {
+        id: row.id,
+        userId: row.user_id,
+        userName: user ? user.userName : row.user_id,
+        firstName: user ? user.firstName : '',
+        module: row.module,
+        subModule: row.sub_module,
+        action: row.action,
+        entityId: row.entity_id,
+        requestPayload: row.request_payload,
+        modifiedPayload: row.modified_payload,
+        responsePayload: row.response_payload,
+        ipAddress: row.ip_address,
+        userAgent: row.user_agent,
+        status: row.status,
+        message: row.message,
+        createdAt: row.created_at,
+        jiraLink: row.jira_link,
+      };
+    });
 
     res.status(200).json({
       data: auditLogs,
@@ -155,6 +176,101 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     res.status(500).json({
       error: "Internal server error",
       message: "Failed to fetch audit logs",
+    });
+  }
+};
+
+export const exportAuditLogs = async (req: Request, res: Response) => {
+  try {
+    const {
+      module,
+      subModule,
+      action,
+      status,
+      dateFrom,
+      dateTo,
+      entityId,
+      userId,
+    } = req.query;
+
+    // Build dynamic WHERE clause
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (module) {
+      conditions.push(`module ILIKE $${paramIndex}`);
+      values.push(`%${module}%`);
+      paramIndex++;
+    }
+    if (subModule) {
+      conditions.push(`sub_module ILIKE $${paramIndex}`);
+      values.push(`%${subModule}%`);
+      paramIndex++;
+    }
+    if (action) {
+      conditions.push(`action ILIKE $${paramIndex}`);
+      values.push(`%${action}%`);
+      paramIndex++;
+    }
+    if (status) {
+      conditions.push(`status ILIKE $${paramIndex}`);
+      values.push(`%${status}%`);
+      paramIndex++;
+    }
+    if (entityId) {
+      conditions.push(`entity_id ILIKE $${paramIndex}`);
+      values.push(`%${entityId}%`);
+      paramIndex++;
+    }
+    if (userId) {
+      conditions.push(`user_id = $${paramIndex}`);
+      values.push(userId);
+      paramIndex++;
+    }
+    if (dateFrom) {
+      conditions.push(`created_at >= $${paramIndex}`);
+      values.push(dateFrom);
+      paramIndex++;
+    }
+    if (dateTo) {
+      conditions.push(`created_at <= $${paramIndex}`);
+      values.push(dateTo);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Get all matching data without pagination
+    const dataQuery = `
+      SELECT 
+        id, user_id, module, sub_module, action, entity_id,
+        request_payload, modified_payload, response_payload,
+        ip_address, user_agent, status, message, created_at, jira_link
+      FROM audit_logs 
+      ${whereClause}
+      ORDER BY created_at DESC
+    `;
+
+    const dataResult = await pool.query(dataQuery, values);
+
+    if (dataResult.rows.length === 0) {
+      res.status(404).json({ message: "No logs found for the given filters." });
+      return;
+    }
+
+    const json2csvParser = new Parser();
+    const csv = json2csvParser.parse(dataResult.rows);
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('audit-logs.csv');
+    res.status(200).send(csv);
+
+  } catch (error) {
+    logger.error(`Error exporting audit logs: ${error}`);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Failed to export audit logs",
     });
   }
 };

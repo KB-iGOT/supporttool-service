@@ -3,9 +3,10 @@ import React, {
   ReactNode,
   useState,
   useEffect,
-  useContext
+  useContext,
+  useCallback
 } from 'react';
-import { ActionPayload, appContextType, IUserConfig } from '../types';
+import { ActionPayload, appContextType, IUserConfig, Module } from '../types/index';
 import { decodeCookie, getCookie } from '../utils';
 import { checkModulePermission } from './../utils/permissionUtils';
 
@@ -24,6 +25,10 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<IUserConfig | null>(null);
   const [userRoles, setUserRoles] = useState<any | []>([]);
   const [modulePermissions, setModulePermissions] = useState<Record<string, any>>({});
+  const [modules, setModules] = useState<{ user: Module[]; admin: Module[] }>({
+    user: [],
+    admin: [],
+  });
   const [notification, setNotification] = useState<{
     open: boolean;
     message: string;
@@ -32,6 +37,32 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   const [isIntercepting, setIsIntercepting] = useState(false);
   const [currentAction, setCurrentAction] = useState<ActionPayload | null>(null);
   const [currentHandler, setCurrentHandler] = useState<((data: any) => void) | null>(null);
+
+  const fetchModules = useCallback(async () => {
+    if (!isLoggedIn) {
+      setModules({ user: [], admin: [] });
+      return;
+    }
+    setLoading(true);
+    try {
+      // Dynamically import to avoid circular dependencies if dashboardService uses AppContext
+      const { dashboardService } = await import('../services/dashboard.service');
+      const response = await dashboardService.getModules();
+      if (response && response.status === 200) {
+        setModules({
+          user: response.modules || [],
+          admin: response.adminModules || [],
+        });
+      } else {
+        setModules({ user: [], admin: [] });
+      }
+    } catch (error) {
+      console.error("Error fetching sidebar modules:", error);
+      setModules({ user: [], admin: [] });
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
 
   // Define the setUserFromCookie function
   const setUserFromCookie = (value: boolean) => {
@@ -85,6 +116,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   // Initialize user data from cookie when component mounts
   useEffect(() => {
     setUserFromCookie(isLoggedIn);
+    fetchModules();
   }, [isLoggedIn]);
 
   // Module permission check function that can be used anywhere
@@ -135,6 +167,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         user,
         userRoles,
         modulePermissions,
+        modules,
+        fetchModules,
         notification,
         setNotification,
         checkPermissions, 

@@ -46,7 +46,8 @@ export const OrganizationSelector: React.FC<OrganizationSelectorProps> = ({
       setOrgLoading(true);
       const request = {
         request: {
-          filters: searchType === 'orgId' && query ? { identifier: [query] } : {},
+          filters: searchType === 'orgId' && query ? { identifier: [query] } : {
+          status: 1},
           fields: ["identifier", "channel"],
           sortBy: { createdDate: "Desc" },
           limit: orgLimit,

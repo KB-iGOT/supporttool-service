@@ -16,6 +16,17 @@ export interface INotification {
   payload: any;
 }
 
+export interface Module {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  isVisible?: boolean;
+  roles?: string[];
+  isAdminModule?: boolean;
+  isRootModule?: boolean;
+}
+
 export type appContextType = {
     loading: boolean;
     setLoading: (loading: boolean) => void;
@@ -25,6 +36,8 @@ export type appContextType = {
     userRoles: any | [];
     notification: INotification;
     modulePermissions: any;
+    modules: { user: Module[]; admin: Module[] };
+    fetchModules: () => Promise<void>;
     setNotification: React.Dispatch<React.SetStateAction<INotification>>;
     checkPermissions: (path?: string) => {
       canRead: boolean;
@@ -44,4 +57,3 @@ export type appContextType = {
   completeAction: (jiraLink: string) => void;
   cancelAction: () => void;
 }
-

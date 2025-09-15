@@ -53,16 +53,18 @@ export interface AnalyticsStats {
 }
 
 class AnalyticsService {
-  async getAnalyticsStats(params: string | { startDate: Date; endDate: Date } = '7d'): Promise<AnalyticsStats> {
+  async getAnalyticsStats(params: string | { userId?: string; startDate?: Date; endDate?: Date; timeRange?: string } = '7d'): Promise<AnalyticsStats> {
     try {
       let queryParams: any = {};
       
       // Handle both legacy string timeRange and new date range objects
       if (typeof params === 'string') {
         queryParams.timeRange = params;
-      } else {
-        queryParams.startDate = params.startDate.toISOString().split('T')[0];
-        queryParams.endDate = params.endDate.toISOString().split('T')[0];
+      } else if (params) {
+        if (params.userId) queryParams.userId = params.userId;
+        if (params.startDate) queryParams.startDate = params.startDate.toISOString().split('T')[0];
+        if (params.endDate) queryParams.endDate = params.endDate.toISOString().split('T')[0];
+        if (params.timeRange) queryParams.timeRange = params.timeRange;
       }
 
       const response = await apiClient.get('/analytics/stats', { params: queryParams });

@@ -27,6 +27,8 @@ import privateRoutes from "./routes/private.routes";
 import rolesRouter from "./routes/roles.routes";
 import proxyRoutes from "./routes/proxy.routes";
 import analyticsRoutes from "./routes/analytics.routes";
+import frameworkRoutes from "./routes/framework.routes";
+import designationRoutes from "./routes/designation.routes";
 
 
 const app = express();
@@ -167,6 +169,8 @@ app.use("/api/proxy", proxyRoutes);
 app.use("/api/audit-logs", auditLogsRoutes);
 app.use("/api/system/settings", SystemSettingsRoutes);
 app.use("/api/roles", rolesRouter);
+app.use("/api/framework", frameworkRoutes);
+app.use("/api/designation", designationRoutes);
 
 // Register client routes AFTER API routes (this includes the catch-all route)
 clientRoutes(app, isAuthenticated);

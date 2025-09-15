@@ -54,4 +54,21 @@ export const auditLogService = {
     const response = await apiClient.get("/audit-logs/actions");
     return response.data;
   },
+
+  // Export audit logs
+  exportAuditLogs: async (filters: AuditLogFilters = {}): Promise<any> => {
+    const params = new URLSearchParams();
+
+    // Add filters to params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params.append(key, value);
+      }
+    });
+
+    const response = await apiClient.get(`/audit-logs/export?${params.toString()}`, {
+      responseType: 'blob', // Important for file downloads
+    });
+    return response.data;
+  },
 };

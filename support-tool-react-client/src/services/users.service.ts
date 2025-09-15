@@ -165,4 +165,8 @@ export const usersService = {
       throw error;
     }
   },
+  fetchGroups: async () => {
+    const response = await apiClient.get(`/users/v1/groups`);
+    return response.data;
+  }
 };

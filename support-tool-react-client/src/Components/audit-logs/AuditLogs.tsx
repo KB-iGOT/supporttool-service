@@ -38,8 +38,10 @@ import {
 // Remove date picker imports for now - we'll use regular text inputs for dates
 import { auditLogService } from '../../services/audit-log.service';
 import { AuditLog, AuditLogFilters } from '../../types/audit-logs';
-
-export const AuditLogs: React.FC = () => {
+interface AuditLogsProps {
+  userId?: string;
+}
+export const AuditLogs: React.FC<AuditLogsProps> = ({ userId: propUserId }) => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
@@ -61,7 +63,7 @@ export const AuditLogs: React.FC = () => {
     dateFrom: '',
     dateTo: '',
     entityId: '',
-    userId: '',
+    userId: propUserId || '',
   });
 
   const fetchAuditLogs = useCallback(async () => {
@@ -73,8 +75,6 @@ export const AuditLogs: React.FC = () => {
         filters
       );
       
-      console.log('API Response:', response);
-      
       // Ensure we have valid data structure
       const logs = Array.isArray(response.data) ? response.data : [];
       const total = typeof response.total === 'number' ? response.total : 0;
@@ -83,34 +83,19 @@ export const AuditLogs: React.FC = () => {
       setTotalCount(total);
     } catch (error) {
       console.error('Error fetching audit logs:', error);
-      
-      // Set mock data for testing if API fails
-      const mockData = [
-        {
-          id: '1',
-          userId: 'test-user-1',
-          module: 'users',
-          subModule: 'certificates',
-          action: 'REISSUE_COURSE_CERTIFICATE',
-          entityId: 'test-entity-1',
-          requestPayload: '{"test": "data"}',
-          modifiedPayload: '{"status": "modified"}',
-          responsePayload: '{"result": "success"}',
-          ipAddress: '192.168.1.1',
-          userAgent: 'Mozilla/5.0',
-          status: 'SUCCESS',
-          message: 'Test message',
-          createdAt: new Date().toISOString(),
-          jiraLink: 'https://example.com'
-        }
-      ];
-      
-      setAuditLogs(mockData);
-      setTotalCount(1);
     } finally {
       setLoading(false);
     }
   }, [page, rowsPerPage, filters]);
+
+  // Effect to update filters when propUserId changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      userId: propUserId || ''
+    }));
+    setPage(0); // Reset to first page when user changes
+  }, [propUserId]);
 
   const fetchFilterOptions = async () => {
     try {
@@ -173,7 +158,7 @@ export const AuditLogs: React.FC = () => {
       dateFrom: '',
       dateTo: '',
       entityId: '',
-      userId: '',
+      userId: propUserId || '',
     });
     setPage(0);
   };
@@ -181,6 +166,24 @@ export const AuditLogs: React.FC = () => {
   const handleApplyFilters = () => {
     setPage(0);
     fetchAuditLogs();
+  };
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      const response = await auditLogService.exportAuditLogs(filters);
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `audit-logs-${new Date().toISOString()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting audit logs:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string): 'success' | 'error' | 'warning' | 'info' => {
@@ -228,7 +231,7 @@ export const AuditLogs: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" gutterBottom sx={{ display: propUserId ? 'none' : 'block' }}>
           Audit Logs
         </Typography>
 
@@ -250,6 +253,7 @@ export const AuditLogs: React.FC = () => {
                   startIcon={<Download />}
                   variant="outlined"
                   size="small"
+                  onClick={handleExport}
                 >
                   Export
                 </Button>
@@ -335,6 +339,7 @@ export const AuditLogs: React.FC = () => {
                     fullWidth
                     label="User ID"
                     value={filters.userId}
+                    disabled={!!propUserId}
                     onChange={(e) => handleFilterChange('userId', e.target.value)}
                     size="small"
                   />
@@ -344,7 +349,7 @@ export const AuditLogs: React.FC = () => {
                   <TextField
                     fullWidth
                     label="Date From"
-                    type="date"
+                    type="datetime-local"
                     value={filters.dateFrom}
                     onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
                     size="small"
@@ -358,7 +363,7 @@ export const AuditLogs: React.FC = () => {
                   <TextField
                     fullWidth
                     label="Date To"
-                    type="date"
+                    type="datetime-local"
                     value={filters.dateTo}
                     onChange={(e) => handleFilterChange('dateTo', e.target.value)}
                     size="small"

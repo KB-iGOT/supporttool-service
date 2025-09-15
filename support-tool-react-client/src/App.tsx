@@ -2,7 +2,7 @@ import React, { Suspense, useEffect } from "react";
 import "./App.css";
 import { useLocation } from "react-router-dom";
 import { Header } from "./Components/common-components/header";
-// import { Sidebar } from "./Components/common-components/sidebar";
+import { Sidebar } from "./Components/common-components/sidebar";
 import { BreadcrumbNavigator } from "./Components/common-components/breadcrumbs";
 import { AppContextProvider } from "./Context/AppContext";
 import { Notification } from "./Components/common-components/notifications";
@@ -34,7 +34,7 @@ function App() {
         <div className="App">
           <Header />
           <div className="flex-container">
-            {/* <Sidebar /> */}
+            <Sidebar />
             <div className={location.pathname === '/login' ? 'login-container' : 'content-container'}>
               <BreadcrumbNavigator />
               <div>

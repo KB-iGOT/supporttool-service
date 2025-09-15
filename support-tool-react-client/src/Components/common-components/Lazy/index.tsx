@@ -3,8 +3,21 @@ import { Suspense, lazy } from "react";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import { Organisations } from "../../organisation";
 import { OrganisationList } from "../../organisation/list";
+import { MasterDesignations } from "../../master-designation";
 
-const Home = lazy(() =>
+const DesignationView = lazy(() =>
+  import("../../organisation/DesignationView").then((module) => ({
+    default: module.DesignationView,
+  }))
+);
+
+const ImportDesignationsPage = lazy(() =>
+  import("../../organisation/ImportDesignationsPage").then((module) => ({
+    default: module.ImportDesignationsPage,
+  }))
+);
+
+const ModuleDashboard = lazy(() =>
   import("../../home/index").then((module) => ({
     default: module.Home,
   }))
@@ -134,6 +147,13 @@ const Analytics = lazy(() =>
   }))
 );
 
+const UserDashboard = lazy(() =>
+  import("../../user-dashboard").then((module) => ({
+    default: module.UserDashboard,
+  }))
+);
+
+
 
 
 const LazyApp = () => {
@@ -144,7 +164,7 @@ const LazyApp = () => {
             path="/"
             element={
               <ProtectedRoute>
-                <Home />
+                <UserDashboard />
               </ProtectedRoute>
             }
           />
@@ -152,7 +172,7 @@ const LazyApp = () => {
             path="/home"
             element={
               <ProtectedRoute>
-                <Home />
+                <UserDashboard />
               </ProtectedRoute>
             }
           />
@@ -223,6 +243,8 @@ const LazyApp = () => {
           >
             
             <Route index element={<OrganisationList />} />
+            <Route path="designations/:orgId/:frameworkId" element={<DesignationView />} />
+            <Route path="designations/import/:orgId/:frameworkId" element={<ImportDesignationsPage />} />
           </Route>
           <Route
             path="/org-delete"
@@ -274,7 +296,30 @@ const LazyApp = () => {
               </ProtectedRoute>
             }
           />
-          
+          <Route
+            path="/master-designations"
+            element={
+              <ProtectedRoute>
+                <MasterDesignations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user-dashboard"
+            element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/module-dashboard"
+            element={
+              <ProtectedRoute>
+                <ModuleDashboard />
+              </ProtectedRoute>
+            }
+          />
         <Route
             path="/non-logged-in-page"
             element={

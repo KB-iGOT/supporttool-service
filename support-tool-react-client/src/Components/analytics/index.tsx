@@ -111,14 +111,14 @@ export const Analytics = () => {
     setLoading(true);
     try {
       // Convert dates to API format or use preset range
-      let apiParams;
+      let apiParams: string | { startDate?: Date; endDate?: Date; timeRange?: string };
       if (dateRange === 'custom' && startDate && endDate) {
         apiParams = {
           startDate: startDate,
           endDate: endDate
         };
       } else {
-        apiParams = dateRange; // Use preset range like '30d', '60d', etc.
+        apiParams = { timeRange: dateRange }; // Use preset range like '30d', '60d', etc.
       }
       
       console.log('Fetching analytics with params:', apiParams); // Debug log

@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -24,6 +24,7 @@ UsersRoutes.route("/update/:userId").patch(userSession, updateSuperUser);
 UsersRoutes.route("/:userId").patch(userSession, updateUser);
 UsersRoutes.route("/admin/extPatch").post(userSession, updateUserExt);
 UsersRoutes.route("/password/reset").post(userSession, resetUserPassword);
+UsersRoutes.route("/v1/groups").get(userSession, fetchGroups);
 
 export default UsersRoutes ;
 

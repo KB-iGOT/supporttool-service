@@ -25,6 +25,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import SearchIcon from '@mui/icons-material/Search';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import { useNavigate } from 'react-router-dom';
 import { organisationService } from '../../services/organisations.service';
 import { JsonViewerDialog } from '../common-components/JsonViewerDialog';
@@ -145,9 +146,23 @@ export const OrganisationList: React.FC = () => {
     }
   };
 
+  const handleViewDesignation = () => {
+    if (menuOrg && (menuOrg.frameworkid || menuOrg.frameworkId)) {
+      navigate(`/organisations/designations/${menuOrg.id}/${menuOrg.frameworkid || menuOrg.frameworkId}`);
+      handleMenuClose();
+    }
+  };
+
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setMenuOrg(null);
+  };
+
+  const handleImportDesignation = () => {
+    if (menuOrg && (menuOrg.frameworkid || menuOrg.frameworkId)) {
+      navigate(`/organisations/designations/import/${menuOrg.id}/${menuOrg.frameworkid || menuOrg.frameworkId}`);
+      handleMenuClose();
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -260,6 +275,22 @@ export const OrganisationList: React.FC = () => {
           </ListItemIcon>
           <ListItemText>View Full Details</ListItemText>
         </MenuItem>
+        {(menuOrg?.frameworkid || menuOrg?.frameworkId) && (
+          <MenuItem onClick={handleViewDesignation}>
+            <ListItemIcon>
+              <AssignmentIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>View Designation</ListItemText>
+          </MenuItem>
+        )}
+        {(menuOrg?.frameworkid || menuOrg?.frameworkId ) && (
+          <MenuItem onClick={handleImportDesignation}>
+            <ListItemIcon>
+              <AssignmentIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Import Designation</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
 
       <JsonViewerDialog

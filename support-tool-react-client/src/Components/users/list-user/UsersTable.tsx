@@ -39,6 +39,7 @@ import { RoleAssignmentDialog } from "./RoleAssignmentDialog";
 import { UserMigrationDialog } from "./UserMigrationDialog";
 import { PasswordResetDialog } from "./PasswordResetDialog";
 import { UserStatusUpdateDialog } from "./UserStatusUpdateDialog";
+import { EditPrimaryDetailsDialog } from './EditPrimaryDetailsDialog';
 import { UserBlockDialog } from "./UserBlockDialog";
 import { usersService } from "../../../services/users.service";
 import { AppContext } from "../../../Context/AppContext";
@@ -96,6 +97,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [statusUpdateDialogOpen, setStatusUpdateDialogOpen] = useState(false);
   const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
+  const [editPrimaryDetailsDialogOpen, setEditPrimaryDetailsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   // Menu states
@@ -127,7 +129,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
-  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate') => {
+  const closeDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate' | 'editPrimary') => {
     switch (dialogType) {
       case 'role':
         setRoleDialogOpen(false);
@@ -147,12 +149,15 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       case 'view':
         setViewDetailsDialogOpen(false);
         break;
+      case 'editPrimary':
+        setEditPrimaryDetailsDialogOpen(false);
+        break;
     }
     setSelectedUser(null);
   }, []);
 
   const refreshData = useCallback(() => {
-    if (onUserUpdated) {
+    if (onUserUpdated) { 
       onUserUpdated();
     }
   }, [onUserUpdated]);
@@ -169,7 +174,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   };
 
   // Dialog open handlers
-  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate', user: UserProfile) => {
+  const openDialog = useCallback((dialogType: 'role' | 'migration' | 'password' | 'block' | 'view' | 'statusUpdate' | 'editPrimary', user: UserProfile) => {
     setSelectedUser(user);
     switch (dialogType) {
       case 'role':
@@ -189,6 +194,9 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         break;
       case 'view':
         setViewDetailsDialogOpen(true);
+        break;
+      case 'editPrimary':
+        setEditPrimaryDetailsDialogOpen(true);
         break;
     }
     setAnchorEl(null);
@@ -249,6 +257,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const handleViewDetailsFromMenu = () => {
     if (menuUser) {
       openDialog('view', menuUser);
+    }
+  };
+
+  const handleEditPrimaryDetailsFromMenu = () => {
+    if (menuUser) {
+      openDialog('editPrimary', menuUser);
     }
   };
 
@@ -520,6 +534,52 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     }
   }, [moduleState?.name, showNotification, refreshData]);
 
+  // Primary Details Update functionality
+  const handlePrimaryDetailsUpdateAction = useCallback(async (details: any): Promise<void> => {
+    latestFormDataRef.current = {
+      ...details,
+      selectedUser: selectedUser
+    };
+    handlePrimaryDetailsUpdateSubmit();
+  }, [selectedUser]);
+
+  const { handleAction: handlePrimaryDetailsUpdateSubmit } = useActionInterceptor({
+    actionType: 'Patch',
+    onComplete: (interceptPayload) => handlePrimaryDetailsUpdate(interceptPayload, latestFormDataRef.current),
+    getPayload: () => ({})
+  });
+
+  const handlePrimaryDetailsUpdate = useCallback(async (ticket: any, data: any) => {
+    try {
+      const request = {
+        payload: {
+          request: {
+            userId: data.selectedUser.identifier,
+            profileDetails: {
+              professionalDetails: [{
+                ...data.selectedUser.profileDetails?.professionalDetails?.[0],
+                group: data.group,
+                designation: data.designation
+              }]
+            }
+          }
+        },
+        jiraLink: ticket?.jiraLink || "",
+        changedFields: { 'group': data.group, 'designation': data.designation },
+        module: moduleState?.name || 'users',
+        userId: data.selectedUser.identifier
+      };
+      await usersService.updateUserExt(request);
+      showNotification('Primary details updated successfully', 'success');
+      closeDialog('editPrimary');
+      refreshData();
+    } catch (error) {
+      console.error("Error updating primary details:", error);
+      showNotification('Failed to update primary details', 'error');
+      throw error;
+    }
+  }, [moduleState?.name, showNotification, closeDialog, refreshData]);
+
   return (
     <Paper elevation={2}>
       {users && users.length > 0 ? (
@@ -633,6 +693,15 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <PencilIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Edit User Details</ListItemText>
+          </MenuItem>
+        )}
+
+        {menuUser?.status !== 0 && permissions.canWrite && (
+          <MenuItem onClick={handleEditPrimaryDetailsFromMenu}>
+            <ListItemIcon>
+              <PencilIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Edit Primary Details</ListItemText>
           </MenuItem>
         )}
 
@@ -768,6 +837,14 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         onClose={() => closeDialog('view')}
         title={`User Details: ${selectedUser?.firstName || ''}`}
         data={selectedUser}
+      />
+
+      <EditPrimaryDetailsDialog
+        open={editPrimaryDetailsDialogOpen}
+        onClose={() => closeDialog('editPrimary')}
+        user={selectedUser}
+        onSubmit={handlePrimaryDetailsUpdateAction}
+        processing={false} // This can be wired to a state if needed
       />
     </Paper>
   );

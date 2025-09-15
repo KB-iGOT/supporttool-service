@@ -21,6 +21,7 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
     const timeRange = req.query.timeRange as string;
     const startDateParam = req.query.startDate as string;
     const endDateParam = req.query.endDate as string;
+    const userId = req.query.userId as string;
     
     let startDate: Date;
     let endDate: Date = new Date(); // Default to current date
@@ -66,44 +67,59 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
       console.log('Using preset range:', timeRangeValue, { startDate, endDate });
     }
 
+    // Build WHERE clauses
+    const conditions: string[] = [`created_at >= $1`, `created_at <= $2`];
+    const values: any[] = [startDate, endDate];
+    let paramIndex = 3;
+
+    if (userId) {
+      conditions.push(`user_id = $${paramIndex}`);
+      values.push(userId);
+      paramIndex++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const userWhereClause = userId ? `WHERE "userId" = $1` : `WHERE "createdAt" >= $1 AND "createdAt" <= $2`;
+    const userValues: any[] = userId ? [userId] : [startDate, endDate];
+
     // Get total users within date range
     const totalUsersQuery = `
       SELECT COUNT(*) as count FROM users
-      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+      ${userWhereClause}
     `;
-    const totalUsersResult = await pool.query(totalUsersQuery, [startDate, endDate]);
-    const totalUsers = parseInt(totalUsersResult.rows[0].count);
+    const totalUsersResult = await pool.query<{ count: string }>(totalUsersQuery, userValues);
+    const totalUsers = totalUsersResult.rows.length > 0 ? parseInt(totalUsersResult.rows[0].count) : 0;
 
     // Get total modules (distinct modules from audit logs within date range)
     const totalModulesQuery = `
       SELECT COUNT(DISTINCT module) as count FROM audit_logs
-      WHERE created_at >= $1 AND created_at <= $2
+      ${whereClause}
     `;
-    const totalModulesResult = await pool.query(totalModulesQuery, [startDate, endDate]);
-    const totalModules = parseInt(totalModulesResult.rows[0].count);
+    const totalModulesResult = await pool.query<{ count: string }>(totalModulesQuery, values);
+    const totalModules = totalModulesResult.rows.length > 0 ? parseInt(totalModulesResult.rows[0].count) : 0;
 
     // Get recent audit logs count
     const recentAuditLogsQuery = `
       SELECT COUNT(*) as count FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2
+      ${whereClause}
     `;
-    const recentAuditLogsResult = await pool.query(recentAuditLogsQuery, [startDate, endDate]);
+    const recentAuditLogsResult = await pool.query<{ count: string }>(recentAuditLogsQuery, values);
     const recentAuditLogs = parseInt(recentAuditLogsResult.rows[0].count);
 
     // Get failed operations count
     const failedOperationsQuery = `
       SELECT COUNT(*) as count FROM audit_logs 
-      WHERE status IN ('FAILURE', 'ERROR') AND created_at >= $1 AND created_at <= $2
+      ${whereClause.includes('WHERE') ? `${whereClause} AND` : 'WHERE'} status IN ('FAILURE', 'ERROR')
     `;
-    const failedOperationsResult = await pool.query(failedOperationsQuery, [startDate, endDate]);
+    const failedOperationsResult = await pool.query<{ count: string }>(failedOperationsQuery, values);
     const failedOperations = parseInt(failedOperationsResult.rows[0].count);
 
     // Get successful operations count
     const successfulOperationsQuery = `
       SELECT COUNT(*) as count FROM audit_logs 
-      WHERE status = 'SUCCESS' AND created_at >= $1 AND created_at <= $2
+      ${whereClause.includes('WHERE') ? `${whereClause} AND` : 'WHERE'} status = 'SUCCESS'
     `;
-    const successfulOperationsResult = await pool.query(successfulOperationsQuery, [startDate, endDate]);
+    const successfulOperationsResult = await pool.query<{ count: string }>(successfulOperationsQuery, values);
     const successfulOperations = parseInt(successfulOperationsResult.rows[0].count);
 
     // Get user growth over time
@@ -111,12 +127,12 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
       SELECT 
         DATE("createdAt") as date,
         COUNT(*) as count
-      FROM users 
-      WHERE "createdAt" >= $1 AND "createdAt" <= $2
+      FROM users
+      ${userWhereClause}
       GROUP BY DATE("createdAt")
       ORDER BY date
     `;
-    const userGrowthResult = await pool.query(userGrowthQuery, [startDate, endDate]);
+    const userGrowthResult = await pool.query<{ date: string; count: string }>(userGrowthQuery, userValues);
     const userGrowth = userGrowthResult.rows.map(row => ({
       date: row.date,
       count: parseInt(row.count)
@@ -127,13 +143,13 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
       SELECT 
         module,
         COUNT(*) as count
-      FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2
+      FROM audit_logs
+      ${whereClause}
       GROUP BY module
       ORDER BY count DESC
       LIMIT 10
     `;
-    const auditLogsByModuleResult = await pool.query(auditLogsByModuleQuery, [startDate, endDate]);
+    const auditLogsByModuleResult = await pool.query<{ module: string; count: string }>(auditLogsByModuleQuery, values);
     const auditLogsByModule = auditLogsByModuleResult.rows.map(row => ({
       module: row.module,
       count: parseInt(row.count)
@@ -144,13 +160,13 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
       SELECT 
         action,
         COUNT(*) as count
-      FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2
+      FROM audit_logs
+      ${whereClause}
       GROUP BY action
       ORDER BY count DESC
       LIMIT 10
     `;
-    const auditLogsByActionResult = await pool.query(auditLogsByActionQuery, [startDate, endDate]);
+    const auditLogsByActionResult = await pool.query<{ action: string; count: string }>(auditLogsByActionQuery, values);
     const auditLogsByAction = auditLogsByActionResult.rows.map(row => ({
       action: row.action,
       count: parseInt(row.count)
@@ -161,12 +177,12 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
       SELECT 
         status,
         COUNT(*) as count
-      FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2
+      FROM audit_logs
+      ${whereClause}
       GROUP BY status
       ORDER BY count DESC
     `;
-    const auditLogsByStatusResult = await pool.query(auditLogsByStatusQuery, [startDate, endDate]);
+    const auditLogsByStatusResult = await pool.query<{ status: string; count: string }>(auditLogsByStatusQuery, values);
     const auditLogsByStatus = auditLogsByStatusResult.rows.map(row => ({
       status: row.status,
       count: parseInt(row.count)
@@ -178,12 +194,12 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
         DATE(created_at) as date,
         SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success,
         SUM(CASE WHEN status IN ('FAILURE', 'ERROR') THEN 1 ELSE 0 END) as failure
-      FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2
+      FROM audit_logs
+      ${whereClause}
       GROUP BY DATE(created_at)
       ORDER BY date
     `;
-    const auditLogsTimelineResult = await pool.query(auditLogsTimelineQuery, [startDate, endDate]);
+    const auditLogsTimelineResult = await pool.query<{ date: string; success: string; failure: string }>(auditLogsTimelineQuery, values);
     const auditLogsTimeline = auditLogsTimelineResult.rows.map(row => ({
       date: row.date,
       success: parseInt(row.success),
@@ -196,13 +212,13 @@ export const getAnalyticsStats = async (req: Request, res: Response) => {
         module,
         sub_module,
         COUNT(*) as count
-      FROM audit_logs 
-      WHERE created_at >= $1 AND created_at <= $2 AND sub_module IS NOT NULL
+      FROM audit_logs
+      ${whereClause.includes('WHERE') ? `${whereClause} AND` : 'WHERE'} sub_module IS NOT NULL
       GROUP BY module, sub_module
       ORDER BY count DESC
       LIMIT 15
     `;
-    const moduleActivityResult = await pool.query(moduleActivityQuery, [startDate, endDate]);
+    const moduleActivityResult = await pool.query<{ module: string; sub_module: string; count: string }>(moduleActivityQuery, values);
     const moduleActivity = moduleActivityResult.rows.map(row => ({
       module: row.module,
       subModule: row.sub_module,
