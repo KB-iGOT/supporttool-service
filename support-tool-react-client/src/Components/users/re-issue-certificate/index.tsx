@@ -44,8 +44,10 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import CodeIcon from '@mui/icons-material/Code';
+import InfoIcon from '@mui/icons-material/Info';
 import { usersService } from '../../../services/users.service';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
+import { JsonViewerDialog } from '../../common-components/JsonViewerDialog';
 
 // Type definitions for content data
 interface ContentEnrollment {
@@ -493,13 +495,16 @@ export const ReissueCertificate: React.FC = () => {
   const [processingReissue, setProcessingReissue] = useState(false);
   const [reissueSuccess, setReissueSuccess] = useState(false);
   const [reissueError, setReissueError] = useState<string | null>(null);
-
+  const [userEnrollmentInfo, setUserEnrollmentInfo] = useState<any>(null);
   // New state for certificate viewing
   const [certificateDialogOpen, setCertificateDialogOpen] = useState(false);
   const [selectedCertificateId, setSelectedCertificateId] = useState<string | null>(null);
   const [certificateData, setCertificateData] = useState<string | null>(null);
   const [loadingCertificate, setLoadingCertificate] = useState(false);
   const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [enrollmentInfoDialogOpen, setEnrollmentInfoDialogOpen] = useState(false);
+
+
 
   // Add download menu state
   const [downloadMenuAnchorEl, setDownloadMenuAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -516,6 +521,7 @@ export const ReissueCertificate: React.FC = () => {
       if (contentResponse.result && contentResponse.result.courses && Array.isArray(contentResponse.result.courses)) {
         setContentEnrollments(contentResponse.result.courses);
         setFilteredContent(contentResponse.result.courses);
+        setUserEnrollmentInfo(contentResponse.result.userCourseEnrolmentInfo);
       }
     } catch (err) {
       console.error('Error fetching content enrollments:', err);
@@ -564,6 +570,10 @@ export const ReissueCertificate: React.FC = () => {
         
         setEventEnrollments(mappedEvents);
         setFilteredEvents(mappedEvents);
+          setUserEnrollmentInfo({})
+        if(eventResponse?.result?.userEventEnrolmentInfo) {
+          setUserEnrollmentInfo(eventResponse.result.userEventEnrolmentInfo);
+        }
       }
     } catch (err) {
       console.error('Error fetching event enrollments:', err);
@@ -1004,6 +1014,14 @@ export const ReissueCertificate: React.FC = () => {
     setDownloadMenuAnchorEl(event.currentTarget);
   };
 
+  const handleOpenEnrollmentInfoDialog = () => {
+    setEnrollmentInfoDialogOpen(true);
+  };
+
+  const handleCloseEnrollmentInfoDialog = () => {
+    setEnrollmentInfoDialogOpen(false);
+  };
+
   return (   
     <Box sx={{ padding: 3 }}>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -1021,6 +1039,15 @@ export const ReissueCertificate: React.FC = () => {
               User ID: {userId}
             </Typography>
           </div>
+          {userEnrollmentInfo && Object.keys(userEnrollmentInfo)?.length > 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<InfoIcon />}
+              onClick={handleOpenEnrollmentInfoDialog}
+              sx={{ ml: 2 }}
+            >View Enrollment Info</Button>
+          )}
         </Box>
       </Box>
       
@@ -1311,6 +1338,16 @@ export const ReissueCertificate: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* User Enrollment Info Dialog */}
+      {userEnrollmentInfo && (
+        <JsonViewerDialog
+          open={enrollmentInfoDialogOpen}
+          onClose={handleCloseEnrollmentInfoDialog}
+          title="User Enrollment Information"
+          data={userEnrollmentInfo}
+        />
+      )}
     </Box>
   );
 };
