@@ -519,6 +519,32 @@ export const ReissueCertificate: React.FC = () => {
       const contentResponse = await usersService.getUserContentEnrollList(userId);
       
       if (contentResponse.result && contentResponse.result.courses && Array.isArray(contentResponse.result.courses)) {
+        // const mappedContents: ContentEnrollment[] = contentResponse.result.courses.map((item: any) => {
+        //   return {
+        //     identifier: item.contentId || item.content?.identifier,
+        //     courseName: item.content?.name,
+        //     description: item.content?.description,
+        //     startDate: item.content?.startDate,
+        //     endDate: item.content?.endDate,
+        //     status: item.status,
+        //     contentId: item.contentId  || item.content?.identifier,
+        //     batchId: item.batchId,
+        //     userId: item.userId,
+        //     completionPercentage: item.completionPercentage || 0,
+        //     issuedCertificates: item.issuedCertificates || [],
+        //     certificates: item.certificates || [],
+        //     completedOn: item.completedOn,
+        //     progress: item.progress || 0,
+        //     enrollmentEndDate: item.batchDetails?.[0]?.enrollmentEndDate 
+        //       ? new Date(item.batchDetails[0].enrollmentEndDate).toISOString().split('T')[0] 
+        //       : undefined,
+        //     sessionLink: item.content?.registrationLink,
+        //     enrollmentStatus: getStatusLabel(item.status),
+        //     batchDetails: item.content?.batchDetails
+        //   };
+        // });
+        // setContentEnrollments(mappedContents);
+        // setFilteredContent(mappedContents);
         setContentEnrollments(contentResponse.result.courses);
         setFilteredContent(contentResponse.result.courses);
         setUserEnrollmentInfo(contentResponse.result.userCourseEnrolmentInfo);

@@ -153,6 +153,12 @@ const UserDashboard = lazy(() =>
   }))
 );
 
+const Competency = lazy(() =>
+  import("../../competency").then((module) => ({
+    default: module.Competency,
+  }))
+);
+
 
 
 
@@ -317,6 +323,14 @@ const LazyApp = () => {
             element={
               <ProtectedRoute>
                 <ModuleDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/competency"
+            element={
+              <ProtectedRoute>
+                <Competency />
               </ProtectedRoute>
             }
           />

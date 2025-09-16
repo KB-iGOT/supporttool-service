@@ -30,6 +30,7 @@ import analyticsRoutes from "./routes/analytics.routes";
 import frameworkRoutes from "./routes/framework.routes";
 import designationRoutes from "./routes/designation.routes";
 
+import competencyRoutes from "./routes/competency.routes";
 
 const app = express();
 app.use(bodyParser.json());
@@ -171,6 +172,7 @@ app.use("/api/system/settings", SystemSettingsRoutes);
 app.use("/api/roles", rolesRouter);
 app.use("/api/framework", frameworkRoutes);
 app.use("/api/designation", designationRoutes);
+app.use("/api/competency", competencyRoutes);
 
 // Register client routes AFTER API routes (this includes the catch-all route)
 clientRoutes(app, isAuthenticated);

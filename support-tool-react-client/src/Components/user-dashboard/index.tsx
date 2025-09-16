@@ -72,6 +72,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
 
 const chartOptions = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: {
       position: 'top' as const,
@@ -81,6 +82,7 @@ const chartOptions = {
 
 const doughnutOptions = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: {
       position: 'right' as const,
@@ -215,9 +217,11 @@ export const UserDashboard: React.FC = () => {
                 <Card sx={{ height: '100%', border: (theme) => `1px solid ${theme.palette.divider}`, boxShadow: 'none', borderRadius: 2 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Activity Timeline (Last 7 Days)</Typography>
-                    {getTimelineChartData(stats) ? (
-                      <Line data={getTimelineChartData(stats)!} options={chartOptions} />
-                    ) : <Typography color="text.secondary">No timeline data available.</Typography>}
+                    <Box sx={{ position: 'relative', height: '300px' }}>
+                      {getTimelineChartData(stats) ? (
+                        <Line data={getTimelineChartData(stats)!} options={chartOptions} />
+                      ) : <Typography color="text.secondary">No timeline data available.</Typography>}
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -225,9 +229,11 @@ export const UserDashboard: React.FC = () => {
                 <Card sx={{ height: '100%', border: (theme) => `1px solid ${theme.palette.divider}`, boxShadow: 'none', borderRadius: 2 }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>Activity by Module</Typography>
-                    {getModuleActivityChartData(stats) ? (
-                      <Doughnut data={getModuleActivityChartData(stats)!} options={doughnutOptions} />
-                    ) : <Typography color="text.secondary">No module activity data available.</Typography>}
+                    <Box sx={{ position: 'relative', height: '300px' }}>
+                      {getModuleActivityChartData(stats) ? (
+                        <Doughnut data={getModuleActivityChartData(stats)!} options={doughnutOptions} />
+                      ) : <Typography color="text.secondary">No module activity data available.</Typography>}
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
