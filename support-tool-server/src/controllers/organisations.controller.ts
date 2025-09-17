@@ -189,8 +189,8 @@ export const fetchOrganisationsData: RequestHandler = async (
 
     const response = await axios(options);
 
-    logger.info(`Successfully fetched ${response.data.result?.response?.count || 0} organizations`);
-    res.status(200).send(response.data);
+    logger.info(`Successfully fetched ${JSON.stringify(response?.data)} organizations`);
+    res.status(200).send(response?.data);
   } catch (error) {
     logger.error("❌ Error in fetchOrganisationsData controller:" + error);
     res.status(500).send({

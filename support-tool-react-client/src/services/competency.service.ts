@@ -1,21 +1,4 @@
-
-
-import axios from "axios";
-import env from "../Config/env";
-import { getCookie } from "../utils";
-// Base URL (Change according to your backend server)
-const API_BASE_URL = env.apiBaseUrl;
-
-const userId = getCookie('userId');
-
-// Create an Axios instance
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-    "x-user-id": userId ?? '',
-  },
-});
+import apiClient from "./apiClient";
 
 // API Service for Modules
 export const competencyService = {
@@ -30,6 +13,12 @@ export const competencyService = {
   searchCompetencyThemes: async (params: any) => {
     // The API seems to expect a POST with a JSON payload.
     return await apiClient.post('/competency/competencyTheme/search', params);
-}
+},
+createCompetencyTheme: async (params: any) => {
+    return await apiClient.post('/competency/competencyTheme/create', params);
+},
+createCompetencySubTheme: async (params: any) => {
+    return await apiClient.post('/competency/competencySubTheme/create', params);
+},
 
-};
+};  

@@ -5,10 +5,12 @@ export interface INotification {
   }
 
   export interface IUserConfig {
+        id: string;
         userId: string;
         userName?: string;
         name: string;
         token?: string;
+        rolePermissions?: any;
   }
 
   export interface ActionPayload {
@@ -34,6 +36,8 @@ export type appContextType = {
     setIsLoggedIn: (loading: boolean) => void;
     user: IUserConfig | null;
     notification: INotification;
+    setUser: React.Dispatch<React.SetStateAction<IUserConfig | null>>;
+    setModulePermissions: React.Dispatch<React.SetStateAction<Record<string, any>>>;
     modulePermissions: any;
     modules: { user: Module[]; admin: Module[] };
     fetchModules: () => Promise<void>;

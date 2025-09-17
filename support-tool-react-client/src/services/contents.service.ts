@@ -1,20 +1,8 @@
 import axios from "axios";
-
+import apiClient from "./apiClient";
 import env from "../Config/env";
-import { getCookie } from "../utils";
 // Base URL (Change according to your backend server)
 const API_BASE_URL = env.apiBaseUrl;
-
-const userId = getCookie('userId');
-
-// Create an Axios instance
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-    "x-user-id": userId ?? '',
-  },
-});
 
 // API Service for Modules
 export const contentsService = {
@@ -52,7 +40,7 @@ export const contentsService = {
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'x-user-id': userId ?? '',
+            // The interceptor in apiClient will add the x-user-id header
           }
         }
       );

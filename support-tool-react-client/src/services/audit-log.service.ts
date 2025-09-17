@@ -1,18 +1,5 @@
-import axios from "axios";
-import env from "../Config/env";
-import { getCookie } from "../utils";
+import apiClient from "./apiClient";
 import { AuditLogFilters, AuditLogResponse } from "../types/audit-logs";
-
-const API_BASE_URL = env.apiBaseUrl;
-const userId = getCookie('userId');
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-    "x-user-id": userId ?? '',
-  },
-});
 
 export const auditLogService = {
   // Fetch audit logs with filters and pagination

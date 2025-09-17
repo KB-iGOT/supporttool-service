@@ -6,6 +6,7 @@ const createApiHeaders = (token?: string) => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Authorization: process.env.AUTHORIZATION || "",
+      "x-authenticated-user-token": token?.trim()|| "",
     };
     
     return headers;
@@ -58,6 +59,44 @@ export const searchCompetencySubThemes: RequestHandler = async (req: any, res: R
         });
 
         logger.info(`Successfully fetched competency sub-themes`);
+        res.status(200).send(response.data);
+    } catch (error) {
+        handleApiError(error, res, logMessage);
+    }
+};
+
+export const createCompetencyTheme: RequestHandler = async (req: any, res: Response) => {
+    const logMessage = "Error creating competency theme";
+    logger.info(`Creating competency theme with body: ${JSON.stringify(req.body)}`);
+
+    try {
+        const response = await axios({
+            method: "POST",
+            url: `${process.env.KONG_API_URL}/api/competencyTheme/create`,
+            headers: createApiHeaders(req.user.token),
+            data: req.body,
+        });
+
+        logger.info(`Successfully created competency theme`);
+        res.status(200).send(response.data);
+    } catch (error) {
+        handleApiError(error, res, logMessage);
+    }
+};
+
+export const createCompetencySubTheme: RequestHandler = async (req: any, res: Response) => {
+    const logMessage = "Error creating competency sub-theme";
+    logger.info(`Creating competency sub-theme with body: ${JSON.stringify(req.body)}`);
+
+    try {
+        const response = await axios({
+            method: "POST",
+            url: `${process.env.KONG_API_URL}/api/competencySubTheme/create`,
+            headers: createApiHeaders(req.user.token),
+            data: req.body,
+        });
+
+        logger.info(`Successfully created competency sub-theme`);
         res.status(200).send(response.data);
     } catch (error) {
         handleApiError(error, res, logMessage);

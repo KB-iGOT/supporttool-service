@@ -84,12 +84,15 @@ const authenticateWithKeycloak = (email: string, password: string) => {
 };
 
 const createSessionData = (user: any, token: string) => {
-  let data =  {
+  const data = {
     id: user.id,
     userId: user.userId,
     userName: user.username,
     name: user.firstName + (user.lastName ? " " + user.lastName : ""),
-    ...user
+    token: token,
+    roles: user.roles,
+    rolePermissions: user.rolePermissions,
+    email: user.email,
   };
   console.log("Session Data Created: ", data);
   return data;
@@ -157,7 +160,7 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
     res.status(200).send({
       status: 200,
       message: "User authenticated successfully",
-      userId: sessionData.id,
+      data: cookieSafeData,
     });
   } catch (error: any) {
     logger.error("Authentication error: " + error.message);

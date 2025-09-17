@@ -696,14 +696,14 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {menuUser?.status !== 0 && permissions.canWrite && (
+        {/* {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleEditPrimaryDetailsFromMenu}>
             <ListItemIcon>
               <PencilIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Edit Primary Details</ListItemText>
           </MenuItem>
-        )}
+        )} */}
 
         {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleRoleFromMenu}>
@@ -749,14 +749,14 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {permissions.canWrite && menuUser?.profileDetails?.profileStatus === 'NOT-VERIFIED' && (
+        {/* {permissions.canWrite && menuUser?.profileDetails?.profileStatus === 'NOT-VERIFIED' && (
           <MenuItem onClick={handleStatusUpdateFromMenu}>
             <ListItemIcon>
               <ReportProblemIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Not My User</ListItemText>
           </MenuItem>
-        )}
+        )} */}
 
         {permissions.canWrite && menuUser?.profileDetails?.profileStatus === 'NOT-MY-USER' && (
           <MenuItem onClick={handleStatusUpdateFromMenu}>

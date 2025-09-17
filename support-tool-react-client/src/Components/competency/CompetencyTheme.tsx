@@ -99,7 +99,7 @@ export const CompetencyThemeList: React.FC = () => {
         setCreating(true);
         try {
             // Assuming a create service method exists
-            // await competencyService.createCompetencyTheme(data);
+            await competencyService.createCompetencyTheme(data);
             console.log("Creating theme with:", data);
             setToast({ open: true, message: 'Theme created successfully!', severity: 'success' });
             setCreateDialogOpen(false);

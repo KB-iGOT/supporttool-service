@@ -1,17 +1,5 @@
-import axios from "axios";
+import apiClient from "./apiClient";
 import { ICreateUser } from "../types/users";
-
-import env from "../Config/env";
-// Base URL (Change according to your backend server)
-const API_BASE_URL = env.apiBaseUrl;
-
-// Create an Axios instance
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
 
 // API Service for Users
 export const supportUserService = {

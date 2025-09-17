@@ -98,9 +98,13 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    fetchCurrentUser();
-    fetchModules();
-  }, [isLoggedIn, fetchCurrentUser, fetchModules]);
+    if (isLoggedIn && !user) { // Only fetch if logged in but user data is not present
+      fetchCurrentUser();
+    }
+    if (isLoggedIn) {
+      fetchModules();
+    }
+  }, [isLoggedIn, user, fetchCurrentUser, fetchModules]);
 
   // Module permission check function that can be used anywhere
   const checkPermissions = (path?: string) => {
@@ -148,6 +152,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         isLoggedIn,
         setIsLoggedIn: updateIsLoggedIn,
         user,
+        setUser,
+        setModulePermissions,
         modulePermissions,
         modules,
         fetchModules,

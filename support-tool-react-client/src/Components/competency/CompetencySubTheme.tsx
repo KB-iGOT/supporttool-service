@@ -49,11 +49,11 @@ export const CompetencySubThemeList: React.FC = () => {
                 filterCriteriaMap: {
                     status: "Live",
                     isActive: true,
-                    ...(searchQuery && { name: searchQuery }),
                 },
                 requestedFields: [],
                 pageNumber: page,
                 pageSize: rowsPerPage,
+                ...(searchQuery && { searchString: searchQuery }),
             };
             const response = await competencyService.searchCompetencySubThemes(params);
             // @ts-ignore
@@ -98,7 +98,7 @@ export const CompetencySubThemeList: React.FC = () => {
         setCreating(true);
         try {
             // Assuming a create service method exists
-            // await competencyService.createCompetencySubTheme(data);
+            await competencyService.createCompetencySubTheme(data);
             console.log("Creating sub-theme with:", data);
             setToast({ open: true, message: 'Sub-theme created successfully!', severity: 'success' });
             setCreateDialogOpen(false);

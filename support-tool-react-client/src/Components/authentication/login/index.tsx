@@ -25,7 +25,7 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { setIsLoggedIn, setNotification } = useContext(
+  const { setIsLoggedIn, setNotification, setUser, setModulePermissions } = useContext(
     AppContext,
   ) as appContextType;
     
@@ -53,7 +53,16 @@ export const Login: React.FC = () => {
       });
       
       if (response && response.status === 200) {
-        localStorage.setItem("userId", response.userId);
+        const userSessionData = response.data;
+        localStorage.setItem("userId", userSessionData.id);
+        setUser(userSessionData);
+        if (userSessionData && userSessionData.rolePermissions) {
+          const permissionsMap: Record<string, any> = {};
+          userSessionData.rolePermissions.forEach((permission: any) => {
+            permissionsMap[permission.module_url] = permission;
+          });
+          setModulePermissions(permissionsMap);
+        }
         setIsLoggedIn(true);
         navigate("/home");
       } else {
