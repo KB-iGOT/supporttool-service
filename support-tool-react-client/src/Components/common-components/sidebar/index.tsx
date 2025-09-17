@@ -15,14 +15,15 @@ import {
   Business as OrganisationsIcon,
   Delete as DeleteOrgIcon,
   Domain,
-  ManageAccounts as RolesIcon,
+  VerifiedUser as RolesIcon,
   ListAlt as FormsIcon,
   SupportAgent as SupportUsersIcon,
   Analytics,
-  FindInPage as AuditLogsIcon,
+  Gavel as AuditLogsIcon,
   Home as HomeIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
   List as MasterDesignationsIcon,
+  DashboardCustomize as ModuleDashboardIcon,
 } from '@mui/icons-material';
 import { Module } from "../../../types";
 
@@ -67,6 +68,9 @@ const useStyles = makeStyles(() =>
 );
 
 const ICONS: { [key: string]: React.ElementType } = {
+  home: HomeIcon,
+  'module-dashboard': ModuleDashboardIcon,
+  admin: AdminPanelSettingsIcon,
   users: UsersIcon,
   contents: ContentsIcon,
   modules: ModulesIcon,
@@ -196,8 +200,6 @@ export const Sidebar = () => {
           </Box>
         ) : (
           <>
-            <SidebarItem module={{ id: 'home', name: 'Home', url: '/home', description: 'Home page' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
-            <SidebarItem module={{ id: 'module-dashboard', name: 'Module Dashboard', url: '/module-dashboard', description: 'Dashboard for all modules' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
             {modules.user.length > 0 && renderModuleList(modules.user, 'Modules')}
             {modules.admin.length > 0 && (
               <>

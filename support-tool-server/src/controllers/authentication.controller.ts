@@ -88,7 +88,7 @@ const createSessionData = (user: any, token: string) => {
     id: user.userId,
     userName: user.userName,
     name: user.firstName + (user.lastName ? " " + user.lastName : ""),
-    rolePermissions: user.rolePermissions,
+    // rolePermissions: user.rolePermissions,
     email: user.email,
   };
   console.log("Session Data Created: ", data);
@@ -150,7 +150,7 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
       userName: sessionData.userName,
       name: sessionData.name,
       email: sessionData.email,
-      rolePermissions: sessionData.rolePermissions
+      // rolePermissions: sessionData.rolePermissions
       // Token is deliberately omitted here
     };
     res.cookie("user", cookieSafeData);

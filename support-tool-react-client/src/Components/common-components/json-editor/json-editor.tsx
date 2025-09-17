@@ -42,7 +42,9 @@ const editorStyles = makeStyles(() =>
       backgroundColor: '#fff',
       padding: '16px',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      width: '100vw !important',
+      height: '100vh !important',
     },
     fullscreenButton: {
       position: 'absolute',
@@ -66,8 +68,10 @@ export const JsonEditor = (props: {
   const { input, onChange, onEditorMount } = props;
   const classes = editorStyles();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<any>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorHeight, setEditorHeight] = useState('400px');
+  const [editorWidth, setEditorWidth] = useState('100%');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullScreenHeight = 'calc(100vh - 24px) !important'; // Use !important to override any inline styles
   // Pretty-print the JSON input
@@ -78,6 +82,7 @@ export const JsonEditor = (props: {
 
   const handleEditorDidMount = (editor: any) => {
     setIsEditorReady(true);
+    editorRef.current = editor;
     
     if (onEditorMount) {
       onEditorMount(editor);
@@ -90,7 +95,28 @@ export const JsonEditor = (props: {
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    const newFullscreenState = !isFullscreen;
+    setIsFullscreen(newFullscreenState);
+    
+    // Force editor to recalculate its layout after state change
+    setTimeout(() => {
+      if (editorRef.current) {
+        if (newFullscreenState) {
+          // In fullscreen, use full viewport dimensions
+          editorRef.current.layout({
+            width: window.innerWidth - 32, // Account for padding
+            height: window.innerHeight - 64 // Account for padding and button
+          });
+        } else {
+          // When exiting fullscreen, use container dimensions
+          const containerWidth = containerRef.current?.clientWidth || 0;
+          editorRef.current.layout({
+            width: containerWidth,
+            height: parseInt(editorHeight)
+          });
+        }
+      }
+    }, 150); // Increased timeout to ensure DOM updates
   };
 
   // Handle escape key to exit fullscreen
@@ -98,12 +124,62 @@ export const JsonEditor = (props: {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isFullscreen) {
         setIsFullscreen(false);
+        // Force layout recalculation when exiting fullscreen via ESC
+        setTimeout(() => {
+          if (editorRef.current && containerRef.current) {
+            editorRef.current.layout({
+              width: containerRef.current.clientWidth,
+              height: parseInt(editorHeight)
+            });
+          }
+        }, 150);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen, editorHeight]);
+
+  // Effect to handle fullscreen state changes and force layout
+  useEffect(() => {
+    if (editorRef.current) {
+      setTimeout(() => {
+        if (isFullscreen) {
+          // Force fullscreen layout
+          editorRef.current.layout({
+            width: window.innerWidth - 32,
+            height: window.innerHeight - 64
+          });
+        } else {
+          // Force normal layout
+          const containerWidth = containerRef.current?.clientWidth || 0;
+          editorRef.current.layout({
+            width: containerWidth,
+            height: parseInt(editorHeight)
+          });
+        }
+      }, 200); // Allow time for DOM to update
+    }
+  }, [isFullscreen]);
+
+  // Handle window resize in fullscreen mode
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const handleFullscreenResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout({
+          width: window.innerWidth - 32,
+          height: window.innerHeight - 64
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleFullscreenResize);
+    return () => {
+      window.removeEventListener('resize', handleFullscreenResize);
     };
   }, [isFullscreen]);
 
@@ -117,9 +193,22 @@ export const JsonEditor = (props: {
       if (container.parentElement) {
         // Calculate a stable height based on parent or viewport
         const parentHeight = container.parentElement.clientHeight || window.innerHeight;
-        const newHeight = Math.max(400, parentHeight - 40) + 'px'; // Ensure minimum height
+        const parentWidth = container.parentElement.clientWidth || window.innerWidth;
+        const newHeight = Math.max(400, parentHeight - 40) + 'px';
+        const newWidth = Math.max(300, parentWidth) + 'px';
+        
         setEditorHeight(newHeight);
+        setEditorWidth(newWidth);
         container.style.height = newHeight;
+        container.style.width = newWidth;
+        
+        // Force editor layout if it exists
+        if (editorRef.current && !isFullscreen) {
+          editorRef.current.layout({
+            width: parentWidth,
+            height: parseInt(newHeight)
+          });
+        }
       }
     };
 
@@ -135,7 +224,7 @@ export const JsonEditor = (props: {
       }
       
       resizeTimeout = setTimeout(() => {
-        if (container) {
+        if (container && !isFullscreen) {
           setDimensions();
         }
       }, 100);
@@ -152,7 +241,7 @@ export const JsonEditor = (props: {
       }
       window.removeEventListener('resize', resizeHandler);
     };
-  }, []);
+  }, [isFullscreen]);
 
   const editorContent = (
     <>
@@ -211,7 +300,7 @@ export const JsonEditor = (props: {
           folding: true,
           foldingStrategy: 'auto',
           renderLineHighlight: 'all',
-          automaticLayout: true, // Try enabling automatic layout again
+          automaticLayout: false, // Disable automatic layout to prevent width issues
         }}
         onChange={(value) => {
           if (onChange && value !== undefined) {
@@ -231,12 +320,22 @@ export const JsonEditor = (props: {
 
   if (isFullscreen) {
     return (
-      <Box className={classes.fullscreenContainer}
-      sx={{ 
-        height: isFullscreen? fullScreenHeight : editorHeight,
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <Box 
+        className={classes.fullscreenContainer}
+        sx={{ 
+          height: '100vh !important',
+          width: '100vw !important',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          zIndex: 1300,
+          backgroundColor: '#fff',
+          padding: '16px',
+          boxSizing: 'border-box'
+        }}
+      >
         {editorContent}
       </Box>
     );
@@ -247,7 +346,9 @@ export const JsonEditor = (props: {
       ref={containerRef} 
       className={classes.editorContainer}
       sx={{ 
-        height: isFullscreen? fullScreenHeight : editorHeight,
+        height: editorHeight,
+        width: editorWidth,
+        maxWidth: '100%',
         display: 'flex',
         flexDirection: 'column'
       }}
