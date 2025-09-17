@@ -200,6 +200,8 @@ export const Sidebar = () => {
           </Box>
         ) : (
           <>
+            <SidebarItem module={{ id: 'home', name: 'Home', url: '/home', description: 'Home page' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
+            <SidebarItem module={{ id: 'module-dashboard', name: 'Module Dashboard', url: '/module-dashboard', description: 'Dashboard for all modules' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
             {modules.user.length > 0 && renderModuleList(modules.user, 'Modules')}
             {modules.admin.length > 0 && (
               <>

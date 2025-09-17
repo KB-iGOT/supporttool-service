@@ -15,5 +15,9 @@ export const authService = {
       console.error("Logout failed:", error);
       throw error;
     }
+  },
+  getCurrentUserSession: async () => {
+    const response = await apiClient.get("/auth/session");
+    return response.data;
   }
 };

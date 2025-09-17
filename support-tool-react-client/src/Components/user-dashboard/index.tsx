@@ -35,6 +35,7 @@ import {
   BarElement,
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
+import { debug } from 'console';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, BarElement);
 
@@ -121,13 +122,14 @@ const getTimelineChartData = (stats: AnalyticsStats | null) => {
 };
 
 export const UserDashboard: React.FC = () => {
-  const { user } = useContext(AppContext) as appContextType;
+  const { user } = React.useContext(AppContext) as appContextType;
 
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
 
   const fetchUserStats = useCallback(async () => {
+    debugger;
     if (!user) return;
 
     setLoadingStats(true);
@@ -144,6 +146,7 @@ export const UserDashboard: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    debugger
     if (user?.userId) {
       fetchUserStats();
     }

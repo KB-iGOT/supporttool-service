@@ -90,6 +90,7 @@ const JiraLinkPopup: React.FC = () => {
             id="ticketLink"
             name="ticketLink"
             label="Ticket URL"
+            autoComplete="url"
             multiline
             maxRows={4}
             fullWidth

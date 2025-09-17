@@ -85,11 +85,11 @@ const authenticateWithKeycloak = (email: string, password: string) => {
 
 const createSessionData = (user: any, token: string) => {
   let data =  {
-    id: user.userId,
-    userName: user.userName,
+    id: user.id,
+    userId: user.userId,
+    userName: user.username,
     name: user.firstName + (user.lastName ? " " + user.lastName : ""),
-    // rolePermissions: user.rolePermissions,
-    email: user.email,
+    ...user
   };
   console.log("Session Data Created: ", data);
   return data;
@@ -149,8 +149,7 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
       id: sessionData.id,
       userName: sessionData.userName,
       name: sessionData.name,
-      email: sessionData.email,
-      // rolePermissions: sessionData.rolePermissions
+      email: sessionData.email
       // Token is deliberately omitted here
     };
     res.cookie("user", cookieSafeData);
@@ -188,4 +187,31 @@ export const logout = (req: any, res: any) => {
       });
     }
   });
+};
+
+export const getCurrentUserSession = async (req: any, res: any) => {
+  const userId = req.headers["x-user-id"];
+  if (!userId) {
+    logger.warn("User ID not provided in request for session fetch.");
+    return res.status(400).send({ status: 400, message: "Bad Request: User ID is required." });
+  }
+
+  try {
+    const result = await pool.query('SELECT sess FROM sessions WHERE user_id = $1', [userId]);
+    if (result.rows.length > 0) {
+      const userSessionData = result.rows[0].sess.user;
+      // Remove token before sending to client
+      if( userSessionData.token ) {
+        delete userSessionData.token;
+      }
+      logger.info(`Found active session for user: ${userSessionData.userName} `);
+      res.status(200).send({ status: 200, data: userSessionData });
+    } else {
+      logger.warn(`No active session found for user ID: ${userId}`);
+      res.status(401).send({ status: 401, message: "Unauthorized: No active session" });
+    }
+  } catch (error) {
+    logger.error(`Error fetching user session from DB for user ID ${userId}:`+ error);
+    res.status(500).send({ status: 500, message: "Internal Server Error" });
+  }
 };

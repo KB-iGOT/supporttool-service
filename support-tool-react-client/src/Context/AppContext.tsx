@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { ActionPayload, appContextType, IUserConfig, Module } from '../types/index';
 import { decodeCookie, getCookie } from '../utils';
+import { authService } from '../services/authentication.service';
 import { checkModulePermission } from './../utils/permissionUtils';
 
 export const AppContext = createContext<appContextType | undefined>(
@@ -63,57 +64,43 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, [isLoggedIn]);
 
-  // Define the setUserFromCookie function
-  const setUserFromCookie = (value: boolean) => {
-    if (value) {
-      const userData = getCookie('user');
-      
-      if (userData) {
-        
-        let userDecodedData = decodeCookie(userData);
-        if (userDecodedData && userDecodedData?.rolePermissions) {
-          
-          // Transform the rolePermissions array into an object with module_url as keys
+  const fetchCurrentUser = useCallback(async () => {
+    if (!isLoggedIn) {
+      setUser(null);
+      setModulePermissions({});
+      return;
+    }
+    try {
+      const response = await authService.getCurrentUserSession();
+      if (response && response.data) {
+        const userSessionData = response.data;
+        if (userSessionData && userSessionData.rolePermissions) {
+          userSessionData['userId'] = userSessionData.id ||''
           const permissionsMap: Record<string, any> = {};
-          userDecodedData.rolePermissions.forEach((permission: any) => {
-            const moduleUrl = permission.module_url;
-            // If this module URL is already in the map
-            if (permissionsMap[moduleUrl]) {
-              // Update permissions only if the new permission provides more access
-              permissionsMap[moduleUrl] = {
-                ...permissionsMap[moduleUrl],
-                can_read: permissionsMap[moduleUrl].can_read || permission.can_read,
-                can_write: permissionsMap[moduleUrl].can_write || permission.can_write,
-                can_delete: permissionsMap[moduleUrl].can_delete || permission.can_delete
-              };
-            } else {
-              // First time seeing this module URL, just add it
-              permissionsMap[moduleUrl] = permission;
-            }
+          userSessionData.rolePermissions.forEach((permission: any) => {
+            permissionsMap[permission.module_url] = permission;
           });
           setModulePermissions(permissionsMap);
         }
-       
-        setUser(userDecodedData);
+        setUser(userSessionData);
       }
-    } else {
+    } catch (error) {
+      console.error("Error fetching user session:", error);
       setUser(null);
       setModulePermissions({});
     }
-  };
+  }, [isLoggedIn]);
 
   // Update isLoggedIn state and user data
   const updateIsLoggedIn = (value: boolean) => {
     setIsLoggedIn(value);
-    setUserFromCookie(value);
     localStorage.setItem('isLoggedIn', JSON.stringify(value));
   };
 
-  // Initialize user data from cookie when component mounts
   useEffect(() => {
-    setUserFromCookie(isLoggedIn);
+    fetchCurrentUser();
     fetchModules();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, fetchCurrentUser, fetchModules]);
 
   // Module permission check function that can be used anywhere
   const checkPermissions = (path?: string) => {
