@@ -26,7 +26,7 @@ export const fetchOrganisations: RequestHandler = async (
     const response = await axios(options);
 
     if (response.data) {
-      logger.info(`Successfully fetched ${response.data.result?.response?.count || 0} organizations`);
+      logger.info(`Successfully fetched ${JSON.stringify(response.data)} organizations`);
       res.status(200).send(response.data);
     } else {
       logger.error("Empty response body from organization API");

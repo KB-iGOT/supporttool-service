@@ -23,7 +23,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     return storedValue ? JSON.parse(storedValue) : false;
   });
   const [user, setUser] = useState<IUserConfig | null>(null);
-  const [userRoles, setUserRoles] = useState<any | []>([]);
   const [modulePermissions, setModulePermissions] = useState<Record<string, any>>({});
   const [modules, setModules] = useState<{ user: Module[]; admin: Module[] }>({
     user: [],
@@ -94,10 +93,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
           });
           setModulePermissions(permissionsMap);
         }
-        
-        if (userDecodedData && userDecodedData.roles) {
-          setUserRoles(userDecodedData.roles);
-        }
+       
         setUser(userDecodedData);
       }
     } else {
@@ -165,7 +161,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
         isLoggedIn,
         setIsLoggedIn: updateIsLoggedIn,
         user,
-        userRoles,
         modulePermissions,
         modules,
         fetchModules,

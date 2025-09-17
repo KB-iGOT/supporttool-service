@@ -33,7 +33,6 @@ export type appContextType = {
     isLoggedIn: boolean;
     setIsLoggedIn: (loading: boolean) => void;
     user: IUserConfig | null;
-    userRoles: any | [];
     notification: INotification;
     modulePermissions: any;
     modules: { user: Module[]; admin: Module[] };

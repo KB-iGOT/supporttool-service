@@ -121,7 +121,7 @@ const getTimelineChartData = (stats: AnalyticsStats | null) => {
 };
 
 export const UserDashboard: React.FC = () => {
-  const { user, userRoles } = useContext(AppContext) as appContextType;
+  const { user } = useContext(AppContext) as appContextType;
 
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -170,11 +170,7 @@ export const UserDashboard: React.FC = () => {
                 </Avatar>
                 <Typography variant="h6" fontWeight="bold">{user?.name || user.userName}</Typography>
                 <Typography color="text.secondary" variant="body2">User ID: {user.userId}</Typography>
-                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
-                  {(userRoles || []).map((roleObj: { role: string }, index: number) => (
-                    roleObj?.role && <Chip key={`${roleObj.role}-${index}`} label={roleObj.role.toUpperCase()} size="small" variant="outlined" color="primary" />
-                  ))}
-                </Box>
+                
               </Paper>
             </Grid>
             <Grid item xs={12} md={8}>
