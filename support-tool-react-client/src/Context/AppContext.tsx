@@ -98,7 +98,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    if (isLoggedIn && !user) { // Only fetch if logged in but user data is not present
+    if (isLoggedIn && !user?.rolePermissions) { // Only fetch if logged in but user data is not present
       fetchCurrentUser();
     }
     if (isLoggedIn) {
