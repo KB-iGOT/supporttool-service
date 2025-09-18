@@ -1,27 +1,19 @@
-import React, { JSX } from "react";
-import { Navigate } from "react-router-dom";
-import { useContext } from "react";
-import { appContextType } from "../../../types";
-import { AppContext } from "../../../Context/AppContext";
+import React, { useContext } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { AppContext } from '../../../Context/AppContext';
+import { appContextType } from '../../../types';
 
-type ProtectedRouteProps = {
-  children: JSX.Element;
-};
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoggedIn } = useContext(AppContext) as appContextType;
+  const location = useLocation();
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isLoggedIn } = useContext(
-          AppContext,
-        ) as appContextType;
-  
-  const isAuthenticated = localStorage.getItem("isLoggedIn");
-
-  // If the user is not logged in, redirect to the login page
-  if (!isLoggedIn && !isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!isLoggedIn) {
+    // If the user is not logged in, redirect them to the login page.
+    // We also save the location they were trying to access, so we can redirect them back after a successful login.
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If the user is logged in, render the child component
-  return children;
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;

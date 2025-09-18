@@ -5,8 +5,10 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import { Button } from "@mui/material";
+import { Button, Autocomplete } from "@mui/material";
 import TextField from "@mui/material/TextField";
+
+const TICKET_HISTORY_KEY = 'ticketLinkHistory';
 
 const JiraLinkPopup: React.FC = () => {
   const { isIntercepting, currentAction, completeAction, cancelAction } =
@@ -14,9 +16,18 @@ const JiraLinkPopup: React.FC = () => {
   const [jiraLink, setJiraLink] = useState("");
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
 
   useEffect(() => {
     if (isIntercepting) {
+      // Load history from localStorage when the dialog opens
+      try {
+        const storedHistory = localStorage.getItem(TICKET_HISTORY_KEY);
+        setHistory(storedHistory ? JSON.parse(storedHistory) : []);
+      } catch (e) {
+        console.error("Failed to parse ticket history:", e);
+        setHistory([]);
+      }
       setJiraLink("");
       setIsValid(false);
       setError("");
@@ -36,10 +47,11 @@ const JiraLinkPopup: React.FC = () => {
     return jiraPattern.test(value) || zohoPattern.test(value);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleInputChange = (
+    event: React.SyntheticEvent,
+    value: string
+  ) => {
     setJiraLink(value);
-
     if (!value.trim()) {
       setError("Ticket link is required");
       setIsValid(false);
@@ -55,6 +67,14 @@ const JiraLinkPopup: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isValid) {
+      // Add the new link to history, ensuring it's unique and trimming the list
+      const newHistory = [jiraLink, ...history.filter(h => h !== jiraLink)].slice(0, 10);
+      try {
+        localStorage.setItem(TICKET_HISTORY_KEY, JSON.stringify(newHistory));
+        setHistory(newHistory);
+      } catch (e) {
+        console.error("Failed to save ticket history:", e);
+      }
       completeAction(jiraLink);
     }
   };
@@ -83,23 +103,29 @@ const JiraLinkPopup: React.FC = () => {
         </DialogContentText>
 
         <div className="mb-4">
-          <TextField
-            autoFocus
-            required
-            margin="dense"
-            id="ticketLink"
-            name="ticketLink"
-            label="Ticket URL"
-            autoComplete="url"
-            multiline
-            maxRows={4}
-            fullWidth
-            variant="standard"
+          <Autocomplete
+            freeSolo
+            options={history}
             value={jiraLink}
-            onChange={handleChange}
-            placeholder="https://desk.zoho.in/agent/... or https://karmayogibharat.atlassian.net/..."
+            onInputChange={handleInputChange}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                autoFocus
+                required
+                margin="dense"
+                id="ticketLink"
+                name="ticketLink"
+                label="Ticket URL"
+                multiline
+                maxRows={4}
+                variant="standard"
+                error={!!error}
+                helperText={error || " "}
+                placeholder="https://desk.zoho.in/agent/... or https://karmayogibharat.atlassian.net/..."
+              />
+            )}
           />
-          {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
         </div>
       </DialogContent>
       <DialogActions>

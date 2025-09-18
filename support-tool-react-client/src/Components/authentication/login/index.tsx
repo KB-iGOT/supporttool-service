@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import TextField from "@mui/material/TextField";
 import logo from "../../../assets/logo.svg";
 import Box from "@mui/material/Box";
@@ -24,8 +24,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const { setIsLoggedIn, setNotification, setUser, setModulePermissions } = useContext(
+  const { isLoggedIn, setIsLoggedIn, setNotification, setUser, setModulePermissions } = useContext(
     AppContext,
   ) as appContextType;
     
@@ -33,6 +32,13 @@ export const Login: React.FC = () => {
     username: "",
     password: "",
   });
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the home page.
+    if (isLoggedIn) {
+      navigate("/home");
+    }
+  }, [isLoggedIn, navigate]);
 
   const submitForm = async() => {
     if (!fields.username || !fields.password) {
