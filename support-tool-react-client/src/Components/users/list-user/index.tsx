@@ -203,7 +203,7 @@ export const UsersList = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchFieldType>('name');
+  const [searchType, setSearchType] = useState<SearchFieldType>('email');
   const [open, setOpen] = useState(false);
   const [modifiedFields, setModifiedFields] = useState<Record<string, any>>({});
   const [originalUserData, setoriginalUserData] = useState<Record<string, any>>({});

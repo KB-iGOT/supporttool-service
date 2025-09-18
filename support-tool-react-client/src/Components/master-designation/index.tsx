@@ -18,12 +18,14 @@ import {
 } from '@mui/material';
 import Button from '@mui/material/Button';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
 import { designationService } from '../../services/designations.service';
 import { useDebounce } from '../../hooks/useDebounce';
 import { AppContext } from '../../Context/AppContext';
 import { appContextType } from '../../types';
 import { UploadDesignationsDialog } from './UploadDesignationsDialog';
+import sampleCsv from '../../assets/sample-files/MasterDesignation_Sample.csv';
 // This interface is based on the one in ImportDesignationsPage.tsx
 interface MasterDesignation {
   name: string;
@@ -94,13 +96,24 @@ export const MasterDesignations = () => {
           Master Designations
         </Typography>
         {permissions.canWrite && (
-          <Button
-            variant="contained"
-            startIcon={<UploadFileIcon />}
-            onClick={() => setUploadDialogOpen(true)}
-          >
-            Upload Designations
-          </Button>
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              href={sampleCsv}
+              download="MasterDesignation_Sample.csv"
+              sx={{ mr: 2 }}
+            >
+              Download Sample
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<UploadFileIcon />}
+              onClick={() => setUploadDialogOpen(true)}
+            >
+              Upload Designations
+            </Button>
+          </Box>
         )}
       </Box>
       <Paper elevation={3}>

@@ -105,18 +105,19 @@ const ContentCreateForm: React.FC<ContentCreateFormProps> = ({
 
       {/* Location field - nested object */}
       <Grid item xs={12} md={6}>
-        <TextField
-          name="locationPlace"
-          label="Location *"
-          fullWidth
-          value={contentData.location?.place || ''}
-          onChange={(e) => handleLocationChange(e.target.value)}
-          required
-          margin="normal"
-          error={Boolean(formErrors.locationPlace)}
-          helperText={formErrors.locationPlace || ''}
-          disabled={isEditMode}
-        />
+        <FormControl fullWidth required margin="normal" error={Boolean(formErrors.locationPlace)} disabled={isEditMode}>
+          <InputLabel>Location *</InputLabel>
+          <Select
+            name="locationPlace"
+            value={contentData.location?.place || ''}
+            onChange={(e) => handleLocationChange(e.target.value as string)}
+            label="Location *"
+          >
+            <MenuItem value="New Delhi">New Delhi</MenuItem>
+            <MenuItem value="Bengaluru">Bengaluru</MenuItem>
+          </Select>
+          {formErrors.locationPlace && <FormHelperText>{formErrors.locationPlace}</FormHelperText>}
+        </FormControl>
       </Grid>
 
       {/* Date fields */}
