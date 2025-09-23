@@ -42,7 +42,7 @@ export const CompetencyThemeList: React.FC = () => {
     const [toast, setToast] = useState<{ open: boolean, message: string, severity: 'success' | 'error' } | null>(null);
 
     const fetchThemes = useCallback(async () => {
-        debugger
+        
         setLoading(true);
         setError(null);
         try {
@@ -57,7 +57,7 @@ export const CompetencyThemeList: React.FC = () => {
                 ...(searchQuery && { searchString: searchQuery }),
             };
             const response = await competencyService.searchCompetencyThemes(params);
-            debugger
+            
             if (response && response.data.result && response.data.result.result && response.data.result.result.data) {
                 setThemes(response.data.result.result.data || []);
                 setTotalCount(response.data.result.result.totalCount || 0);

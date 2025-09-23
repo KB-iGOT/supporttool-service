@@ -3,7 +3,8 @@ import { Suspense, lazy } from "react";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import { Organisations } from "../../organisation";
 import { OrganisationList } from "../../organisation/list";
-import { MasterDesignations } from "../../master-designation";
+import { MasterDesignations } from "../../bulk-upload/master-designation";
+import { BulkUpload } from "../../bulk-upload";
 
 const DesignationView = lazy(() =>
   import("../../organisation/DesignationView").then((module) => ({
@@ -159,6 +160,14 @@ const Competency = lazy(() =>
   }))
 );
 
+const BulkFeaturesList = lazy(() =>
+  import("../../bulk-upload/bulk-features-list").then(module => ({ default: module.BulkFeaturesList }))
+);
+
+const DeactivateUser = lazy(() =>
+  import("../../bulk-upload/deactivate-user").then(module => ({ default: module.DeactivateUser }))
+);
+
 
 
 
@@ -303,14 +312,6 @@ const LazyApp = () => {
             }
           />
           <Route
-            path="/master-designations"
-            element={
-              <ProtectedRoute>
-                <MasterDesignations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/user-dashboard"
             element={
               <ProtectedRoute>
@@ -334,6 +335,26 @@ const LazyApp = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/bulk-upload"
+            element={
+              <ProtectedRoute>
+                <BulkUpload />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<BulkFeaturesList />} />
+            <Route path="deactivate-user" element={<DeactivateUser />} />
+
+          <Route
+            path="master-designation"
+            element={
+              <ProtectedRoute>
+                <MasterDesignations />
+              </ProtectedRoute>
+            }
+          />
+          </Route>
         <Route
             path="/non-logged-in-page"
             element={

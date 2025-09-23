@@ -12,8 +12,8 @@ import {
   Chip,
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { useActionInterceptor } from '../../hooks/useActionInterceptor';
-import { designationService } from '../../services/designations.service';
+import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
+import { designationService } from '../../../services/designations.service';
 
 interface UploadDesignationsDialogProps {
   open: boolean;

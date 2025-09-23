@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, deactivateBulkUser } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -19,6 +19,7 @@ UsersRoutes.route("/migrate").patch(userSession, migrateUser,() => {
   console.log("User migration route hit");
 }); 
 UsersRoutes.route("/block").post(userSession, blockUser);
+UsersRoutes.route("/deactivate-bulk").post(userSession, deactivateBulkUser);
 UsersRoutes.route("/unblock").post(userSession, unblockUser);
 UsersRoutes.route("/update/:userId").patch(userSession, updateSuperUser);
 UsersRoutes.route("/:userId").patch(userSession, updateUser);

@@ -6,5 +6,10 @@ export const dashboardService = {
   getModules: async () => {
     const response = await apiClient.get("/dashboard");
     return response.data;
+  },
+  // Fetch sub-modules for a given root module
+  getSubModules: async (root: string) => {
+    const response = await apiClient.get(`/dashboard/submodules?root=${root}`);
+    return response.data;
   }
 };

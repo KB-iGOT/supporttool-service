@@ -20,12 +20,12 @@ import Button from '@mui/material/Button';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
-import { designationService } from '../../services/designations.service';
-import { useDebounce } from '../../hooks/useDebounce';
-import { AppContext } from '../../Context/AppContext';
-import { appContextType } from '../../types';
+import { designationService } from '../../../services/designations.service';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { AppContext } from '../../../Context/AppContext';
+import { appContextType } from '../../../types';
 import { UploadDesignationsDialog } from './UploadDesignationsDialog';
-import sampleCsv from '../../assets/sample-files/MasterDesignation_Sample.csv';
+import sampleCsv from '../../../assets/sample-files/MasterDesignation_Sample.csv';
 // This interface is based on the one in ImportDesignationsPage.tsx
 interface MasterDesignation {
   name: string;
@@ -47,8 +47,9 @@ export const MasterDesignations = () => {
 
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const { checkPermissions } = React.useContext(AppContext) as appContextType;
-  const permissions = checkPermissions('/master-designations');
-
+  debugger
+  const permissions = checkPermissions('/bulk-upload/master-designations');
+debugger
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   const fetchMasterDesignations = useCallback(async (query: string, currentPage: number, pageSize: number) => {
@@ -95,17 +96,17 @@ export const MasterDesignations = () => {
         <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
           Master Designations
         </Typography>
-        {permissions.canWrite && (
-          <Box>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              href={sampleCsv}
-              download="MasterDesignation_Sample.csv"
-              sx={{ mr: 2 }}
-            >
-              Download Sample
-            </Button>
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            href={sampleCsv}
+            download="MasterDesignation_Sample.csv"
+            sx={{ mr: 2 }}
+          >
+            Download Sample
+          </Button>
+          {permissions.canWrite && (
             <Button
               variant="contained"
               startIcon={<UploadFileIcon />}
@@ -113,8 +114,8 @@ export const MasterDesignations = () => {
             >
               Upload Designations
             </Button>
-          </Box>
-        )}
+          )}
+        </Box>
       </Box>
       <Paper elevation={3}>
         <Box sx={{ p: 2 }}>

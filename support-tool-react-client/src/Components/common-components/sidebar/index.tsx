@@ -25,6 +25,7 @@ import {
   List as MasterDesignationsIcon,
   DashboardCustomize as ModuleDashboardIcon,
 } from '@mui/icons-material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Module } from "../../../types";
 
 const useStyles = makeStyles(() =>
@@ -84,6 +85,7 @@ const ICONS: { [key: string]: React.ElementType } = {
   analytics: Analytics,
   'audit-logs': AuditLogsIcon,
   'master-designations': MasterDesignationsIcon,
+  'bulk-upload': CloudUploadIcon,
   default: DashboardIcon,
 };
 

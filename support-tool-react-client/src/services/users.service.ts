@@ -133,6 +133,20 @@ export const usersService = {
     }
   },
   /**
+   * Deactivates a list of users in bulk.
+   * @param requestData The bulk deactivation request payload
+   * @returns API response
+   */
+  deactivateBulkUser: async (requestData: any) => {
+    try {
+      const response = await apiClient.post(`/users/deactivate-bulk`, requestData);
+      return response.data;
+    } catch (error) {
+      console.error("Error deactivating bulk users:", error);
+      throw error;
+    }
+  },
+  /**
    * Unblocks a previously blocked user account
    * @param userId The ID of the user to unblock
    * @param requestedById The ID of the admin user making the request

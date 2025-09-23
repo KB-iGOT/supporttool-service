@@ -7,4 +7,5 @@ export interface Module {
     roles: string[];
     isAdminModule: boolean;
     isRootModule: boolean;
+    root?: string;
   }

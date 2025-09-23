@@ -578,14 +578,25 @@ export const getUserEnrollList: RequestHandler = async (req: any, res: Response)
     });
     return;
   }
-
+let requestBody: any ={
+    "request": {
+        "retiredCoursesEnabled": true,
+        "status": ["In-Progress", "Completed"]
+    }
+}
+   
   try {
-    const response = await axios({
-      method: "GET",
-      url: `${process.env.KONG_API_URL}/api/course/private/v3/user/enrollment/list/${userId}`,
-      headers: createApiHeaders()
+    // const response = await axios({
+    //   method: "GET",
+    //   url: `${process.env.KONG_API_URL}/api/course/private/v3/user/enrollment/list/${userId}`,
+    //   headers: createApiHeaders()
+    // });
+ const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/course/private/v4/user/enrollment/list/${userId}`,
+      headers: createApiHeaders(),
+      data: requestBody
     });
-
     logger.info(`Successfully retrieved enrollment data for user: ${userId}`);
     res.status(200).json(response.data);
   } catch (error) {
@@ -881,5 +892,69 @@ export const fetchGroups: RequestHandler = async (req: any, res: Response) => {
     res.status(200).json(response.data);
   } catch (error) {
     handleApiError(error, res, "Error fetching user groups");
+  }
+};
+
+
+// 🚀 **Deactivate Bulk Users in DB**
+export const deactivateBulkUser: RequestHandler = async (req: any, res: any) => {
+  try {
+    const { payload, jiraLink, changedFields, module } = req.body;
+    const userRequests = payload?.request;
+    const user_id = req.headers["x-user-id"];
+
+    if (!userRequests || !Array.isArray(userRequests) || userRequests.length === 0) {
+      return res.status(400).json({ message: "Request payload must contain an array of user deactivation requests." });
+    }
+
+    const adminToken = await fetchAdminAccessToken();
+    
+    const promises = userRequests.map(async (userRequest: any) => {
+      const { userId, requestedBy } = userRequest;
+      const singlePayload = { request: { userId, requestedBy } };
+
+      const auditObject = createAuditObject(
+        user_id,
+        module,
+        "BLOCK_USER_BULK",
+        "UPDATE",
+        userId,
+        singlePayload,
+        changedFields,
+        jiraLink
+      );
+
+      try {
+        await axios({
+          method: "POST",
+          url: `${process.env.KONG_API_URL}/api/user/v1/block`,
+          headers: createApiHeaders(adminToken),
+          data: singlePayload
+        });
+        await logAudit({ ...auditObject, status: "SUCCESS", message: `User ${userId} blocked successfully.` });
+        return userId; // Return the userId on success
+      } catch (error: any) {
+        // Pass null for res to prevent sending a response inside the loop
+        await auditLogApiError(error, null as any, `Error blocking user ${userId}`, auditObject);
+        // Throw an object with details, which will be the 'reason' in the settled result
+        throw { userId, reason: error.message };
+      }
+    });
+
+    const settledResults = await Promise.allSettled(promises);
+
+    const results = settledResults.reduce<{ success: string[]; failure: { userId: string; reason: string }[] }>((acc, result) => {
+      if (result.status === 'fulfilled') {
+        acc.success.push(result.value); // result.value is the userId
+      } else {
+        acc.failure.push(result.reason); // result.reason is the object we threw
+      }
+      return acc;
+    }, { success: [], failure: [] });
+
+    res.status(200).json({ status: 200, message: "Bulk deactivation process completed.", results });
+  } catch (error: any) {
+    console.error("❌ Error during bulk user deactivation:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };

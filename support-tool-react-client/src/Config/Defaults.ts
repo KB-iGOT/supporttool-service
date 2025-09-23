@@ -12,7 +12,8 @@ const CREATE_MODULE = {
   isVisible: false,
   roles: [],
   isAdminModule: false,
-  isRootModule: false,
+  isRootModule: true,
+  root:""
 }
 
 // eslint-disable-next-line import/no-anonymous-default-export

@@ -229,6 +229,7 @@ export const UsersList = () => {
 
   // Refs
   const initialLoadComplete = useRef(false);
+  const autoSearchTriggered = useRef(false);
 
   // Get permissions from context
   const { checkPermissions } = React.useContext(AppContext) as appContextType;
@@ -239,6 +240,79 @@ export const UsersList = () => {
   // Create a ref to hold the latest form data
   const latestFormDataRef = useRef<CustomFormData>({});
   const latestCreateDataRef = useRef<any>({});
+
+  // Handle incoming state from navigation (e.g., from re-issue certificate page)
+  useEffect(() => {
+    console.log('Navigation state effect triggered:', { moduleState, autoSearchTriggered: autoSearchTriggered.current });
+    
+    if (moduleState?.searchUserId && moduleState?.searchType && moduleState?.autoSearch && !autoSearchTriggered.current) {
+      console.log('Auto-search triggered with:', moduleState.searchUserId, 'searchType:', moduleState.searchType);
+      
+      // Set search parameters first
+      setSearchQuery(moduleState.searchUserId);
+      setSearchType(moduleState.searchType as SearchFieldType);
+      setUserStatus('all'); // Search all users when coming from re-issue certificate
+      setPage(0); // Reset to first page
+      
+      // Mark as triggered to prevent duplicate calls
+      autoSearchTriggered.current = true;
+    }
+  }, [moduleState, rowsPerPage]);
+
+  // Separate effect to trigger search after state is updated
+  useEffect(() => {
+    if (autoSearchTriggered.current && searchQuery && searchType && moduleState?.autoSearch) {
+      console.log('Triggering fetchUsers with updated state:', { searchQuery, searchType });
+      
+      // Use the current searchType from state, not from moduleState
+      const currentSearchPath = searchFields[searchType]?.path;
+      console.log('Current search path:', currentSearchPath, 'for searchType:', searchType);
+      
+      // Call fetchUsers with the current state values
+      fetchUsers(0, rowsPerPage, searchQuery, {}, true, null, 'all');
+      
+      // Reset the trigger to prevent repeated calls
+      autoSearchTriggered.current = false;
+    }
+  }, [searchQuery, searchType, rowsPerPage, moduleState?.autoSearch]);
+
+  // Additional fallback effect to ensure search is triggered when coming from navigation
+  useEffect(() => {
+    // This effect runs when moduleState changes and we have auto-search parameters
+    if (moduleState?.searchUserId && moduleState?.searchType && moduleState?.autoSearch) {
+      console.log('Fallback auto-search effect triggered');
+      
+      // Ensure we trigger the search even if state updates haven't completed
+      const timeoutId = setTimeout(() => {
+        console.log('Fallback search execution with moduleState params');
+        // Reset the trigger first
+        autoSearchTriggered.current = false;
+        // Execute search with moduleState parameters directly, passing the search type as override
+        fetchUsers(0, rowsPerPage, moduleState.searchUserId, {}, true, null, 'all', moduleState.searchType as SearchFieldType);
+      }, 500); // Give more time for state updates
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [moduleState?.searchUserId, moduleState?.searchType, moduleState?.autoSearch, rowsPerPage]);
+
+  // Handle page refresh - reset navigation state
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Clear navigation state on page refresh
+      if (window.history.state) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Cleanup function
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Reset auto-search trigger on unmount
+      autoSearchTriggered.current = false;
+    };
+  }, []);
 
   const handleEditAction = (data: CustomFormData) => {
     // Update both state and ref
@@ -279,10 +353,16 @@ export const UsersList = () => {
     filters: { [key: string]: string[] } = {},
     updateFacets = true,
     selectedOrganization: Organization | null = null,
-    status: UserStatusType = 'active' 
+    status: UserStatusType = 'active',
+    overrideSearchType?: SearchFieldType // Add optional override for search type
   ) => {
     setLoading(true);
     let freeTextQuery : string = '';
+    
+    // Use overrideSearchType if provided, otherwise use current searchType from state
+    const currentSearchType = overrideSearchType || searchType;
+    
+    console.log('fetchUsers called with:', { pageNumber, pageSize, query, currentSearchType, status });
     console.log(permissions,'permissionspermissionspermissions')
     try {
       // Build the filter object based on search type and query
@@ -290,7 +370,8 @@ export const UsersList = () => {
       
       // Only add search filter if there's a query
       if (query.trim()) {
-        const searchPath = searchFields[searchType].path;
+        const searchPath = searchFields[currentSearchType]?.path;
+        console.log('Search path for', currentSearchType, ':', searchPath);
         if(searchPath !== 'query') {
           // If the search path is not 'query', we need to ensure it matches the expected structure
           searchFilters = {
@@ -300,6 +381,8 @@ export const UsersList = () => {
         } else {
           freeTextQuery = query.trim();
         }
+        console.log('Search filters:', searchFilters);
+        console.log('Free text query:', freeTextQuery);
       }
       
       // Add organization filter if selected
@@ -396,8 +479,8 @@ export const UsersList = () => {
     setSearchType(newType);
     // Clear search query when changing search type
     setSearchQuery("");
-    // Clear selected org if moving away from name search
-    if (newType !== 'name') {
+    // Clear selected org if moving away from name/roles search
+    if (newType !== 'name' && newType !== 'roles') {
       setSelectedOrg(null);
     }
   };
@@ -463,6 +546,25 @@ export const UsersList = () => {
         });
         return;
       }
+    } else if (searchType === 'userId') {
+      if (!searchQuery.trim()) {
+        setToasts({
+          message: "Please enter a user ID to search",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
+      // UUID validation pattern
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidPattern.test(searchQuery.trim())) {
+        setToasts({
+          message: "Please enter a valid UUID format for User ID",
+          open: true,
+          severity: "warning",
+        });
+        return;
+      }
     }
 
     // Proceed with search
@@ -502,6 +604,9 @@ export const UsersList = () => {
     setUserStatus('all');
     setPage(0);
     setUsers([]);
+    // Reset auto-search trigger
+    autoSearchTriggered.current = false;
+    console.log('Search cleared, autoSearchTriggered reset');
   };
 
   const handleEditUser = (user: Record<string, any>) => {
@@ -621,6 +726,17 @@ export const UsersList = () => {
         return;
       }
       // updatePayload = {email: '',}
+      if (updatePayload.request.profileDetails?.verifiedKarmayogi) {
+        delete updatePayload.request.profileDetails.verifiedKarmayogi;
+      }
+      if (
+        updatePayload.request.profileDetails?.professionalDetails?.[0]
+          ?.verifiedKarmayogi
+      ) {
+        delete updatePayload.request.profileDetails.professionalDetails[0]
+          .verifiedKarmayogi;
+      }
+
       let request  = {
         payload: updatePayload,
         changedFields,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -13,6 +13,8 @@ import MenuItem from "@mui/material/MenuItem";
 import DEFAULT from "../../Config/Defaults";
 import { Module } from "../../types/modules";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import { AppContext } from "../../Context/AppContext";
+import { appContextType } from "../../types";
 import Switch from "@mui/material/Switch";
 
 const CreateModule: React.FC<{
@@ -22,8 +24,15 @@ const CreateModule: React.FC<{
 }> = ({ open, handleClose, handleSubmit }) => {
   const [fields, setFields] = useState<Module>(DEFAULT.CREATE_MODULE);
 
+  const { modules: contextModules } = useContext(AppContext) as appContextType;
+  const rootModules = contextModules.user.filter(m => m.isRootModule);
+
   const handleRoleChange = (event: SelectChangeEvent) => {
     setFields({ ...fields, roles: [event.target.value] });
+  };
+
+  const handleRootModuleChange = (event: SelectChangeEvent) => {
+    setFields({ ...fields, root: event.target.value });
   };
 
   const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
@@ -35,6 +44,10 @@ const CreateModule: React.FC<{
         setFields({ ...fields, isAdminModule: event.target.checked });
         break;
       case 'isRootModule':
+        if (event.target.checked) {
+          // When it becomes a root module, clear the parent root selection.
+          setFields({ ...fields, isRootModule: true, root: '' });
+        }
         setFields({ ...fields, isRootModule: event.target.checked });
         break;
       default:
@@ -52,6 +65,7 @@ const CreateModule: React.FC<{
         isVisible: open.module.isVisible,
         isAdminModule: open.module.isAdminModule,
         isRootModule: open.module.isRootModule,
+        root: open.module.root || '',
       });
     } else {
       setFields(DEFAULT.CREATE_MODULE);
@@ -157,6 +171,27 @@ const CreateModule: React.FC<{
               label="Is Root Module?"
             />
           </FormControl>
+          {!fields.isRootModule && (
+            <FormControl fullWidth margin="dense">
+              <InputLabel id="root-module-select-label">Parent Root Module</InputLabel>
+              <Select
+                labelId="root-module-select-label"
+                id="root-module-select"
+                value={fields.root || ''}
+                label="Parent Root Module"
+                onChange={handleRootModuleChange}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {rootModules.map((module) => (
+                  <MenuItem key={module.id} value={module.url.replace('/', '')}>
+                    {module.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
         </DialogContent>
         <DialogActions className="padding-1-2">
           <Button onClick={handleClose} variant="outlined">

@@ -129,7 +129,7 @@ export const UserDashboard: React.FC = () => {
   const [statsError, setStatsError] = useState<string | null>(null);
 
   const fetchUserStats = useCallback(async () => {
-    debugger;
+    ;
     if (!user) return;
 
     setLoadingStats(true);
@@ -146,7 +146,7 @@ export const UserDashboard: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    debugger
+    
     if (user?.userId) {
       fetchUserStats();
     }
