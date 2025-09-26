@@ -119,6 +119,7 @@ export interface ContentTableProps {
   handleOpenCertificateDialog: (certId: string) => void;
   handleContentPageChange: (event: unknown, newPage: number) => void;
   handleContentRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handleOpenContentDetailsDialog: (enrollment: ContentEnrollment) => void;
 }
 
 export interface EventsTableProps {

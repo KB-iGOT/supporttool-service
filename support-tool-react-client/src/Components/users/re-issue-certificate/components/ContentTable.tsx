@@ -14,12 +14,14 @@ import {
   Chip,
   Button,
   Collapse,
-  Grid
+  Grid,
+  Tooltip,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import DownloadIcon from '@mui/icons-material/Download';
 import SchoolIcon from '@mui/icons-material/School';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { ContentEnrollment, ContentTableProps } from '../types';
 
 interface CollapsibleRowProps {
@@ -28,6 +30,7 @@ interface CollapsibleRowProps {
   getStatusLabel: (status: number) => string;
   handleOpenReissueDialog: (enrollment: ContentEnrollment) => void;
   handleOpenCertificateDialog: (certId: string) => void;
+  handleOpenContentDetailsDialog: (enrollment: ContentEnrollment) => void;
 }
 
 const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
@@ -35,7 +38,8 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   formatDate,
   getStatusLabel,
   handleOpenReissueDialog,
-  handleOpenCertificateDialog
+  handleOpenCertificateDialog,
+  handleOpenContentDetailsDialog
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -56,12 +60,12 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
             {enrollment.courseLogoUrl && (
               <Box
                 component="img"
-                src={enrollment.content.posterImage}
+                src={enrollment.content.posterImage || enrollment?.content?.appIcon}
                 alt=""
                 sx={{ width: 40, height: 40, mr: 2, borderRadius: 1 }}
               />
             )}
-            <Typography variant="body2">{enrollment.courseName}</Typography>
+            <Typography variant="body2">{enrollment?.courseName}</Typography>
           </Box>
         </TableCell>
         <TableCell>
@@ -105,17 +109,35 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
               >
                 Re-issue
               </Button>
+              <Tooltip title="View Full Details">
+                <IconButton
+                  color="secondary"
+                  onClick={() => handleOpenContentDetailsDialog(enrollment)}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Box>
           ) : (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<DownloadIcon />}
-              onClick={() => handleOpenReissueDialog(enrollment)}
-              disabled={enrollment.status !== 2}
-            >
-              Re-issue
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<DownloadIcon />}
+                onClick={() => handleOpenReissueDialog(enrollment)}
+                disabled={enrollment.status !== 2}
+              >
+                Re-issue
+              </Button>
+              <Tooltip title="View Full Details">
+                <IconButton
+                  color="secondary"
+                  onClick={() => handleOpenContentDetailsDialog(enrollment)}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
           )}
         </TableCell>
       </TableRow>
@@ -143,7 +165,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                     <strong>Certificates Issued:</strong> {enrollment.issuedCertificates?.length || 0}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Added By:</strong> {enrollment.addedBy}
+                    <strong>Added By:</strong> {enrollment?.addedBy || enrollment?.content?.contentPartner?.contentPartnerName}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Active:</strong> {enrollment.active ? 'Yes' : 'No'}
@@ -170,7 +192,8 @@ export const ContentTable: React.FC<ContentTableProps> = ({
   handleOpenReissueDialog,
   handleOpenCertificateDialog,
   handleContentPageChange,
-  handleContentRowsPerPageChange
+  handleContentRowsPerPageChange,
+  handleOpenContentDetailsDialog
 }) => {
   if (contentEnrollments.length === 0) {
     return (
@@ -190,10 +213,10 @@ export const ContentTable: React.FC<ContentTableProps> = ({
     <>
       <TableContainer>
         <Table aria-label="collapsible course enrollments table">
-          <TableHead>
+        <TableHead >
             <TableRow>
               <TableCell />
-              <TableCell>Course Name</TableCell>
+              <TableCell >Course Name</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Progress</TableCell>
               <TableCell>Completion Date</TableCell>
@@ -201,7 +224,7 @@ export const ContentTable: React.FC<ContentTableProps> = ({
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
-          <TableBody>
+        <TableBody>
             {filteredContent
               .slice(contentPage * contentRowsPerPage, contentPage * contentRowsPerPage + contentRowsPerPage)
               .map((enrollment, index) => (
@@ -209,16 +232,18 @@ export const ContentTable: React.FC<ContentTableProps> = ({
                   key={enrollment.courseId + index} 
                   enrollment={enrollment} 
                   formatDate={formatDate}
-                  getStatusLabel={getStatusLabel}
+                  getStatusLabel={getStatusLabel}                  
                   handleOpenReissueDialog={handleOpenReissueDialog}
                   handleOpenCertificateDialog={handleOpenCertificateDialog}
+                  handleOpenContentDetailsDialog={handleOpenContentDetailsDialog}
                 />
               ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </TableContainer >
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+
+        rowsPerPageOptions={[10, 25, 50, 100]}
         component="div"
         count={filteredContent.length}
         rowsPerPage={contentRowsPerPage}
@@ -226,6 +251,6 @@ export const ContentTable: React.FC<ContentTableProps> = ({
         onPageChange={handleContentPageChange}
         onRowsPerPageChange={handleContentRowsPerPageChange}
       />
-    </>
+    </>    
   );
 };

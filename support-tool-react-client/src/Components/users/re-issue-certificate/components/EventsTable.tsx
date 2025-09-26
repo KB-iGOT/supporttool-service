@@ -241,7 +241,7 @@ export const EventsTable: React.FC<EventsTableProps> = ({
         </Table>
       </TableContainer>
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[10, 25, 50, 100]}
         component="div"
         count={filteredEvents.length}
         rowsPerPage={eventRowsPerPage}

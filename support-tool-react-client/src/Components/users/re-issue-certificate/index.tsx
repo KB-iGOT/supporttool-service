@@ -82,9 +82,9 @@ export const ReissueCertificate: React.FC = () => {
   
   // Pagination state
   const [contentPage, setContentPage] = useState(0);
-  const [contentRowsPerPage, setContentRowsPerPage] = useState(5);
+  const [contentRowsPerPage, setContentRowsPerPage] = useState(25);
   const [eventPage, setEventPage] = useState(0);
-  const [eventRowsPerPage, setEventRowsPerPage] = useState(5);
+  const [eventRowsPerPage, setEventRowsPerPage] = useState(25);
 
   // Certificate reissue dialog state
   const [reissueDialogOpen, setReissueDialogOpen] = useState(false);
@@ -101,6 +101,10 @@ export const ReissueCertificate: React.FC = () => {
   const [certificateError, setCertificateError] = useState<string | null>(null);
   const [enrollmentInfoDialogOpen, setEnrollmentInfoDialogOpen] = useState(false);
 
+  // State for content details dialog
+  const [contentDetailsDialogOpen, setContentDetailsDialogOpen] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<ContentEnrollment | null>(null);
+
 
 
   // Add download menu state
@@ -116,9 +120,29 @@ export const ReissueCertificate: React.FC = () => {
       const contentResponse = await usersService.getUserContentEnrollList(userId);
       
       if (contentResponse.result && contentResponse.result.courses && Array.isArray(contentResponse.result.courses)) {
-        setContentEnrollments(contentResponse.result.courses);
-        setFilteredContent(contentResponse.result.courses);
-        setUserEnrollmentInfo(contentResponse.result.userCourseEnrolmentInfo);
+        let courses = contentResponse.result.courses;
+        let externalCourses = contentResponse.result.external_courses;
+
+        // Normalize external courses to match the structure of regular courses
+        const normalizedExternalCourses = externalCourses.map((extCourse: any) => ({
+          ...extCourse,
+          courseName: extCourse.content?.name || 'N/A',
+          courseLogoUrl: extCourse.content?.appIcon,
+          contentId: extCourse.courseId,
+          collectionId: extCourse.courseId,
+          active: extCourse.content?.isActive,
+          // Add other key mappings here if needed
+        }));
+
+        let combinedCourses = [...courses, ...normalizedExternalCourses];
+
+        setContentEnrollments(combinedCourses);
+        setFilteredContent(combinedCourses);
+        debugger
+        let internalUserInfo = contentResponse?.result?.userCourseEnrolmentInfo || {};
+        let externaUserInfo = contentResponse?.result?.userExternalCourseEnrolmentInfo || {};
+        let combinedUserInfo = { internalContent: internalUserInfo, externalContent: externaUserInfo };
+        setUserEnrollmentInfo(combinedUserInfo);
       }
     } catch (err) {
       console.error('Error fetching content enrollments:', err);
@@ -632,6 +656,16 @@ export const ReissueCertificate: React.FC = () => {
     setEnrollmentInfoDialogOpen(false);
   };
 
+  const handleOpenContentDetailsDialog = (content: ContentEnrollment) => {
+    setSelectedContent(content);
+    setContentDetailsDialogOpen(true);
+  };
+
+  const handleCloseContentDetailsDialog = () => {
+    setContentDetailsDialogOpen(false);
+    setSelectedContent(null); // It's good practice to clear the selected item on close
+  };
+
   return (   
     <Box sx={{ padding: 3 }}>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -717,6 +751,7 @@ export const ReissueCertificate: React.FC = () => {
             handleOpenReissueDialog={handleOpenReissueDialog}
             handleOpenCertificateDialog={handleOpenCertificateDialog}
             handleContentPageChange={handleContentPageChange}
+            handleOpenContentDetailsDialog={handleOpenContentDetailsDialog}
             handleContentRowsPerPageChange={handleContentRowsPerPageChange}
           />
         </TabPanel>
@@ -776,6 +811,14 @@ export const ReissueCertificate: React.FC = () => {
           data={userEnrollmentInfo}
         />
       )}
+
+      {/* Content Details Dialog */}
+      <JsonViewerDialog
+        open={contentDetailsDialogOpen}
+        onClose={handleCloseContentDetailsDialog}
+        title={`Content Details: ${selectedContent?.courseName || ''}`}
+        data={selectedContent}
+      />
     </Box>
   );
 };

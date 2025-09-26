@@ -38,6 +38,7 @@ import {
 // Remove date picker imports for now - we'll use regular text inputs for dates
 import { auditLogService } from '../../services/audit-log.service';
 import { AuditLog, AuditLogFilters } from '../../types/audit-logs';
+import { JsonEditor } from '../common-components/json-editor/json-editor';
 interface AuditLogsProps {
   userId?: string;
 }
@@ -432,10 +433,22 @@ export const AuditLogs: React.FC<AuditLogsProps> = ({ userId: propUserId }) => {
                                 {expandedRows.has(log.id) ? <ExpandLess /> : <ExpandMore />}
                               </IconButton>
                             </TableCell>
-                            <TableCell>{formatDate(log.createdAt || '')}</TableCell>
-                            <TableCell>{log.module || '-'}</TableCell>
-                            <TableCell>{log.subModule || '-'}</TableCell>
-                            <TableCell>{log.action || '-'}</TableCell>
+                            <TableCell sx={{ minWidth: 180 }}>{formatDate(log.createdAt || '')}</TableCell>
+                            <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Tooltip title={log.module || ''}>
+                                <span>{log.module || '-'}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Tooltip title={log.subModule || ''}>
+                                <span>{log.subModule || '-'}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Tooltip title={log.action || ''}>
+                                <span>{log.action || '-'}</span>
+                              </Tooltip>
+                            </TableCell>
                             <TableCell>
                               <Chip
                                 label={log.status || 'Unknown'}
@@ -444,7 +457,7 @@ export const AuditLogs: React.FC<AuditLogsProps> = ({ userId: propUserId }) => {
                               />
                             </TableCell>
                             <TableCell>
-                              <Tooltip title={log.entityId || ''}>
+                              <Tooltip title={log.entityId || ''} >
                                 <Typography variant="body2" noWrap sx={{ maxWidth: 120 }}>
                                   {log.entityId || '-'}
                                 </Typography>
@@ -469,21 +482,21 @@ export const AuditLogs: React.FC<AuditLogsProps> = ({ userId: propUserId }) => {
                                       <Typography variant="subtitle2" gutterBottom>
                                         Request Payload:
                                       </Typography>
-                                      <Paper sx={{ p: 1, maxHeight: 200, overflow: 'auto' }}>
-                                        <pre style={{ fontSize: '0.8rem', margin: 0 }}>
-                                          {formatJson(log.requestPayload)}
-                                        </pre>
-                                      </Paper>
+                                      <JsonEditor
+                                        input={log.requestPayload}
+                                        onChange={() => {}}
+                                        customOptions={{ readOnly: true, automaticLayout: true }}
+                                      />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
                                       <Typography variant="subtitle2" gutterBottom>
                                         Modified Payload:
                                       </Typography>
-                                      <Paper sx={{ p: 1, maxHeight: 200, overflow: 'auto' }}>
-                                        <pre style={{ fontSize: '0.8rem', margin: 0 }}>
-                                          {formatJson(log.modifiedPayload)}
-                                        </pre>
-                                      </Paper>
+                                      <JsonEditor
+                                        input={log.modifiedPayload}
+                                        onChange={() => {}}
+                                        customOptions={{ readOnly: true, automaticLayout: true }}
+                                      />
                                     </Grid>
                                     {log.message && (
                                       <Grid item xs={12}>
