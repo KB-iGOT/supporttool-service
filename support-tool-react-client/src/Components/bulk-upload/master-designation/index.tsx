@@ -47,9 +47,9 @@ export const MasterDesignations = () => {
 
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const { checkPermissions } = React.useContext(AppContext) as appContextType;
-  debugger
+
   const permissions = checkPermissions('/bulk-upload/master-designation');
-debugger
+
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   const fetchMasterDesignations = useCallback(async (query: string, currentPage: number, pageSize: number) => {
