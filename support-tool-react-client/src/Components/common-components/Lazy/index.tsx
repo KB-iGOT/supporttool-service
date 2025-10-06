@@ -59,6 +59,11 @@ const ReissueCertificate = lazy(() =>
     default: module.ReissueCertificate,
   }))
 );
+const Sessions = lazy(() =>
+  import("../../sessions/index").then((module) => ({
+    default: module.Sessions,
+  }))
+);
 const Forms = lazy(() =>
   import("../../forms/index").then((module) => ({
     default: module.Forms,
@@ -227,6 +232,14 @@ const LazyApp = () => {
             <Route index element={<UsersList />} />
             <Route path="certificates" element={<ReissueCertificate />} />
           </Route>
+          <Route
+            path="/sessions"
+            element={
+              <ProtectedRoute>
+                <Sessions />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/forms"
             element={

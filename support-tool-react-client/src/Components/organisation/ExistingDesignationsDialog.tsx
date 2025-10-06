@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,6 +18,7 @@ import {
   Box,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import { frameworkService } from '../../services/framework.service';
 
 interface ExistingDesignation {
   code: string;
@@ -28,13 +29,35 @@ interface ExistingDesignation {
 interface ExistingDesignationsDialogProps {
   open: boolean;
   onClose: () => void;
+  rootOrgId: string;
   designations: ExistingDesignation[];
 }
 
-export const ExistingDesignationsDialog: React.FC<ExistingDesignationsDialogProps> = ({ open, onClose, designations }) => {
+export const ExistingDesignationsDialog: React.FC<ExistingDesignationsDialogProps> = ({ open, onClose, rootOrgId, designations }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [frameworkId, setFrameworkId] = useState<string | undefined>(undefined);
+
+  // Fetch frameworkId from rootOrgId
+  const fetchFrameworkId = useCallback(async () => {
+    if (rootOrgId) {
+      try {
+        const response = await frameworkService.fetchFrameworkData(rootOrgId);
+        const framework = response.result?.framework;
+        setFrameworkId(framework?.identifier);
+      } catch (error) {
+        console.error("Error fetching framework ID:", error);
+        setFrameworkId(undefined);
+      }
+    }
+  }, [rootOrgId]);
+
+  useEffect(() => {
+    if (open) {
+      fetchFrameworkId();
+    }
+  }, [open, fetchFrameworkId]);
 
   const filteredDesignations = useMemo(() => {
     if (!searchQuery) {

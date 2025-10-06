@@ -1,5 +1,5 @@
 import express from "express";
-import { createDesignation, searchDesignations, uploadDesignations } from "../controllers/designation.controller";
+import { createDesignation, searchDesignations, uploadDesignations, searchCompositeDesignations } from "../controllers/designation.controller";
 import { userSession } from "../helpers/authHelper";
 import multer from "multer";
 
@@ -12,6 +12,8 @@ const upload = multer({ storage: storage });
 // Define routes
 router.route("/search")
   .post(userSession, searchDesignations);
+router.route("/composite/search")
+  .post(userSession, searchCompositeDesignations);
 router.route("/create/term")
   .post(userSession, createDesignation);
 router.route("/upload")

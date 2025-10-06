@@ -9,9 +9,11 @@ import TablePagination from '@mui/material/TablePagination';
 import Paper from "@mui/material/Paper";
 import { useEffect, useState, useRef } from "react";
 import { contentsService } from "../../services/contents.service";
-import LinearProgress from "@mui/material/LinearProgress";
+import { LinearProgress, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import PencilIcon from "@mui/icons-material/Edit";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
@@ -19,9 +21,9 @@ import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { Content, Facets } from "../../types/contents";
-import { FilterDrawer } from "./../common-components/filter-drawer";
+
 import { FormControl, TextField, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from "@mui/material";
-import MenuItem from "@mui/material/MenuItem";
+
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Chip from "@mui/material/Chip";
 import InputLabel from "@mui/material/InputLabel";
@@ -29,14 +31,13 @@ import OutlinedInput from "@mui/material/OutlinedInput";
 import { EllipsisCell } from "../common-components/ellipsis-cell/ellipsis-cell";
 import { AppContext } from "../../Context/AppContext";
 import { appContextType } from "../../types";
+import { JsonViewerDialog } from "../common-components/JsonViewerDialog";
 import { useFormInterceptor } from "../../hooks/useFormsInterceptor";
 import { useActionInterceptor } from "../../hooks/useActionInterceptor";
 import { useLocation } from "react-router-dom";
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -75,6 +76,7 @@ const moduleState = location.state;
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState<'name' | 'identifier'>('name');
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -86,6 +88,13 @@ const moduleState = location.state;
   // Add new state for help dialog
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
+  // Menu state
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuContent, setMenuContent] = useState<Content | null>(null);
+
+  // View Details Dialog state
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+
   // Handler for search input changes
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -95,7 +104,7 @@ const moduleState = location.state;
   const handleSearchKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
       setPage(0); // Reset to first page when searching
-      fetchContents(0, rowsPerPage, searchQuery, selectedFilters, false);
+      fetchContents(0, rowsPerPage, searchQuery, searchType, selectedFilters, false);
     }
   };
 
@@ -103,12 +112,29 @@ const moduleState = location.state;
     setSelectedFilters(filters);
     // Reset to first page when filters change
     setPage(0);
-    // Call API with new filters but don't update facets
-    fetchContents(0, rowsPerPage, searchQuery, filters, false);
+    // Call API with new filters but don't update facets, preserving current search
+    fetchContents(0, rowsPerPage, searchQuery, searchType, filters, false);
   };
 
   const handleToastClose = () =>
     setToasts({ message: "", open: false, severity: undefined });
+
+  // Menu handlers
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, content: Content) => {
+    debugger
+    setAnchorEl(event.currentTarget);
+    setMenuContent(content);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  // View Details Dialog handlers
+  const handleViewDetailsClose = () => {
+    setViewDetailsOpen(false);
+    setMenuContent(null); // Clear the content when the dialog is closed
+  };
 
   // Handle opening the delete confirmation dialog
   const handleDeleteClick = (content: Content) => {
@@ -118,7 +144,6 @@ const moduleState = location.state;
 
   // Handle closing the delete confirmation dialog
   const handleDeleteClose = () => {
-    setDeleteDialogOpen(false);
     setContentToDelete(null);
   };
 
@@ -139,7 +164,7 @@ const moduleState = location.state;
       });
 
       // Refresh the content list
-      fetchContents(page, rowsPerPage, searchQuery, selectedFilters, false);
+      fetchContents(page, rowsPerPage, searchQuery, searchType, selectedFilters, false);
     } catch (error) {
       console.error("Error retiring content:", error);
       setToasts({
@@ -149,7 +174,7 @@ const moduleState = location.state;
       });
     } finally {
       setLoading(false);
-      setDeleteDialogOpen(false);
+      handleDeleteClose();
       setContentToDelete(null);
     }
   };
@@ -163,23 +188,35 @@ const moduleState = location.state;
   const fetchContents = async (
     pageNumber = 0,
     pageSize = 10,
-    query = "",
+    query: string,
+    currentSearchType: 'name' | 'identifier',
     filters: { [key: string]: string[] } = {},
     updateFacets = true // New parameter to control facet update
   ) => {
     setLoading(true);
     try {
+      let apiQuery = "";
+      let apiFilters: any = { ...buildFilterPayload(filters) };
+
+      if (query.trim()) {
+        if (currentSearchType === 'identifier') {
+          apiFilters['identifier'] = query.trim();
+        } else {
+          apiQuery = query.trim();
+        }
+      }
+
       // Create the request payload with pagination parameters and filters
       const requestPayload = {
         locale: ["en"],
         request: {
           limit: pageSize,
           offset: pageNumber * pageSize,
-          query: query,
+          query: apiQuery,
           facets: ["courseCategory", "resourceCategory"],
           filters: {
             status: ["Live"],
-            ...buildFilterPayload(filters)
+            ...apiFilters
           },
           sort_by: {
             lastUpdatedOn: "desc"
@@ -227,14 +264,14 @@ const moduleState = location.state;
   // Pagination handlers
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
-    fetchContents(newPage, rowsPerPage, searchQuery, selectedFilters, false);
+    fetchContents(newPage, rowsPerPage, searchQuery, searchType, selectedFilters, false);
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newRowsPerPage = parseInt(event.target.value, 10);
     setRowsPerPage(newRowsPerPage);
     setPage(0); // Reset to first page when changing rows per page
-    fetchContents(0, newRowsPerPage, searchQuery, selectedFilters, false);
+    fetchContents(0, newRowsPerPage, searchQuery, searchType, selectedFilters, false);
   };
 
   // Handle drawer close - don't fetch data again as filters are applied via handleFilterChange
@@ -257,13 +294,14 @@ const moduleState = location.state;
 
   const handleApplyFilters = () => {
     setPage(0);
-    fetchContents(0, rowsPerPage, searchQuery, selectedFilters, false);
+    fetchContents(0, rowsPerPage, searchQuery, searchType, selectedFilters, false);
   };
 
   const handleClearFilters = () => {
     setSelectedFilters({});
+    setSearchQuery('');
     setPage(0);
-    fetchContents(0, rowsPerPage, searchQuery, {}, false);
+    fetchContents(0, rowsPerPage, '', searchType, {}, false);
   };
 
   // Functions to handle the help dialog
@@ -275,11 +313,23 @@ const moduleState = location.state;
     setHelpDialogOpen(false);
   };
 
+  const handleDeleteFromMenu = () => {
+    if (menuContent) {
+      handleDeleteClick(menuContent);
+    }
+    handleMenuClose();
+  };
+
+  const handleViewDetailsFromMenu = () => {
+    setViewDetailsOpen(true);
+    handleMenuClose();
+  };
+
   useEffect(() => {
     // Initial load - update facets
     const permissions = checkPermissions();
     try {
-      fetchContents(page, rowsPerPage, searchQuery, selectedFilters, true);
+      fetchContents(page, rowsPerPage, searchQuery, searchType, selectedFilters, true);
     } catch (error) {
       // console.error("Error in initial data fetch:", error);
       setLoading(false);
@@ -311,27 +361,41 @@ const moduleState = location.state;
 
           <Paper sx={{ p: 3, mb: 3 }}>
             <Box display="flex" flexDirection="column" gap={2}>
-              <FormControl sx={{ width: "100%" }}>
-                <TextField
-                  autoComplete="off"
-                  margin="dense"
-                  id="searchContent"
-                  name="searchContent"
-                  label="Search Content"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onKeyPress={handleSearchKeyPress}
-                  color="primary"
-                />
-              </FormControl>
-
+              <Box display="flex" gap={2} alignItems="center">
+                <FormControl sx={{ minWidth: 150 }}>
+                  <InputLabel id="search-type-label">Search By</InputLabel>
+                  <Select
+                    labelId="search-type-label"
+                    value={searchType}
+                    label="Search By"
+                    onChange={(e) => setSearchType(e.target.value as 'name' | 'identifier')}
+                  >
+                    <MenuItem value="name">Name</MenuItem>
+                    <MenuItem value="identifier">Identifier</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ flexGrow: 1 }}>
+                  <TextField
+                    autoComplete="off"
+                    id="searchContent"
+                    name="searchContent"
+                    label={`Search by ${searchType === 'name' ? 'Name' : 'Identifier'}`}
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onKeyPress={handleSearchKeyPress}
+                    color="primary"
+                    placeholder={searchType === 'name' ? 'Enter content name...' : 'Enter content identifier...'}
+                  />
+                </FormControl>
+              </Box>
+              
               <Box display="flex" flexWrap="wrap" gap={2}>
                 {facets && facets.map((facet) => (
                   facet.values && facet.values.length > 0 && (
-                    <FormControl key={facet.name} sx={{ minWidth: 200, flex: 1 }}>
+                    <FormControl key={facet.name} sx={{ minWidth: 200, flex: 1 }} size="small">
                       <InputLabel id={`${facet.name}-label`}>{facet.name}</InputLabel>
                       <Select
                         labelId={`${facet.name}-label`}
@@ -360,10 +424,10 @@ const moduleState = location.state;
               </Box>
 
               <Box display="flex" justifyContent="flex-end" gap={2}>
-                <Button variant="outlined" onClick={handleClearFilters}>
+                <Button variant="outlined" onClick={handleClearFilters} size="small">
                   Clear Filters
                 </Button>
-                <Button variant="contained" onClick={handleApplyFilters}>
+                <Button variant="contained" onClick={handleApplyFilters} startIcon={<SearchIcon />}>
                   Apply Filters
                 </Button>
               </Box>
@@ -450,25 +514,15 @@ const moduleState = location.state;
                           {row.creator}
                         </TableCell>
                         <TableCell align="right" sx={{ width: 120 }}>
-                          {/* <IconButton
-                            aria-label="edit"
-                            size="small"
-                            onClick={() => {}}
-                          >
-                            <PencilIcon fontSize="small" />
-                          </IconButton> */}
-                          {checkPermissions().canDelete && (
-                            <Tooltip title="Retire Content">
-                              <IconButton
-                                aria-label="delete"
-                                size="small"
-                                onClick={() => handleDeleteClick(row)}
-                                color="error"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
+                          <Tooltip title="Actions">
+                            <IconButton
+                              aria-label="actions"
+                              size="small"
+                              onClick={(event) => handleMenuOpen(event, row)}
+                            >
+                              <MoreVertIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -492,6 +546,37 @@ const moduleState = location.state;
               No contents available. Create one by clicking on add new content.
             </Alert>
           )}
+
+          {/* Action Menu */}
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem onClick={handleViewDetailsFromMenu}>
+              <ListItemIcon>
+                <VisibilityIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>View Full Details</ListItemText>
+            </MenuItem>
+            {checkPermissions().canDelete && (
+              <MenuItem onClick={handleDeleteFromMenu}>
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" color="error" />
+                </ListItemIcon>
+                <ListItemText primaryTypographyProps={{ color: 'error' }}>Retire Content</ListItemText>
+              </MenuItem>
+            )}
+          </Menu>
+
+          <JsonViewerDialog
+            open={viewDetailsOpen}
+            onClose={handleViewDetailsClose}
+            title={`Content Details: ${menuContent?.name || ''}`}
+            data={menuContent}
+          />
 
           {/* Help Dialog */}
           <Dialog

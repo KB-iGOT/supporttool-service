@@ -54,6 +54,19 @@ export const EditPrimaryDetailsDialog: React.FC<EditPrimaryDetailsDialogProps> =
     designation: false
   });
 
+  const hasPendingGroupRequest = user && (user as any).wfProfileGroupRequest && Object.keys((user as any).wfProfileGroupRequest).length > 0;
+  const hasPendingDesignationRequest = user && (user as any).wfProfileDesignationRequest && Object.keys((user as any).wfProfileDesignationRequest).length > 0;
+  const hasPendingTransferRequest = user && (user as any).wfTransferRequest && Object.keys((user as any).wfTransferRequest).length > 0;
+
+  const hasAnyPendingRequest = hasPendingGroupRequest || hasPendingDesignationRequest || hasPendingTransferRequest;
+
+  // If a transfer is pending, disable everything.
+  const isFormDisabled = hasPendingTransferRequest;
+
+  const isGroupDisabled = processing || groupLoading || hasPendingGroupRequest || isFormDisabled;
+  const isDesignationDisabled = processing || hasPendingDesignationRequest || isFormDisabled;
+  const isSubmitDisabled = processing || isFormDisabled || (isGroupDisabled && isDesignationDisabled);
+
   // Populate form with user's current data
   useEffect(() => {
     if (user) {
@@ -133,7 +146,7 @@ export const EditPrimaryDetailsDialog: React.FC<EditPrimaryDetailsDialogProps> =
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 User: {user?.firstName} ({user?.profileDetails?.personalDetails?.primaryEmail})
               </Typography>
-              <FormControl fullWidth required error={errors.group} disabled={processing || groupLoading}>
+              <FormControl fullWidth required error={errors.group} disabled={isGroupDisabled}>
                 <InputLabel id="group-select-label">Group</InputLabel>
                 <Select
                   labelId="group-select-label"
@@ -155,16 +168,39 @@ export const EditPrimaryDetailsDialog: React.FC<EditPrimaryDetailsDialogProps> =
                 {errors.group && <Typography color="error" variant="caption" sx={{ ml: 2, mt: 0.5 }}>Group is required</Typography>}
               </FormControl>
               <DesignationSelector
-                frameworkId={(user as any)?.frameworkid || (user as any)?.frameworkId}
+                user={user}
                 selectedDesignation={designation}
                 onDesignationSelect={setDesignation}
                 error={errors.designation}
-                disabled={processing || !(user as any)?.frameworkid && !(user as any)?.frameworkId}
+                disabled={isDesignationDisabled}
               />
           </Box>
-          <Alert severity="info" sx={{ mt: 2 }}>
-            Updating these details will affect the user's professional profile information.
-          </Alert>
+          {hasAnyPendingRequest ? (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              {(() => {
+                if (hasPendingTransferRequest) {
+                  return "A transfer request for this user is pending with the MDO. All fields are disabled until it is resolved. Please contact your MDO for more information.";
+                }
+
+                const pendingItems: string[] = [];
+                if (hasPendingGroupRequest) {
+                  pendingItems.push("group");
+                }
+                if (hasPendingDesignationRequest) {
+                  pendingItems.push("designation");
+                }
+
+                if (pendingItems.length > 0) {
+                  return `A request to update the user's ${pendingItems.join(' and ')} is already pending with the MDO. The respective field(s) are disabled. Please contact your MDO for more information.`;
+                }
+                return "A request to update this user's details is already pending with the MDO. Please contact your MDO for more information.";
+              })()}
+            </Alert>
+          ) : (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Updating these details will affect the user's professional profile information.
+            </Alert>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>
@@ -175,7 +211,7 @@ export const EditPrimaryDetailsDialog: React.FC<EditPrimaryDetailsDialogProps> =
           onClick={handleSubmit}
           variant="contained"
           color="primary"
-          disabled={processing}
+          disabled={isSubmitDisabled}
           startIcon={processing && <CircularProgress size={20} color="inherit" />}
         >
           {processing ? "Saving..." : "Save Changes"}

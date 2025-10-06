@@ -1,11 +1,13 @@
 import * as React from "react";
-import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Autocomplete,
   CircularProgress,
   TextField,
   InputAdornment
 } from "@mui/material";
+import { UserProfile } from "../../../types/users";
+import { frameworkService } from "../../../services/framework.service";
 
 interface Designation {
   name: string;
@@ -13,7 +15,7 @@ interface Designation {
 }
 
 interface DesignationSelectorProps {
-  frameworkId: string | undefined;
+  user: UserProfile | null;
   selectedDesignation: Designation | null;
   onDesignationSelect: (designation: Designation | null) => void;
   onBlur?: () => void;
@@ -22,7 +24,7 @@ interface DesignationSelectorProps {
 }
 
 export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
-  frameworkId,
+  user,
   selectedDesignation,
   onDesignationSelect,
   onBlur,
@@ -30,6 +32,7 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
   disabled = false
 }) => {
   // State
+  const [frameworkId, setFrameworkId] = useState<string | undefined>(undefined);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [offset, setOffset] = useState(0);
@@ -43,6 +46,24 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
       setWorkIcon(() => module.default);
     });
   }, []);
+
+  // Fetch frameworkId from rootOrgId
+  useEffect(() => {
+    const fetchFrameworkId = async () => {
+      if (user?.rootOrgId) {
+        try {
+          const response = await frameworkService.fetchFrameworkData(user.rootOrgId);
+          const framework = response.result?.framework;
+          setFrameworkId(framework?.identifier);
+        } catch (error) {
+          console.error("Error fetching framework ID:", error);
+          setFrameworkId(undefined);
+        }
+      }
+    };
+
+    fetchFrameworkId();
+  }, [user?.rootOrgId]);
 
   // Refs
   const listRef = useRef<HTMLUListElement>(null);

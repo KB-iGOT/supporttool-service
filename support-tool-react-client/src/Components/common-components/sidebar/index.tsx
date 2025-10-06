@@ -21,6 +21,7 @@ import {
   Analytics,
   Gavel as AuditLogsIcon,
   Home as HomeIcon,
+  CardMembership as CardMembershipIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
   List as MasterDesignationsIcon,
   DashboardCustomize as ModuleDashboardIcon,
@@ -86,6 +87,7 @@ const ICONS: { [key: string]: React.ElementType } = {
   'audit-logs': AuditLogsIcon,
   'master-designations': MasterDesignationsIcon,
   'bulk-upload': CloudUploadIcon,
+  'user-certificates': CardMembershipIcon,
   default: DashboardIcon,
 };
 

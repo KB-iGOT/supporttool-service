@@ -47,6 +47,44 @@ export const searchDesignations: RequestHandler = async (
   }
 };
 
+export const searchCompositeDesignations: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  logger.info(`Searching for composite designations with body: ${JSON.stringify(req.body)}`);
+
+  try {
+    const options = {
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/composite/v4/search`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+      },
+      data: req.body,
+    };
+
+    const response = await axios(options);
+
+    if (response.data) {
+      logger.info(`Successfully fetched composite designations`);
+      res.status(200).send(response.data);
+    } else {
+      logger.error("Empty response body from composite designation search API");
+      res.status(500).send({ status: 500, message: "Internal server error" });
+    }
+  } catch (error) {
+    logger.error(`❌ Error in searchCompositeDesignations controller: ${error instanceof Error ? error.message : String(error)}`);
+    if (axios.isAxiosError(error) && error.response) {
+      res.status(error.response.status).json({
+        message: "Error from composite designation API",
+        error: error.response.data,
+      });
+    } else {
+      res.status(500).send({ message: "Internal server error", error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+};
 
 
 export const createDesignation: RequestHandler = async (

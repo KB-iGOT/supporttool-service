@@ -51,27 +51,30 @@ const createDesignation = async (payload: any) => {
 
 
 const searchOrgDesignations = async (query: string, frameworkId: string, limit: number = 50, offset: number = 0) => {
-  const url = `${process.env.REACT_APP_BASE_URL}/api/composite/v4/search`;
+  const categoryIdentifier = `${frameworkId}_odcs_designation`;
   const request = {
     request: {
       filters: {
         status: "Live",
         category: "designation",
-        "associations.identifier": frameworkId,
+        categories: [categoryIdentifier],
         objectType: "Term"
       },
       fields: ["name", "identifier"],
       offset: offset,
       limit: limit,
       sort_by: {
-        name: "asc"
-      }
+        lastUpdatedOn: "desc",
+        objectType: "Term"
+      },
+      facets: []
     }
   };
+
   if (query) {
     (request.request.filters as any).name = { "startsWith": query };
   }
-  const response = await axios.post(url, request);
+  const response = await apiClient.post('/designation/composite/search', request);
   return response.data;
 }
 

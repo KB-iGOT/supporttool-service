@@ -361,6 +361,7 @@ export const ImportDesignationsPage: React.FC = () => {
       <ExistingDesignationsDialog
         open={existingDesignationsDialogOpen}
         onClose={() => setExistingDesignationsDialogOpen(false)}
+        rootOrgId={orgId || ''}
         designations={existingDesignationList}
       />
     </>

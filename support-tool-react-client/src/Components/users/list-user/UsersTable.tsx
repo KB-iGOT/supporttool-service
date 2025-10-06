@@ -696,14 +696,14 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           </MenuItem>
         )}
 
-        {/* {menuUser?.status !== 0 && permissions.canWrite && (
+        {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleEditPrimaryDetailsFromMenu}>
             <ListItemIcon>
               <PencilIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Edit Primary Details</ListItemText>
           </MenuItem>
-        )} */}
+        )}
 
         {menuUser?.status !== 0 && permissions.canWrite && (
           <MenuItem onClick={handleRoleFromMenu}>
