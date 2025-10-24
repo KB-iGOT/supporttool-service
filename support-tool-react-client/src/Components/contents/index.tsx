@@ -121,7 +121,6 @@ const moduleState = location.state;
 
   // Menu handlers
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, content: Content) => {
-    debugger
     setAnchorEl(event.currentTarget);
     setMenuContent(content);
   };

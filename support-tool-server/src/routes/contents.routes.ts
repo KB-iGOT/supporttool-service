@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 
-import { getContents,retireContents, createPrivateContents, uploadPrivateContentFile, updatePrivateContent, deletePrivateContent, readPrivateContent } from "../controllers/contents.controller";
+import { getContents,retireContents, createPrivateContents, uploadPrivateContentFile, updatePrivateContent, deletePrivateContent, readPrivateContent, getContentHierarchy, updateContentHierarchy } from "../controllers/contents.controller";
 import { userSession } from "../helpers/authHelper";
 
 const ContentsRoutes = express.Router();
@@ -34,5 +34,11 @@ ContentsRoutes.route("/private/create")
   .delete(userSession,deletePrivateContent)
   ContentsRoutes.route("/private/read/:id")
   .get(userSession,readPrivateContent)
+  ContentsRoutes.route("/hierarchy/:identifier")
+  .get(userSession,getContentHierarchy);
+
+  ContentsRoutes.route("/update/hierarchy/:identifier")
+  .patch(userSession, updateContentHierarchy);
+
 
 export default ContentsRoutes ;

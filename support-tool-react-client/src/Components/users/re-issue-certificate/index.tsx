@@ -138,7 +138,6 @@ export const ReissueCertificate: React.FC = () => {
 
         setContentEnrollments(combinedCourses);
         setFilteredContent(combinedCourses);
-        debugger
         let internalUserInfo = contentResponse?.result?.userCourseEnrolmentInfo || {};
         let externaUserInfo = contentResponse?.result?.userExternalCourseEnrolmentInfo || {};
         let combinedUserInfo = { internalContent: internalUserInfo, externalContent: externaUserInfo };

@@ -103,7 +103,7 @@ export const ImportDesignationsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const masterRes = await designationService.searchMasterDesignations(query, page, rowsPerPage);
+      const masterRes = await designationService.searchMasterDesignations(query, page, rowsPerPage, 'Active');
       if (masterRes.result?.result?.data) {
         setMasterDesignations(masterRes.result.result.data);
         setTotalCount(masterRes.result.result.totalCount || 0);
@@ -149,6 +149,30 @@ export const ImportDesignationsPage: React.FC = () => {
     setSelectedToImport(newSelected);
   };
 
+  const handlePublish = async () => {
+    if (!frameworkId) {
+      setNotification({ open: true, message: 'Framework ID is missing.' });
+      return;
+    }
+
+    const actionPayload = { frameworkId };
+
+    interceptAction('FRAMEWORK_PUBLISH', actionPayload, async (auditData: any) => {
+      setImporting(true); // Reuse importing state for loading indicator
+      setError(null);
+      auditData['orgId']= orgId;
+      auditData['count']= 0;
+      try {
+        await frameworkService.publishFramework(frameworkId!, auditData);
+        setNotification({ open: true, message: 'Framework published successfully!' });
+      } catch (err: any) {
+        console.error('Error publishing framework:', err);
+        setError(err?.response?.data?.message || 'Failed to publish framework.');
+      } finally {
+        setImporting(false);
+      }
+    });
+  };
   const handleImport = async () => {
     if (selectedToImport.size === 0 || !frameworkId || !orgId) return;
 
@@ -241,9 +265,14 @@ export const ImportDesignationsPage: React.FC = () => {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom>
-        Import Designations
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+          Import Designations
+        </Typography>
+        <Button variant="contained" onClick={handlePublish} disabled={importing}>
+          Publish Framework
+        </Button>
+      </Box>
       <Typography variant="subtitle1" color="text.secondary" gutterBottom>
         Organisation ID: {orgId}
       </Typography>

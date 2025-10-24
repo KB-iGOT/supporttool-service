@@ -512,7 +512,8 @@ export const UsersList = () => {
         });
         return;
       }
-    } else if (searchType === 'email') {
+    } else if (searchType === 'email' || searchType === 'maskedEmail') {
+      setSearchQuery(searchQuery.toLowerCase());
       if (!searchQuery.trim()) {
         setToasts({
           message: "Please enter an email to search",
@@ -529,7 +530,7 @@ export const UsersList = () => {
         });
         return;
       }
-    } else if (searchType === 'phone') {
+    } else if (searchType === 'phone' || searchType === 'maskedPhone') {
       if (!searchQuery.trim()) {
         setToasts({
           message: "Please enter a phone number to search",
@@ -566,7 +567,6 @@ export const UsersList = () => {
         return;
       }
     }
-
     // Proceed with search
     setPage(0);
     fetchUsers(0, rowsPerPage, searchQuery, selectedFilters, false, selectedOrg, userStatus);

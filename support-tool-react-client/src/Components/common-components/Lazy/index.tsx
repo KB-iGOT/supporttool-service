@@ -44,6 +44,12 @@ const Contents = lazy(() =>
     default: module.Contents,
   }))
 );
+const ContentHierarchy = lazy(() =>
+  import("../../content-hierarchy/index").then((module) => ({
+    default: module.ContentHierarchy,
+  }))
+);
+
 const Users = lazy(() =>
   import("../../users/index").then((module) => ({
     default: module.Users,
@@ -218,6 +224,14 @@ const LazyApp = () => {
             element={
               <ProtectedRoute>
                 <Contents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/content-hierarchy"
+            element={
+              <ProtectedRoute>
+                <ContentHierarchy />
               </ProtectedRoute>
             }
           />

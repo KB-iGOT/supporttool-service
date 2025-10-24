@@ -34,7 +34,7 @@ import { Organization } from "./types";
 import { OrganizationSelector } from "./OrganizationSelector";
 
 // Type definitions
-export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId' | 'roles';
+export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId' | 'roles' | 'maskedEmail' | 'maskedPhone';
 export type UserStatusType = 'active' | 'inactive' | 'all';
 interface SearchFieldConfig {
   type: SearchFieldType;
@@ -56,7 +56,7 @@ export const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
     type: 'email',
     label: 'Email',
     placeholder: 'Enter user email',
-    path: 'email',
+    path: 'profileDetails.personalDetails.primaryEmail',
     icon: <EmailIcon />
   },
   phone: {
@@ -64,6 +64,20 @@ export const searchFields: Record<SearchFieldType, SearchFieldConfig> = {
     label: 'Phone Number',
     placeholder: 'Enter user phone number',
     path: 'profileDetails.personalDetails.mobile',
+    icon: <PhoneIcon />
+  },
+  maskedEmail: {
+    type: 'maskedEmail',
+    label: 'Masked Email',
+    placeholder: 'Enter masked email',
+    path: 'email',
+    icon: <EmailIcon />
+  },
+  maskedPhone: {
+    type: 'maskedPhone',
+    label: 'Masked Phone',
+    placeholder: 'Enter masked phone number',
+    path: 'phone',
     icon: <PhoneIcon />
   },
   userId: {
@@ -183,7 +197,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
     }
     
     // Only validate specific search types
-    if (['email', 'phone', 'userId'].includes(searchType)) {
+    if (['email', 'phone', 'userId', 'maskedEmail', 'maskedPhone'].includes(searchType)) {
       const isValid = validateInput(value.trim(), searchType);
       if (!isValid) {
         setSearchErrors({ [searchType]: getErrorMessage(searchType) });
@@ -212,7 +226,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   const handleSearchFieldBlur = () => {
     if (!searchQuery.trim()) return;
     
-    if (['email', 'phone', 'userId'].includes(searchType)) {
+    if (['email', 'phone', 'userId', 'maskedEmail', 'maskedPhone'].includes(searchType)) {
       const isValid = validateInput(searchQuery.trim(), searchType);
       if (!isValid) {
         setSearchErrors({ [searchType]: getErrorMessage(searchType) });

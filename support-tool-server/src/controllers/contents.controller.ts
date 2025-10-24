@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
+import { cassandraClient } from "../utils/cassandra";
 import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
-import axios from "axios"; // Use axios instead of request (which is deprecated)
+import axios from "axios";
 import FormData from "form-data";
 import logger from "../utils/logger";
 import { Logger } from "winston";
@@ -594,5 +594,82 @@ export const readPrivateContent: RequestHandler = async (
         error: (error as any).message,
       });
     }
+  }
+};
+
+export const getContentHierarchy: RequestHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { identifier } = req.params;  
+
+  if (!identifier) {
+    logger.warn("Content hierarchy request received without an identifier.");
+    res.status(400).json({ message: "Identifier is required" });
+    return;
+  }
+
+  logger.info(`Fetching content hierarchy for identifier: ${identifier}`);
+
+  try {
+    const query = `SELECT * FROM prod_hierarchy_store.content_hierarchy WHERE identifier = ?`;
+    const result = await cassandraClient.execute(query, [identifier], { prepare: true });
+    const rows = result.rows;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      logger.info(`No content hierarchy found for identifier: ${identifier}`);
+      res.status(404).json({ message: `No content hierarchy found for identifier: ${identifier}` });
+      return;
+    }
+
+    res.status(200).json(rows);
+  } catch (error) {
+    logger.error(`Error fetching content hierarchy: ${error}`);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateContentHierarchy: RequestHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { identifier } = req.params;
+  const { hierarchy, jiraLink } = req.body;
+  const user_id = req.headers["x-user-id"] as string;
+
+  const auditObject = {
+    user_id,
+    module: "Content Hierarchy",
+    action: "UPDATE",
+    entity_id: identifier,
+    request_payload: { identifier, hierarchy, jiraLink },
+    jira_link: jiraLink,
+  };
+
+  if (!identifier || !hierarchy) {
+    logger.warn("Update content hierarchy request received with missing data.");
+    await logAudit({ ...auditObject, status: "FAILURE", message: "Identifier and hierarchy are required" });
+    res.status(400).json({ message: "Identifier and hierarchy are required" });
+    return;
+  }
+
+  logger.info(`Updating content hierarchy for identifier: ${identifier}`);
+
+  try {
+    const query = `UPDATE prod_hierarchy_store.content_hierarchy SET hierarchy = ? WHERE identifier = ?`;
+    // Cassandra expects the JSON to be a string
+    await cassandraClient.execute(query, [JSON.stringify(hierarchy), identifier], { prepare: true });
+
+    logger.info(`Successfully updated content hierarchy for identifier: ${identifier}`);
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      message: "Content hierarchy updated successfully",
+    });
+
+    res.status(200).json({ message: "Content hierarchy updated successfully" });
+  } catch (error) {
+    logger.error(`Error updating content hierarchy: ${error}`);
+    await logAudit({ ...auditObject, status: "FAILURE", message: String(error) });
+    res.status(500).json({ message: "Internal server error" });
   }
 };

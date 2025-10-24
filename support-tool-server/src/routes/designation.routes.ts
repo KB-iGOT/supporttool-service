@@ -1,5 +1,5 @@
 import express from "express";
-import { createDesignation, searchDesignations, uploadDesignations, searchCompositeDesignations } from "../controllers/designation.controller";
+import { createDesignation, searchDesignations, uploadDesignations, searchCompositeDesignations, deleteDesignation, updateDesignation } from "../controllers/designation.controller";
 import { userSession } from "../helpers/authHelper";
 import multer from "multer";
 
@@ -18,5 +18,9 @@ router.route("/create/term")
   .post(userSession, createDesignation);
 router.route("/upload")
   .post(userSession, upload.single('file'), uploadDesignations);
+router.route("/delete/:id")
+  .delete(userSession, deleteDesignation);
+router.route("/update")
+  .put(userSession, updateDesignation);
 
 export default router;

@@ -80,4 +80,24 @@ export const contentsService = {
       throw error;
     }
   },
+
+  getContentHierarchy: async (identifier: string) => {
+    try {
+      const response = await apiClient.get(`/contents/hierarchy/${identifier}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching content hierarchy:", error);
+      throw error;
+    }
+  },
+
+  updateContentHierarchy: async (identifier: string, payload: { hierarchy: any; jiraLink: string }) => {
+    try {
+      const response = await apiClient.patch(`/contents/update/hierarchy/${identifier}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating content hierarchy:", error);
+      throw error;
+    }
+  },
 };

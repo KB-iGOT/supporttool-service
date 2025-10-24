@@ -2,12 +2,12 @@ import axios from "axios";
 import apiClient from "./apiClient";
 import env from "../Config/env";
 
-const searchMasterDesignations = async (query: string, pageNumber: number, pageSize: number) => {
+const searchMasterDesignations = async (query: string, pageNumber: number, pageSize: number, status: string) => {
   const requestData: any = {
     pageNumber,
     pageSize,
-    filterCriteriaMap: {
-      status: "Active"
+    filterCriteriaMap: {status
+
     },
     requestedFields: []
   };
@@ -93,5 +93,30 @@ const uploadMasterDesignations = async (file: File, auditData: any) => {
   return response.data;
 };
 
+const deleteDesignation = async (id: string, auditData: any) => {
+  try {
+    // The audit data (jiraLink, module) is sent in the body for DELETE requests
+    const response = await apiClient.delete(`/designation/delete/${id}`, { data: auditData });
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting designation:', error);
+    throw error;
+  }
+};
 
-export const designationService = { searchMasterDesignations, createDesignationTerm, importDesignations, createDesignation, searchOrgDesignations, uploadMasterDesignations };
+const updateDesignation = async (payload: any, auditData: any) => {
+  try {
+    const finalPayload = {
+      requestPayload: payload,
+      ...auditData,
+    };
+    const response = await apiClient.put('/designation/update', finalPayload);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating designation:', error);
+    throw error;
+  }
+};
+
+
+export const designationService = { searchMasterDesignations, createDesignationTerm, importDesignations, createDesignation, searchOrgDesignations, uploadMasterDesignations, deleteDesignation, updateDesignation };

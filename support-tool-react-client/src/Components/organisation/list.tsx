@@ -20,6 +20,8 @@ import {
   ListItemIcon,
   ListItemText,
   TextField,
+  Select,
+  MenuItem as SelectMenuItem,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import SearchIcon from '@mui/icons-material/Search';
@@ -62,30 +64,41 @@ export const OrganisationList: React.FC = () => {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'name' | 'id'>('name');
 
   // Menu and Dialog state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuOrg, setMenuOrg] = useState<Organisation | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
-  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string) => {
+  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string, type: 'name' | 'id') => {
     try {
       setLoading(true);
       setError(null);
 
+      const filters: any = {
+        isTenant: true,
+        status: 1,
+        isMdo: true,
+      };
+
+      let searchPayload: { query?: string, filters: any } = { filters };
+
+      if (query) {
+        if (type === 'id') {
+          filters['identifier'] = query;
+        } else { // 'name'
+          searchPayload.query = query;
+        }
+      }
+
       const requestPayload = {
         "request": {
-          "filters": {
-            "isTenant": true,
-            "status": 1,
-            "isMdo": true
-          },
-          "sort_by": {
-            "createdDate": "desc"
-          },
+          ...searchPayload,
+          ...(query?.length > 0 ? null: { "sort_by": { "createdDate": "desc" } } ),
           "limit": limit,
           "offset": offset,
-          "query": query
         }
       };
 
@@ -109,16 +122,16 @@ export const OrganisationList: React.FC = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       setPage(0); // Reset to first page on new search
-      fetchOrganisations(rowsPerPage, 0, searchQuery);
+      fetchOrganisations(rowsPerPage, 0, searchQuery, searchType);
     }, DEBOUNCE_DELAY);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, rowsPerPage, fetchOrganisations]);
+  }, [searchQuery, searchType, rowsPerPage, fetchOrganisations]);
 
   useEffect(() => {
-    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery);
+    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType);
   }, [page, fetchOrganisations]); // Removed rowsPerPage and searchQuery as they are handled above
 
   const handlePageChange = (event: unknown, newPage: number) => {
@@ -174,16 +187,33 @@ export const OrganisationList: React.FC = () => {
     });
   };
 
+  const handleImageError = (orgId: string) => {
+    setImageErrors((prevErrors) => ({
+      ...prevErrors,
+      [orgId]: true,
+    }));
+  };
+
   return (
     <Box sx={{pt: 3, pb: 5}}>
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2 }}>
+        <Select
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value as 'name' | 'id')}
+          sx={{ minWidth: 120 }}
+        >
+          <SelectMenuItem value="name">Search by Name</SelectMenuItem>
+          <SelectMenuItem value="id">Search by ID</SelectMenuItem>
+        </Select>
         <TextField
           fullWidth
           label="Search Organisations"
           variant="outlined"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by Organisation Name or Channel..."
+          placeholder={
+            searchType === 'name' ? "Search by Organisation Name or Channel..." : "Enter Organisation ID"
+          }
           InputProps={{
             startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
           }}
@@ -217,11 +247,12 @@ export const OrganisationList: React.FC = () => {
               {organisations.map((org) => (
                 <TableRow key={org.id} hover>
                   <TableCell>
-                    {org.logo ? (
+                    {org.logo && !imageErrors[org.id] ? (
                       <img 
                         src={org.logo} 
                         alt={org.orgName} 
                         style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: '4px' }} 
+                        onError={() => handleImageError(org.id)}
                       />
                     ) : (
                       <Box sx={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.200', borderRadius: '4px' }}>
@@ -275,14 +306,14 @@ export const OrganisationList: React.FC = () => {
           </ListItemIcon>
           <ListItemText>View Full Details</ListItemText>
         </MenuItem>
-        {(menuOrg?.frameworkid || menuOrg?.frameworkId) && (
+        {/* {(menuOrg?.frameworkid || menuOrg?.frameworkId) && (
           <MenuItem onClick={handleViewDesignation}>
             <ListItemIcon>
               <AssignmentIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>View Designation</ListItemText>
           </MenuItem>
-        )}
+        )} */}
         {(menuOrg?.frameworkid || menuOrg?.frameworkId ) && (
           <MenuItem onClick={handleImportDesignation}>
             <ListItemIcon>
@@ -297,6 +328,7 @@ export const OrganisationList: React.FC = () => {
         open={dialogOpen}
         onClose={handleCloseDialog}
         title={`Organisation Details: ${menuOrg?.orgName || ''}`}
+        identifier={menuOrg?.id || ''}
         data={menuOrg}
       />
     </Box>

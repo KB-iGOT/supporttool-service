@@ -212,3 +212,105 @@ export const uploadDesignations: RequestHandler = async (
     res.status(axios.isAxiosError(error) && error.response ? error.response.status : 500).json(errorResponse);
   }
 };
+
+export const deleteDesignation: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const { id } = req.params;
+  const { jiraLink, module } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  const auditObject = {
+    user_id,
+    module: module || 'DESIGNATION_DELETE',
+    sub_module: 'DELETE_DESIGNATION',
+    action: 'DELETE',
+    entity_id: id,
+    request_payload: { id, jiraLink },
+    modified_payload: null,
+    status: 'PENDING',
+    message: `Attempting to delete designation: ${id}`,
+    jira_link: jiraLink,
+  };
+
+  try {
+    logger.info(`Deleting designation with id: ${id}`);
+
+    const options = {
+      method: "DELETE",
+      url: `${process.env.KONG_API_URL}/api/designation/delete/${id}`,
+      headers: {
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+    };
+
+    const response = await axios(options);
+
+    await logAudit({ ...auditObject, status: 'SUCCESS', response_payload: response.data, message: `Successfully deleted designation: ${id}` });
+    res.status(200).send(response.data);
+
+  } catch (error) {
+    const errorMessage = `Error deleting designation: ${id}`;
+    logger.error(`❌ ${errorMessage}: ${error}`);
+
+    const errorResponse = axios.isAxiosError(error) && error.response ? error.response.data : { message: 'Internal Server Error' };
+    const statusCode = axios.isAxiosError(error) && error.response ? error.response.status : 500;
+
+    await logAudit({ ...auditObject, status: 'FAILURE', response_payload: errorResponse, message: errorMessage });
+    res.status(statusCode).json(errorResponse);
+  }
+};
+
+export const updateDesignation: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const { jiraLink, module, requestPayload, payload } = req.body;
+  const user_id = req.headers["x-user-id"];
+  const designationId = requestPayload?.id;
+
+  const auditObject = {
+    user_id,
+    module: module || 'DESIGNATION_UPDATE',
+    sub_module: 'UPDATE_DESIGNATION',
+    action: 'UPDATE',
+    entity_id: designationId,
+    request_payload: req.body,
+    modified_payload: payload?.updatedData,
+    status: 'PENDING',
+    message: `Attempting to update designation: ${designationId}`,
+    jira_link: jiraLink,
+  };
+
+  try {
+    logger.info(`Updating designation with id: ${designationId}`);
+
+    const options = {
+      method: "PUT",
+      url: `${process.env.KONG_API_URL}/api/designation/update`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+      data: requestPayload,
+    };
+
+    const response = await axios(options);
+
+    await logAudit({ ...auditObject, status: 'SUCCESS', response_payload: response.data, message: `Successfully updated designation: ${designationId}` });
+    res.status(200).send(response.data);
+
+  } catch (error) {
+    const errorMessage = `Error updating designation: ${designationId}`;
+    logger.error(`❌ ${errorMessage}: ${error}`);
+
+    const errorResponse = axios.isAxiosError(error) && error.response ? error.response.data : { message: 'Internal Server Error' };
+    const statusCode = axios.isAxiosError(error) && error.response ? error.response.status : 500;
+
+    await logAudit({ ...auditObject, status: 'FAILURE', response_payload: errorResponse, message: errorMessage });
+    res.status(statusCode).json(errorResponse);
+  }
+};
