@@ -147,6 +147,20 @@ export const usersService = {
     }
   },
   /**
+   * Migrates a list of users in bulk.
+   * @param requestData The bulk migration request payload
+   * @returns API response
+   */
+  migrateBulkUser: async (requestData: any) => {
+    try {
+      const response = await apiClient.post(`/users/migrate-bulk`, requestData);
+      return response.data;
+    } catch (error) {
+      console.error("Error migrating bulk users:", error);
+      throw error;
+    }
+  },
+  /**
    * Unblocks a previously blocked user account
    * @param userId The ID of the user to unblock
    * @param requestedById The ID of the admin user making the request

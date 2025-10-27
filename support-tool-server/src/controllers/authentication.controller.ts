@@ -2,6 +2,16 @@ import request from "request";
 import pool from "../config/database";
 import logger from "../utils/logger";
 
+// Helper function to check if URL is valid
+const isValidUrl = (string: string) => {
+  try {
+    new URL(string);
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
 const getUserFromDB = async (email: string) => {
   let users = await pool.query(
     'SELECT * FROM users WHERE "email" = $1',
@@ -55,11 +65,37 @@ WHERE
 
 const authenticateWithKeycloak = (email: string, password: string) => {
   return new Promise((resolve, reject) => {
+    // Validate required environment variables
+    if (!process.env.KONG_API_URL) {
+      logger.error("KONG_API_URL environment variable is not set");
+      return reject(new Error("Server configuration error: KONG_API_URL not configured"));
+    }
+    if (!process.env.KEYCLOAK_CLIENT_ID) {
+      logger.error("KEYCLOAK_CLIENT_ID environment variable is not set");
+      return reject(new Error("Server configuration error: KEYCLOAK_CLIENT_ID not configured"));
+    }
+    if (!process.env.KEYCLOAK_CLIENT_SECRET) {
+      logger.error("KEYCLOAK_CLIENT_SECRET environment variable is not set");
+      return reject(new Error("Server configuration error: KEYCLOAK_CLIENT_SECRET not configured"));
+    }
+
+    const authUrl = `${process.env.KONG_API_URL}auth/realms/sunbird/protocol/openid-connect/token`;
+    
+    // Validate URL format
+    if (!isValidUrl(authUrl)) {
+      logger.error(`Invalid Keycloak URL: ${authUrl}`);
+      return reject(new Error("Server configuration error: Invalid Keycloak URL"));
+    }
+    
+    logger.info(`Attempting Keycloak authentication for user: ${email}`);
+    logger.info(`Keycloak URL: ${authUrl}`);
+
     const options = {
       method: "POST",
-      url: `${process.env.KONG_API_URL}auth/realms/sunbird/protocol/openid-connect/token`,
+      url: authUrl,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Support-Tool-Server/1.0"
       },
       form: {
         client_id: process.env.KEYCLOAK_CLIENT_ID,
@@ -68,16 +104,57 @@ const authenticateWithKeycloak = (email: string, password: string) => {
         username: email,
         client_secret: process.env.KEYCLOAK_CLIENT_SECRET,
       },
+      timeout: 30000, // 30 seconds timeout
     };
 
     request(options, (error, response) => {
       if (error) {
+        logger.error("Network error during Keycloak authentication: " + error.message);
         return reject(error);
       }
-      const responseBody = JSON.parse(response.body);
-      if (responseBody.error) {
-        return reject(new Error(responseBody.error));
+
+      // Log response status and body for debugging
+      logger.info(`Keycloak response status: ${response.statusCode}`);
+      logger.info(`Keycloak response body: ${response.body?.substring(0, 500)}...`);
+
+      // Check if response status is not successful
+      if (response.statusCode !== 200) {
+        logger.error(`Keycloak authentication failed with status ${response.statusCode}: ${response.body}`);
+        return reject(new Error(`Authentication failed: HTTP ${response.statusCode}`));
       }
+
+      // Check if response body exists
+      if (!response.body) {
+        logger.error("Empty response body from Keycloak");
+        return reject(new Error("Empty response from authentication server"));
+      }
+
+      // Check if response is HTML (error page)
+      if (response.body.trim().startsWith('<html') || response.body.trim().startsWith('<!DOCTYPE')) {
+        logger.error("Received HTML response instead of JSON from Keycloak");
+        return reject(new Error("Authentication server returned an error page. Please check server configuration."));
+      }
+
+      let responseBody;
+      try {
+        responseBody = JSON.parse(response.body);
+      } catch (parseError) {
+        logger.error("Failed to parse Keycloak response as JSON: " + parseError);
+        logger.error("Response body: " + response.body);
+        return reject(new Error("Invalid JSON response from authentication server"));
+      }
+
+      if (responseBody.error) {
+        logger.error("Keycloak returned error: " + responseBody.error);
+        return reject(new Error(responseBody.error_description || responseBody.error));
+      }
+
+      if (!responseBody.access_token) {
+        logger.error("No access token in Keycloak response");
+        return reject(new Error("Authentication successful but no access token received"));
+      }
+
+      logger.info("Successfully obtained access token from Keycloak");
       resolve(responseBody.access_token);
     });
   });
@@ -114,6 +191,16 @@ const saveSession = (req: any, sessionData: any) => {
 export const authenticateKeycloakUser = async (req: any, res: any) => {
   try {
     const { username, password } = req.body;
+    
+    // Validate request body
+    if (!username || !password) {
+      logger.warn("Authentication request missing username or password");
+      return res.status(400).send({ 
+        status: 400, 
+        message: "Username and password are required" 
+      });
+    }
+    
     logger.info("Received authentication request for username: " + username);
 
     // Step 1: Check if user exists in the database
@@ -127,14 +214,42 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
 
     // Step 2: Authenticate user with Keycloak
     logger.info("Authenticating user with Keycloak...");
-    const token: any = await authenticateWithKeycloak(username, password);
-    if (!token) {
-      logger.warn("Authentication failed with Keycloak for username: " + username);
-      return res.status(401).send({
-        message: "Authentication failed with Keycloak. Please check your credentials.",
-      });
+    let token: any;
+    try {
+      token = await authenticateWithKeycloak(username, password);
+      if (!token) {
+        logger.warn("Authentication failed with Keycloak for username: " + username);
+        return res.status(401).send({
+          message: "Authentication failed with Keycloak. Please check your credentials.",
+        });
+      }
+      logger.info("Authentication successful with Keycloak for username: " + username);
+    } catch (authError: any) {
+      logger.error("Keycloak authentication error for username " + username + ": " + authError.message);
+      
+      // Provide specific error messages based on the error type
+      if (authError.message.includes("Server configuration error")) {
+        return res.status(500).send({
+          message: "Authentication server configuration error. Please contact system administrator.",
+        });
+      } else if (authError.message.includes("Authentication server returned an error page")) {
+        return res.status(503).send({
+          message: "Authentication service is currently unavailable. Please try again later.",
+        });
+      } else if (authError.message.includes("Invalid JSON response")) {
+        return res.status(503).send({
+          message: "Authentication service error. Please contact system administrator.",
+        });
+      } else if (authError.message.includes("HTTP")) {
+        return res.status(401).send({
+          message: "Invalid credentials. Please check your username and password.",
+        });
+      } else {
+        return res.status(401).send({
+          message: "Authentication failed. Please check your credentials and try again.",
+        });
+      }
     }
-    logger.info("Authentication successful with Keycloak for username: " + username);
 
     // Step 3: Set session and cookies
     const sessionData = createSessionData(user, token);

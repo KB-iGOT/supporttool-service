@@ -31,6 +31,7 @@ import { AppContext } from '../../../Context/AppContext';
 import { appContextType } from '../../../types';
 import { useLocation } from 'react-router-dom';
 import DownloadIcon from '@mui/icons-material/Download';
+import sampleCsv from '../../../assets/sample-files/DeactivateUser.csv';
 
 
 interface CsvData {
@@ -324,7 +325,7 @@ export const DeactivateUser: React.FC = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Delete the entire row you do not intend to process.
               </Typography>
-              <Button variant="outlined" href="/sample-files/DeactivateUser.csv" download="DeactivateUser.csv" startIcon={<DownloadIcon />}>
+              <Button variant="outlined" href={sampleCsv} download="DeactivateUser.csv" startIcon={<DownloadIcon />}>
                 Download Sample
               </Button>
             </Paper>

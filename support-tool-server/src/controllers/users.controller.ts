@@ -958,3 +958,119 @@ export const deactivateBulkUser: RequestHandler = async (req: any, res: any) => 
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+// 🚀 **Migrate Bulk Users**
+export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
+  try {
+    const { payload, jiraLink, changedFields, module } = req.body;
+    const userRequests = payload?.request;
+    const migrationOptions = payload?.migrationOptions || {};
+    const user_id = req.headers["x-user-id"];
+
+    if (!userRequests || !Array.isArray(userRequests) || userRequests.length === 0) {
+      return res.status(400).json({ message: "Request payload must contain an array of user migration requests." });
+    }
+
+    // Extract migration options with defaults
+    const {
+      forceMigration = true,
+      softDeleteOldOrg = true,
+      notifyMigration = false
+    } = migrationOptions;
+
+    const promises = userRequests.map(async (userRequest: any) => {
+      const { userId, channel } = userRequest;
+      const singlePayload = { 
+        request: { 
+          userId, 
+          channel, 
+          forceMigration, 
+          softDeleteOldOrg, 
+          notifyMigration 
+        } 
+      };
+
+      const auditObject = createAuditObject(
+        user_id,
+        module,
+        "MIGRATE_USER_BULK",
+        "UPDATE",
+        userId,
+        singlePayload,
+        changedFields,
+        jiraLink
+      );
+
+      try {
+        const response = await axios({
+          method: "PATCH",
+          url: `${process.env.KONG_API_URL}/api/user/private/v1/migrate`,
+          headers: createApiHeaders(req.user.token),
+          data: singlePayload
+        });
+
+        await logAudit({
+          ...auditObject,
+          status: "SUCCESS",
+          response_payload: JSON.stringify(response.data),
+          message: "User migrated successfully in bulk operation",
+        });
+
+        logger.info(`User ${userId} migrated successfully in bulk operation`);
+        return { success: true, userId, result: { ...response.data, userId, channel } };
+      } catch (error: any) {
+        await auditLogApiError(error, res, `Error migrating user ${userId} in bulk operation`, auditObject);
+        logger.error(`Failed to migrate user ${userId}: ${error.message}`);
+        
+        return { 
+          success: false, 
+          userId, 
+          reason: { 
+            userId, 
+            channel, 
+            error: error.response?.data?.message || error.message || "Migration failed" 
+          } 
+        };
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const processedResults = results.reduce((acc: any, result: any) => {
+      if (result.status === "fulfilled" && result.value.success) {
+        acc.success.push(result.value.result);
+      } else {
+        // Handle both rejected promises and fulfilled but failed migrations
+        const failureReason = result.status === "fulfilled" ? result.value.reason : {
+          userId: "unknown",
+          channel: "unknown", 
+          error: result.reason?.message || "Unknown error occurred"
+        };
+        acc.failure.push(failureReason);
+      }
+      return acc;
+    }, { success: [], failure: [] });
+
+    // Add summary information
+    const summary = {
+      totalRequested: userRequests.length,
+      successful: processedResults.success.length,
+      failed: processedResults.failure.length,
+      migrationOptions: {
+        forceMigration,
+        softDeleteOldOrg,
+        notifyMigration
+      },
+      processedAt: new Date().toISOString()
+    };
+
+    res.status(200).json({ 
+      status: 200, 
+      message: `Bulk migration process completed. ${processedResults.success.length} successful, ${processedResults.failure.length} failed.`, 
+      results: processedResults,
+      summary
+    });
+  } catch (error: any) {
+    console.error("❌ Error during bulk user migration:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
