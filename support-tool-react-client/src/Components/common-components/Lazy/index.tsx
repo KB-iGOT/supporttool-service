@@ -181,6 +181,9 @@ const DeactivateUser = lazy(() =>
 const MigrateUsers = lazy(() =>
   import("../../bulk-upload/migrate-users").then(module => ({ default: module.MigrateUsers }))
 );
+const MigrateUsersV2 = lazy(() =>
+  import("../../bulk-upload/migrate-users-v2").then(module => ({ default: module.MigrateUsersV2 }))
+);
 
 
 
@@ -375,6 +378,7 @@ const LazyApp = () => {
           >
             <Route index element={<BulkFeaturesList />} />
             <Route path="migrate-users" element={<MigrateUsers />} />
+            <Route path="migrate-users-v2" element={<MigrateUsersV2 />} />
             <Route path="deactivate-user" element={<DeactivateUser />} />
 
           <Route

@@ -959,6 +959,189 @@ export const deactivateBulkUser: RequestHandler = async (req: any, res: any) => 
   }
 };
 
+// 🚀 **Migrate Bulk Users V2 - Enhanced for Large Datasets**
+export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
+  try {
+    const { payload, jiraLink, changedFields, module } = req.body;
+    const userRequests = payload?.request;
+    const migrationOptions = payload?.migrationOptions || {};
+    const chunkInfo = payload?.chunkInfo || {}; // Additional info for V2: chunkId, totalChunks, etc.
+    const user_id = req.headers["x-user-id"];
+
+    if (!userRequests || !Array.isArray(userRequests) || userRequests.length === 0) {
+      return res.status(400).json({ 
+        message: "Request payload must contain an array of user migration requests.",
+        chunkInfo 
+      });
+    }
+
+    // V2: Enhanced validation for large batches (max 500 per chunk to avoid 413 errors)
+    if (userRequests.length > 500) {
+      return res.status(400).json({ 
+        message: "V2 bulk migration supports maximum 500 users per chunk. Please split your request.",
+        currentChunkSize: userRequests.length,
+        maxAllowed: 500,
+        chunkInfo
+      });
+    }
+
+    // Extract migration options with defaults
+    const {
+      forceMigration = true,
+      softDeleteOldOrg = true,
+      notifyMigration = false
+    } = migrationOptions;
+
+    // V2: Enhanced logging with chunk information
+    const chunkLog = chunkInfo.chunkId ? `[Chunk ${chunkInfo.chunkId}/${chunkInfo.totalChunks}] ` : '';
+    logger.info(`${chunkLog}Starting bulk migration V2 for ${userRequests.length} users`);
+
+    // V2: Enhanced processing with better error handling and progress tracking
+    const promises = userRequests.map(async (userRequest: any, index: number) => {
+      const { userId, channel } = userRequest;
+      const singlePayload = { 
+        request: { 
+          userId, 
+          channel, 
+          forceMigration, 
+          softDeleteOldOrg, 
+          notifyMigration 
+        } 
+      };
+
+      const auditObject = createAuditObject(
+        user_id,
+        module,
+        `MIGRATE_USER_BULK_V2${chunkInfo.chunkId ? `_CHUNK_${chunkInfo.chunkId}` : ''}`,
+        "UPDATE",
+        userId,
+        singlePayload,
+        changedFields,
+        jiraLink
+      );
+
+      try {
+        // V2: Add small delay for large chunks to prevent overwhelming the API
+        if (index > 0 && index % 100 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay every 100 requests
+        }
+
+        const response = await axios({
+          method: "PATCH",
+          url: `${process.env.KONG_API_URL}/api/user/private/v1/migrate`,
+          headers: createApiHeaders(req.user.token),
+          data: singlePayload,
+          timeout: 30000 // 30 second timeout for V2
+        });
+
+        await logAudit({
+          ...auditObject,
+          status: "SUCCESS",
+          response_payload: JSON.stringify(response.data),
+          message: `${chunkLog}User migrated successfully in bulk operation V2`,
+        });
+
+        logger.info(`${chunkLog}User ${userId} migrated successfully in bulk operation V2`);
+        return { 
+          success: true, 
+          userId, 
+          result: { 
+            ...response.data, 
+            userId, 
+            channel,
+            chunkId: chunkInfo.chunkId,
+            processedAt: new Date().toISOString()
+          } 
+        };
+      } catch (error: any) {
+        await auditLogApiError(error, res, `${chunkLog}Error migrating user ${userId} in bulk operation V2`, auditObject);
+        logger.error(`${chunkLog}Failed to migrate user ${userId}: ${error.message}`);
+        
+        return { 
+          success: false, 
+          userId, 
+          reason: { 
+            userId, 
+            channel, 
+            chunkId: chunkInfo.chunkId,
+            error: error.response?.data?.message || error.message || "Migration failed",
+            errorCode: error.response?.status || 'UNKNOWN',
+            processedAt: new Date().toISOString()
+          } 
+        };
+      }
+    });
+
+    // V2: Enhanced result processing with detailed timing
+    const startTime = Date.now();
+    const results = await Promise.allSettled(promises);
+    const processingTime = Date.now() - startTime;
+    
+    const processedResults = results.reduce((acc: any, result: any) => {
+      if (result.status === "fulfilled" && result.value.success) {
+        acc.success.push(result.value.result);
+      } else {
+        // Handle both rejected promises and fulfilled but failed migrations
+        const failureReason = result.status === "fulfilled" ? result.value.reason : {
+          userId: "unknown",
+          channel: "unknown", 
+          chunkId: chunkInfo.chunkId,
+          error: result.reason?.message || "Unknown error occurred",
+          errorCode: 'PROMISE_REJECTED',
+          processedAt: new Date().toISOString()
+        };
+        acc.failure.push(failureReason);
+      }
+      return acc;
+    }, { success: [], failure: [] });
+
+    // V2: Enhanced summary with performance metrics
+    const summary = {
+      totalRequested: userRequests.length,
+      successful: processedResults.success.length,
+      failed: processedResults.failure.length,
+      processingTimeMs: processingTime,
+      averageTimePerUserMs: Math.round(processingTime / userRequests.length),
+      chunkInfo: {
+        chunkId: chunkInfo.chunkId || null,
+        totalChunks: chunkInfo.totalChunks || null,
+        chunkSize: userRequests.length,
+        isLastChunk: chunkInfo.chunkId === chunkInfo.totalChunks
+      },
+      migrationOptions: {
+        forceMigration,
+        softDeleteOldOrg,
+        notifyMigration
+      },
+      processedAt: new Date().toISOString(),
+      version: "V2"
+    };
+
+    // V2: Enhanced logging with performance metrics
+    logger.info(`${chunkLog}Bulk migration V2 completed: ${processedResults.success.length} successful, ${processedResults.failure.length} failed, ${processingTime}ms total`);
+
+    res.status(200).json({ 
+      status: 200, 
+      message: `${chunkLog}Bulk migration V2 process completed. ${processedResults.success.length} successful, ${processedResults.failure.length} failed.`, 
+      results: processedResults,
+      summary,
+      version: "V2"
+    });
+  } catch (error: any) {
+    const chunkLog = req.body?.payload?.chunkInfo?.chunkId ? 
+      `[Chunk ${req.body.payload.chunkInfo.chunkId}/${req.body.payload.chunkInfo.totalChunks}] ` : '';
+    console.error(`❌ ${chunkLog}Error during bulk user migration V2:`, error);
+    logger.error(`${chunkLog}Bulk migration V2 failed: ${error.message}`);
+    
+    res.status(500).json({ 
+      message: `${chunkLog}Internal server error during bulk migration V2`, 
+      error: error.message,
+      chunkInfo: req.body?.payload?.chunkInfo || null,
+      version: "V2"
+    });
+  }
+};
+
 // 🚀 **Migrate Bulk Users**
 export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
   try {

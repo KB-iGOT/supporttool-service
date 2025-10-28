@@ -38,10 +38,11 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
-  Cached as CachedIcon
+  Cached as CachedIcon,
+  Upgrade as UpgradeIcon
 } from '@mui/icons-material';
 import Papa, { ParseResult } from 'papaparse';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usersService } from '../../../services/users.service';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 import { AppContext } from '../../../Context/AppContext';
@@ -80,6 +81,7 @@ function TabPanel(props: TabPanelProps) {
 
 export const MigrateUsers = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { setNotification, user } = useContext(AppContext) as appContextType;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -471,7 +473,25 @@ export const MigrateUsers = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Bulk Migrate Users</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Bulk Migrate Users</Typography>
+        <Button 
+          variant="outlined" 
+          startIcon={<UpgradeIcon />} 
+          onClick={() => navigate('/bulk-upload/migrate-users-v2', { state: moduleState })}
+          color="primary"
+        >
+          Upgrade to V2 (Large Files)
+        </Button>
+      </Box>
+      
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="body2">
+          <strong>Current Version:</strong> Supports up to 50 users at a time. 
+          For larger datasets (1,000+ users), please use the <strong>V2 version</strong> with chunk-based processing.
+        </Typography>
+      </Alert>
+      
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

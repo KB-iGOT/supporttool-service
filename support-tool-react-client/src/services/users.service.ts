@@ -160,6 +160,22 @@ export const usersService = {
       throw error;
     }
   },
+  
+  /**
+   * Migrates a list of users in bulk using V2 API for large datasets.
+   * Supports chunk-based processing with enhanced error handling and performance metrics.
+   * @param requestData The bulk migration request payload with chunk information
+   * @returns API response with enhanced details
+   */
+  migrateBulkUserV2: async (requestData: any) => {
+    try {
+      const response = await apiClient.post(`/users/migrate-bulk-v2`, requestData);
+      return response.data;
+    } catch (error) {
+      console.error("Error migrating bulk users V2:", error);
+      throw error;
+    }
+  },
   /**
    * Unblocks a previously blocked user account
    * @param userId The ID of the user to unblock

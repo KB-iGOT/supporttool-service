@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, deactivateBulkUser, migrateBulkUser } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, deactivateBulkUser, migrateBulkUser, migrateBulkUserV2 } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -21,6 +21,7 @@ UsersRoutes.route("/migrate").patch(userSession, migrateUser,() => {
 UsersRoutes.route("/block").post(userSession, blockUser);
 UsersRoutes.route("/deactivate-bulk").post(userSession, deactivateBulkUser);
 UsersRoutes.route("/migrate-bulk").post(userSession, migrateBulkUser);
+UsersRoutes.route("/migrate-bulk-v2").post(userSession, migrateBulkUserV2);
 UsersRoutes.route("/unblock").post(userSession, unblockUser);
 UsersRoutes.route("/update/:userId").patch(userSession, updateSuperUser);
 UsersRoutes.route("/:userId").patch(userSession, updateUser);
