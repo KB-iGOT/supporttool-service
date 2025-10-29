@@ -21,5 +21,10 @@ export const organisationService = {
     
     const response = await apiClient.get(`/org/delete/`+ orgId);
     return response.data;
+  },
+
+  updateOrganisationStatus: async (request: any) => {
+    const response = await apiClient.patch(`/org/status/update`, request);
+    return response.data;
   }
 };

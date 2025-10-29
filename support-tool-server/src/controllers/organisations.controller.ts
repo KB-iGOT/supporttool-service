@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import { connectPostgres } from "../utils/postgres";
 import logger from "../utils/logger";
+import logAudit from "../helpers/auditLogger";
 
 export const fetchOrganisations: RequestHandler = async (
   req: Request,
@@ -197,5 +198,125 @@ export const fetchOrganisationsData: RequestHandler = async (
       message: "Internal server error",
       error: error instanceof Error ? error.message : String(error)
     });
+  }
+};
+
+export const updateOrganisationStatus: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  logger.info(`Updating organization status: ${userId}`);
+
+  const auditObject = {
+    user_id,
+    module: module || "Organisation Management",
+    sub_module: "UPDATE_ORGANISATION_STATUS",
+    action: "UPDATE",
+    entity_id: userId || '',
+    request_payload: payload,
+    modified_payload: changedFields,
+    response_payload: null as string | null,
+    ip_address: null as string | null,
+    user_agent: null as string | null,
+    status: null as string | null,
+    message: null as string | null,
+    jira_link: jiraLink || null,
+  };
+
+  if (!user_id) {
+    const error = {
+      status: 400,
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "User ID is required",
+    };
+    
+    await logAudit({
+      ...auditObject,
+      status: "FAILURE",
+      response_payload: JSON.stringify(error),
+      message: error.responseMessage,
+    });
+
+    res.status(400).json(error);
+    return;
+  }
+
+  try {
+    const options = {
+      method: "PATCH",
+      url: `${process.env.KONG_API_URL}api/org/v1/status/update`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+      data: payload,
+    };
+
+    logger.debug(`API request options: ${JSON.stringify(options)}`);
+
+    const response = await axios(options);
+
+    logger.info(`Organization ${userId} status updated successfully`);
+    
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "Organization status updated successfully",
+    });
+
+    res.status(200).json(response.data);
+  } catch (error: any) {
+    logger.error("❌ Error updating organization status:" + error);
+    
+    let responsePayload = '';
+    let status = "FAILURE";
+    
+    if (error.response) {
+      responsePayload = JSON.stringify(error.response.data || {});
+    } else if (error.request) {
+      responsePayload = JSON.stringify({ message: "No response received from API" });
+      status = "SERVICE_UNAVAILABLE";
+    } else {
+      responsePayload = JSON.stringify({ message: error.message });
+      status = "SERVICE_UNAVAILABLE";
+    }
+    
+    await logAudit({
+      ...auditObject,
+      status,
+      response_payload: responsePayload,
+      message: `Error updating organization status for ${userId}`,
+    });
+
+    if (error.response) {
+      res.status(error.response.status).json({
+        responseCode: "API_ERROR",
+        responseMessage: `Error updating organization status for ${userId}`,
+        error: error.response.data,
+      });
+    } else if (error.request) {
+      res.status(503).json({
+        responseCode: "SERVICE_UNAVAILABLE",
+        responseMessage: "No response received from API",
+        error: "Service unavailable",
+      });
+    } else {
+      res.status(500).json({
+        responseCode: "SERVER_ERROR",
+        responseMessage: "Internal server error",
+        error: error.message,
+      });
+    }
   }
 };

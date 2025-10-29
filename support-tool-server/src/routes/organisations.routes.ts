@@ -3,7 +3,8 @@ import {
     fetchOrganisations,
     fetchOrganisationByName,
     deleteOrganisationById,
-    fetchOrganisationsData
+    fetchOrganisationsData,
+    updateOrganisationStatus
 } from "../controllers/organisations.controller";
 import { userSession } from "../helpers/authHelper";
 
@@ -12,11 +13,17 @@ const router = express.Router();
 // Define routes
 router.route("/")
   .get(userSession, fetchOrganisations);
-  router.route("/search")
-    .post(userSession, fetchOrganisationsData);
+  
+router.route("/search")
+  .post(userSession, fetchOrganisationsData);
+
+router.route("/status/update")
+  .patch(userSession, updateOrganisationStatus);
 
 router.route("/:id")
-.get(userSession, fetchOrganisationByName);
+  .get(userSession, fetchOrganisationByName);
+  
 router.route("/delete/:id")
-.get(userSession, deleteOrganisationById);
+  .get(userSession, deleteOrganisationById);
+  
 export default router;

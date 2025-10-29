@@ -214,17 +214,6 @@ export const CreateForm: React.FC<CreateFormProps> = ({
     }
   }, [openDropdown]);
 
-  useEffect(() => {
-    if (!isMounted.current) return;
-
-    const timer = setTimeout(() => {
-      const showMessage = manualValidation || attemptedSubmit;
-      validateJson(showMessage);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [jsonData, manualValidation, attemptedSubmit]);
-
   const handleDropdownOpen = (field: keyof FormFilterData) => {
     setOpenDropdown(field);
     setSearchValues(prev => ({
@@ -571,7 +560,6 @@ export const CreateForm: React.FC<CreateFormProps> = ({
   };
 
   const handleValidateClick = () => {
-    setManualValidation(true);
     validateJson(true);
   };
 
@@ -595,13 +583,19 @@ export const CreateForm: React.FC<CreateFormProps> = ({
 
   const handleSave = async () => {
     setAttemptedSubmit(true);
-
-    if (isFormValid()) {
-      await onSave(newFormData, jsonData);
-    } else if (!jsonIsValid) {
-      setValidationAlertType('error');
-      setShowValidationAlert(true);
-    }
+    
+    // Validate JSON before saving
+    validateJson(false);
+    
+    // Wait a bit for validation state to update
+    setTimeout(() => {
+      if (isFormValid()) {
+        onSave(newFormData, jsonData);
+      } else if (!jsonIsValid) {
+        setValidationAlertType('error');
+        setShowValidationAlert(true);
+      }
+    }, 100);
   };
 
   const getFilteredOptions = (field: keyof FormFilterData): string[] => {

@@ -22,15 +22,23 @@ import {
   TextField,
   Select,
   MenuItem as SelectMenuItem,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import SearchIcon from '@mui/icons-material/Search';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import BlockIcon from '@mui/icons-material/Block';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useNavigate } from 'react-router-dom';
 import { organisationService } from '../../services/organisations.service';
 import { JsonViewerDialog } from '../common-components/JsonViewerDialog';
+import { useActionInterceptor } from '../../hooks/useActionInterceptor';
+import { useContext } from 'react';
+import { AppContext } from '../../Context/AppContext';
+import { appContextType } from '../../types';
 
 const DEBOUNCE_DELAY = 500;
 
@@ -51,6 +59,7 @@ interface Organisation {
 
 export const OrganisationList: React.FC = () => {
   const navigate = useNavigate();
+  const { setNotification, user } = useContext(AppContext) as appContextType;
 
   // State declarations
   const [loading, setLoading] = useState(false);
@@ -65,6 +74,7 @@ export const OrganisationList: React.FC = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'id'>('name');
+  const [statusFilter, setStatusFilter] = useState<'all' | '1' | '0'>('all'); // all, active (1), inactive (0)
 
   // Menu and Dialog state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -72,16 +82,30 @@ export const OrganisationList: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
-  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string, type: 'name' | 'id') => {
+  // Action interceptor for status updates
+  const { handleAction: handleStatusUpdate } = useActionInterceptor({
+    actionType: 'UPDATE_ORGANISATION_STATUS',
+    onComplete: async (interceptPayload) => {
+      await performStatusUpdate(interceptPayload);
+    }
+  });
+
+  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string, type: 'name' | 'id', status: 'all' | '1' | '0') => {
     try {
       setLoading(true);
       setError(null);
 
       const filters: any = {
         isTenant: true,
-        status: 1,
         isMdo: true,
       };
+
+      // Add status filter if not 'all'
+      if (status !== 'all') {
+        filters.status = parseInt(status);
+      } else {
+        filters.status = 1; // Default to active if 'all' is selected
+      }
 
       let searchPayload: { query?: string, filters: any } = { filters };
 
@@ -122,16 +146,16 @@ export const OrganisationList: React.FC = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       setPage(0); // Reset to first page on new search
-      fetchOrganisations(rowsPerPage, 0, searchQuery, searchType);
+      fetchOrganisations(rowsPerPage, 0, searchQuery, searchType, statusFilter);
     }, DEBOUNCE_DELAY);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, searchType, rowsPerPage, fetchOrganisations]);
+  }, [searchQuery, searchType, statusFilter, rowsPerPage, fetchOrganisations]);
 
   useEffect(() => {
-    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType);
+    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter);
   }, [page, fetchOrganisations]); // Removed rowsPerPage and searchQuery as they are handled above
 
   const handlePageChange = (event: unknown, newPage: number) => {
@@ -178,6 +202,81 @@ export const OrganisationList: React.FC = () => {
     }
   };
 
+  const handleUpdateStatus = async () => {
+    if (!menuOrg) return;
+    
+    const newStatus = menuOrg.status === 1 ? 0 : 1;
+    const actionName = newStatus === 1 ? 'Activate' : 'Deactivate';
+    
+    // Store the org and new status for use in the interceptor
+    (window as any).__pendingStatusUpdate = {
+      org: menuOrg,
+      newStatus
+    };
+    
+    await handleStatusUpdate();
+    handleMenuClose();
+  };
+
+  const performStatusUpdate = async (interceptPayload: any) => {
+    const { org, newStatus } = (window as any).__pendingStatusUpdate || {};
+    
+    if (!org) {
+      setNotification({
+        open: true,
+        message: 'Organization information not found',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const requestPayload = {
+        payload: {
+          request: {
+            organisationId: org.id,
+            status: newStatus
+          }
+        },
+        jiraLink: interceptPayload.jiraLink,
+        changedFields: { 
+          status: { 
+            original: org.status, 
+            new: newStatus 
+          } 
+        },
+        module: 'Organisation Management',
+        userId: org.id
+      };
+
+      const response = await organisationService.updateOrganisationStatus(requestPayload);
+
+      setNotification({
+        open: true,
+        message: `Organization ${newStatus === 1 ? 'activated' : 'deactivated'} successfully`,
+        severity: 'success'
+      });
+
+      // Refresh the organization list
+      fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter);
+      
+      // Clean up
+      delete (window as any).__pendingStatusUpdate;
+      
+    } catch (error: any) {
+      console.error('Error updating organization status:', error);
+      setNotification({
+        open: true,
+        message: error.response?.data?.message || 'Failed to update organization status',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -196,15 +295,34 @@ export const OrganisationList: React.FC = () => {
 
   return (
     <Box sx={{pt: 3, pb: 5}}>
-      <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2 }}>
-        <Select
-          value={searchType}
-          onChange={(e) => setSearchType(e.target.value as 'name' | 'id')}
-          sx={{ minWidth: 120 }}
-        >
-          <SelectMenuItem value="name">Search by Name</SelectMenuItem>
-          <SelectMenuItem value="id">Search by ID</SelectMenuItem>
-        </Select>
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 6 }}>
+        <FormControl>
+          <InputLabel id="search-type-label">Search By</InputLabel>
+          <Select
+            labelId="search-type-label"
+            value={searchType}
+            label="Search By"
+            onChange={(e) => setSearchType(e.target.value as 'name' | 'id')}
+            sx={{ minWidth: 120 }}
+          >
+            <SelectMenuItem value="name">Name</SelectMenuItem>
+            <SelectMenuItem value="id">ID</SelectMenuItem>
+          </Select>
+        </FormControl>
+        <FormControl>
+          <InputLabel id="status-filter-label">Status</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            value={statusFilter}
+            label="Status"
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | '1' | '0')}
+            sx={{ minWidth: 120 }}
+          >
+            <SelectMenuItem value="all">All Status</SelectMenuItem>
+            <SelectMenuItem value="1">Active</SelectMenuItem>
+            <SelectMenuItem value="0">Inactive</SelectMenuItem>
+          </Select>
+        </FormControl>
         <TextField
           fullWidth
           label="Search Organisations"
@@ -320,6 +438,22 @@ export const OrganisationList: React.FC = () => {
               <AssignmentIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Import Designation</ListItemText>
+          </MenuItem>
+        )}
+        {menuOrg && menuOrg.status === 1 && (
+          <MenuItem onClick={handleUpdateStatus}>
+            <ListItemIcon>
+              <BlockIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText>Deactivate Organisation</ListItemText>
+          </MenuItem>
+        )}
+        {menuOrg && menuOrg.status === 0 && (
+          <MenuItem onClick={handleUpdateStatus}>
+            <ListItemIcon>
+              <CheckCircleIcon fontSize="small" color="success" />
+            </ListItemIcon>
+            <ListItemText>Activate Organisation</ListItemText>
           </MenuItem>
         )}
       </Menu>

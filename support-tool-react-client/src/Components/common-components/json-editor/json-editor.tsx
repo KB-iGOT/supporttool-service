@@ -71,9 +71,7 @@ export const JsonEditor = (props: {
   const editorRef = useRef<any>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [editorHeight, setEditorHeight] = useState('400px');
-  const [editorWidth, setEditorWidth] = useState('100%');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const fullScreenHeight = 'calc(100vh - 24px) !important'; // Use !important to override any inline styles
   
   // Pretty-print the JSON input with proper null/undefined handling
   const formattedInput = useMemo(() => {
@@ -110,112 +108,65 @@ export const JsonEditor = (props: {
       editor.setValue(formattedInput);
     }
     
+    // Mark that initial input has been set
+    initialInputSet.current = true;
+    
     // Format the document on initial load with a slight delay
     setTimeout(() => {
       editor?.getAction("editor.action.formatDocument")?.run();
     }, 300);
   };
 
-  // Effect to handle input changes and update editor value
-  useEffect(() => {
-    if (editorRef.current && isEditorReady) {
-      const currentValue = editorRef.current.getValue();
-      if (currentValue !== formattedInput) {
-        // Force editor to update its value
-        editorRef.current.setValue(formattedInput);
-        
-        // Trigger layout update to ensure editor is visible
-        setTimeout(() => {
-          editorRef.current?.layout();
-          editorRef.current?.getAction("editor.action.formatDocument")?.run();
-        }, 100);
-        
-        // Additional layout update after formatting
-        setTimeout(() => {
-          editorRef.current?.layout();
-        }, 400);
-      }
-    }
-  }, [formattedInput, isEditorReady]);
+  // Effect to handle input changes and update editor value only on initial mount
+  const initialInputSet = useRef(false);
 
-  // Effect to handle DOM changes and ensure editor visibility
-  useEffect(() => {
-    if (editorRef.current && isEditorReady && formattedInput) {
-      // Force layout recalculation when input becomes available
-      const forceUpdate = () => {
-        if (editorRef.current) {
-          editorRef.current.layout();
-          // Double-check the value is set
-          const currentValue = editorRef.current.getValue();
-          if (!currentValue || currentValue.trim() === '' || currentValue === '{}') {
-            editorRef.current.setValue(formattedInput);
-            setTimeout(() => {
-              editorRef.current?.getAction("editor.action.formatDocument")?.run();
-            }, 100);
-          }
-        }
-      };
+  // Initial layout only - removed the second useEffect that was redundant
 
-      // Immediate update
-      forceUpdate();
-      
-      // Delayed update to handle DOM changes
-      const timeouts = [
-        setTimeout(forceUpdate, 200),
-        setTimeout(forceUpdate, 500),
-        setTimeout(forceUpdate, 1000)
-      ];
-
-      return () => {
-        timeouts.forEach(timeout => clearTimeout(timeout));
-      };
-    }
-  }, [formattedInput, isEditorReady, input]); // Include input to trigger on data changes
-
-  // Effect to observe DOM changes and update editor accordingly
+  // Effect to observe DOM changes and update editor layout only (not value)
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !editorRef.current || !isEditorReady || typeof MutationObserver === 'undefined') return;
 
+    let debounceTimer: any = null;
+    
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
       
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' || mutation.type === 'childList') {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
           shouldUpdate = true;
         }
       });
 
       if (shouldUpdate && editorRef.current) {
         // Debounce the update to avoid excessive calls
-        setTimeout(() => {
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        
+        debounceTimer = setTimeout(() => {
           if (editorRef.current) {
             editorRef.current.layout();
-            
-            // Ensure the value is still correct after DOM changes
-            const currentValue = editorRef.current.getValue();
-            if (currentValue !== formattedInput) {
-              editorRef.current.setValue(formattedInput);
-            }
           }
-        }, 100);
+        }, 150);
       }
     });
 
-    // Observe the container and its subtree
+    // Observe only style changes on the container
     observer.observe(container, {
       attributes: true,
-      childList: true,
-      subtree: true,
-      attributeFilter: ['style', 'class']
+      attributeFilter: ['style']
     });
 
     return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
       observer.disconnect();
     };
-  }, [isEditorReady, formattedInput]);
+  }, [isEditorReady]);
 
-  // Effect to observe visibility changes and update editor when it becomes visible
+  // Effect to observe visibility changes and update editor layout when it becomes visible
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !editorRef.current || !isEditorReady || typeof IntersectionObserver === 'undefined') return;
@@ -224,19 +175,10 @@ export const JsonEditor = (props: {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && editorRef.current) {
-            // Editor became visible, force update
+            // Editor became visible, update layout only
             setTimeout(() => {
               if (editorRef.current) {
                 editorRef.current.layout();
-                
-                // Ensure the value is set when editor becomes visible
-                const currentValue = editorRef.current.getValue();
-                if (currentValue !== formattedInput) {
-                  editorRef.current.setValue(formattedInput);
-                  setTimeout(() => {
-                    editorRef.current?.getAction("editor.action.formatDocument")?.run();
-                  }, 100);
-                }
               }
             }, 100);
           }
@@ -250,31 +192,17 @@ export const JsonEditor = (props: {
     return () => {
       intersectionObserver.disconnect();
     };
-  }, [isEditorReady, formattedInput]);
+  }, [isEditorReady]);
 
   const toggleFullscreen = () => {
-    const newFullscreenState = !isFullscreen;
-    setIsFullscreen(newFullscreenState);
+    setIsFullscreen(!isFullscreen);
     
     // Force editor to recalculate its layout after state change
     setTimeout(() => {
       if (editorRef.current) {
-        if (newFullscreenState) {
-          // In fullscreen, use full viewport dimensions
-          editorRef.current.layout({
-            width: window.innerWidth - 32, // Account for padding
-            height: window.innerHeight - 64 // Account for padding and button
-          });
-        } else {
-          // When exiting fullscreen, use container dimensions
-          const containerWidth = containerRef.current?.clientWidth || 0;
-          editorRef.current.layout({
-            width: containerWidth,
-            height: parseInt(editorHeight)
-          });
-        }
+        editorRef.current.layout();
       }
-    }, 150); // Increased timeout to ensure DOM updates
+    }, 200);
   };
 
   // Handle escape key to exit fullscreen
@@ -284,11 +212,8 @@ export const JsonEditor = (props: {
         setIsFullscreen(false);
         // Force layout recalculation when exiting fullscreen via ESC
         setTimeout(() => {
-          if (editorRef.current && containerRef.current) {
-            editorRef.current.layout({
-              width: containerRef.current.clientWidth,
-              height: parseInt(editorHeight)
-            });
+          if (editorRef.current) {
+            editorRef.current.layout();
           }
         }, 150);
       }
@@ -298,106 +223,55 @@ export const JsonEditor = (props: {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFullscreen, editorHeight]);
+  }, [isFullscreen]);
 
   // Effect to handle fullscreen state changes and force layout
   useEffect(() => {
     if (editorRef.current) {
       setTimeout(() => {
-        if (isFullscreen) {
-          // Force fullscreen layout
-          editorRef.current.layout({
-            width: window.innerWidth - 32,
-            height: window.innerHeight - 64
-          });
-        } else {
-          // Force normal layout
-          const containerWidth = containerRef.current?.clientWidth || 0;
-          editorRef.current.layout({
-            width: containerWidth,
-            height: parseInt(editorHeight)
-          });
-        }
-      }, 200); // Allow time for DOM to update
+        editorRef.current.layout();
+      }, 200);
     }
   }, [isFullscreen]);
 
-  // Handle window resize in fullscreen mode
+  // Handle window resize
   useEffect(() => {
-    if (!isFullscreen) return;
-
-    const handleFullscreenResize = () => {
+    const handleResize = () => {
       if (editorRef.current) {
-        editorRef.current.layout({
-          width: window.innerWidth - 32,
-          height: window.innerHeight - 64
-        });
+        editorRef.current.layout();
       }
     };
 
-    window.addEventListener('resize', handleFullscreenResize);
+    window.addEventListener('resize', handleResize);
     return () => {
-      window.removeEventListener('resize', handleFullscreenResize);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [isFullscreen]);
+  }, []);
 
-  // Fix for ResizeObserver loop error and ensure editor is displayed
+  // Set initial height based on parent container
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || isFullscreen) return;
 
-    // Set initial dimensions
-    const setDimensions = () => {
+    const setHeight = () => {
       if (container.parentElement) {
-        // Calculate a stable height based on parent or viewport
         const parentHeight = container.parentElement.clientHeight || window.innerHeight;
-        const parentWidth = container.parentElement.clientWidth || window.innerWidth;
         const newHeight = Math.max(400, parentHeight - 40) + 'px';
-        const newWidth = Math.max(300, parentWidth) + 'px';
-        
         setEditorHeight(newHeight);
-        setEditorWidth(newWidth);
-        container.style.height = newHeight;
-        container.style.width = newWidth;
-        
-        // Force editor layout if it exists
-        if (editorRef.current && !isFullscreen) {
-          editorRef.current.layout({
-            width: parentWidth,
-            height: parseInt(newHeight)
-          });
-        }
       }
     };
 
-    // Observe size changes
-    setDimensions();
+    setHeight();
     
-    // Add resize listener with debouncing
-    let resizeTimeout: any = null;
-    const resizeHandler = () => {
-      // Debounce the resize to prevent too many RecalculateObserver calls
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
+    // Trigger layout update after height change
+    const timer = setTimeout(() => {
+      if (editorRef.current && !isFullscreen) {
+        editorRef.current.layout();
       }
-      
-      resizeTimeout = setTimeout(() => {
-        if (container && !isFullscreen) {
-          setDimensions();
-        }
-      }, 100);
-    };
-
-    window.addEventListener('resize', resizeHandler);
-    
-    // Ensure the editor is visible by forcing a layout recalculation
-    setTimeout(setDimensions, 100);
+    }, 100);
     
     return () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-      window.removeEventListener('resize', resizeHandler);
+      clearTimeout(timer);
     };
   }, [isFullscreen]);
 
@@ -435,12 +309,11 @@ export const JsonEditor = (props: {
       </Tooltip>
       
       <MonacoEditor
-        key={`editor-${typeof input}-${input === null ? 'null' : typeof input === 'object' ? Object.keys(input || {}).length : 'primitive'}`} // Force re-render on input type changes
         height="100%"
         width="100%"
         theme="vs-dark"
         language="json"
-        value={formattedInput}
+        defaultValue={formattedInput}
         onMount={handleEditorDidMount}
         beforeMount={(monaco) => {
           // Ensure Monaco is ready before mounting
@@ -512,10 +385,11 @@ export const JsonEditor = (props: {
       className={classes.editorContainer}
       sx={{ 
         height: editorHeight,
-        width: editorWidth,
+        width: '100%',
         maxWidth: '100%',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        overflow: 'hidden'
       }}
     >
       {editorContent}
