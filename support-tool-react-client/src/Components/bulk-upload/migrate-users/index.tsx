@@ -54,12 +54,14 @@ interface CsvData {
   email: string;
   phone: string;
   channel: string;
+  userId: string;
 }
 
 interface MigrationFailure {
   email?: string;
   phone?: string;
   channel?: string;
+  userId?: string;
   reason: string;
 }
 
@@ -151,14 +153,17 @@ export const MigrateUsers = () => {
           if (lowerCaseHeader === 'channel' || lowerCaseHeader === 'organization' || lowerCaseHeader === 'organisation') {
             return 'channel';
           }
+          if (lowerCaseHeader === 'userid' || lowerCaseHeader === 'identifier' || lowerCaseHeader === 'id') {
+            return 'userId';
+          }
           return header;
         },
         complete: (results: ParseResult<CsvData>) => {
-          const data = results.data.filter((row: CsvData) => (row.email || row.phone) && row.channel);
+          const data = results.data.filter((row: CsvData) => (row.email || row.phone || row.userId) && row.channel);
           if (data.length === 0) {
             setNotification({
               open: true,
-              message: 'CSV file must contain at least one row with an "email" or "phone" column and a "channel" column.',
+              message: 'CSV file must contain at least one row with an "email", "phone", or "userId" column and a "channel" column.',
               severity: 'error'
             });
             return;
@@ -215,11 +220,13 @@ export const MigrateUsers = () => {
     try {
       const emails = csvData.map(d => d.email).filter(Boolean) as string[];
       const phones = csvData.map(d => d.phone).filter(Boolean) as string[];
+      const userIds = csvData.map(d => d.userId).filter(Boolean) as string[];
       
       const searchFields = ["userId", "email", "firstName", "lastName", "phone", "rootOrgId", "channel", "roles", "profileDetails", "createdDate", "rootOrgName", "organisations", "username", "status"];
   
       const userMapByEmail = new Map<string, UserProfile>();
       const userMapByPhone = new Map<string, UserProfile>();
+      const userMapByUserId = new Map<string, UserProfile>();
   
       if (emails.length > 0) {
         const emailResponse = await usersService.getUsers({ request: { filters: { email: emails }, fields: searchFields } });
@@ -230,15 +237,44 @@ export const MigrateUsers = () => {
         const phoneResponse = await usersService.getUsers({ request: { filters: { phone: phones }, fields: searchFields } });
         phoneResponse.result.response.content.forEach((user: UserProfile) => userMapByPhone.set(String(user.profileDetails.personalDetails.mobile), user));
       }
+
+      if (userIds.length > 0) {
+        const userIdResponse = await usersService.getUsers({ request: { filters: { identifier: userIds }, fields: searchFields } });
+        userIdResponse.result.response.content.forEach((user: UserProfile) => {
+          userMapByUserId.set(user.userId, user);
+          // Also map by identifier if different from userId
+          if (user.identifier && user.identifier !== user.userId) {
+            userMapByUserId.set(user.identifier, user);
+          }
+        });
+      }
   
       const processedUserIds = new Set<string>();
   
       for (const row of csvData) {
         const email = row.email?.trim().toLowerCase();
         const phone = row.phone?.trim();
+        const userId = row.userId?.trim();
         const targetChannel = row.channel?.trim();
-  
-        if (email && phone) {
+
+        // Priority: userId > email+phone > email > phone
+        if (userId) {
+          const user = userMapByUserId.get(userId);
+          if (user) {
+            if (!processedUserIds.has(user.userId)) {
+              if (user.channel === targetChannel) {
+                processingErrors.push({ userId, channel: targetChannel, reason: 'User is already in the target channel.' });
+                processedUserIds.add(user.userId);
+                continue;
+              }
+              (user as any).targetChannel = targetChannel;
+              usersToProcess.push(user);
+              processedUserIds.add(user.userId);
+            }
+          } else {
+            processingErrors.push({ userId, channel: targetChannel, reason: 'User not found for userId/identifier.' });
+          }
+        } else if (email && phone) {
           const userByEmail = userMapByEmail.get(email);
           const userByPhone = userMapByPhone.get(phone);
           if (userByEmail && userByPhone) {
@@ -305,7 +341,7 @@ export const MigrateUsers = () => {
       if (usersToProcess.length > 0) {
         setNotification({
           open: true,
-          message: `Found ${usersToProcess.length} users ready for migration${processingErrors.length > 0 ? ` (${processingErrors.length} not found)` : ''}.`,
+          message: `Found ${usersToProcess.length} users ready for migration${processingErrors.length > 0 ? ` (${processingErrors.length} not found/errors)` : ''}.`,
           severity: 'success'
         });
       }
@@ -313,7 +349,7 @@ export const MigrateUsers = () => {
       if (usersToProcess.length === 0 && processingErrors.length === 0) {
         setNotification({
           open: true,
-          message: 'No users found for the provided emails and/or phone numbers.',
+          message: 'No users found for the provided emails, phone numbers, or user IDs.',
           severity: 'error'
         });
       } else {
@@ -620,6 +656,7 @@ export const MigrateUsers = () => {
                       <TableRow>
                         <TableCell>Email</TableCell>
                         <TableCell>Phone</TableCell>
+                        <TableCell>User ID</TableCell>
                         <TableCell>Target Channel</TableCell>
                         <TableCell>Reason for Failure</TableCell>
                       </TableRow>
@@ -629,6 +666,7 @@ export const MigrateUsers = () => {
                         <TableRow key={i}>
                           <TableCell>{item.email || '-'}</TableCell>
                           <TableCell>{item.phone || '-'}</TableCell>
+                          <TableCell>{item.userId || '-'}</TableCell>
                           <TableCell>{item.channel || '-'}</TableCell>
                           <TableCell>{item.reason}</TableCell>
                         </TableRow>
@@ -757,6 +795,7 @@ export const MigrateUsers = () => {
                       <TableRow>
                         <TableCell>First Name</TableCell>
                         <TableCell>Email</TableCell>
+                        <TableCell>User ID</TableCell>
                         <TableCell>Current Channel</TableCell>
                         <TableCell>Target Channel</TableCell>
                         <TableCell>Status</TableCell>
@@ -767,6 +806,7 @@ export const MigrateUsers = () => {
                         <TableRow key={user.userId}>
                           <TableCell>{user.firstName}</TableCell>
                           <TableCell>{user.profileDetails.personalDetails.primaryEmail}</TableCell>
+                          <TableCell>{user.userId}</TableCell>
                           <TableCell>{user.channel}</TableCell>
                           <TableCell>{(user as any).targetChannel}</TableCell>
                           <TableCell>
@@ -799,6 +839,7 @@ export const MigrateUsers = () => {
                       <TableRow>
                         <TableCell>Email</TableCell>
                         <TableCell>Phone</TableCell>
+                        <TableCell>User ID</TableCell>
                         <TableCell>Target Channel</TableCell>
                         <TableCell>Reason for Failure</TableCell>
                       </TableRow>
@@ -808,6 +849,7 @@ export const MigrateUsers = () => {
                         <TableRow key={i}>
                           <TableCell>{item.email || '-'}</TableCell>
                           <TableCell>{item.phone || '-'}</TableCell>
+                          <TableCell>{item.userId || '-'}</TableCell>
                           <TableCell>{item.channel || '-'}</TableCell>
                           <TableCell>{item.reason}</TableCell>
                         </TableRow>

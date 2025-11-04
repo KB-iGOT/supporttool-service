@@ -49,6 +49,16 @@ const createDesignation = async (payload: any) => {
   }
 };
 
+const createMasterDesignation = async (payload: any) => {
+  try {
+    const response = await apiClient.post('/designation/create', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating master designation:', error);
+    throw error;
+  }
+};
+
 
 const searchOrgDesignations = async (query: string, frameworkId: string, limit: number = 50, offset: number = 0) => {
   const categoryIdentifier = `${frameworkId}_odcs_designation`;
@@ -119,4 +129,4 @@ const updateDesignation = async (payload: any, auditData: any) => {
 };
 
 
-export const designationService = { searchMasterDesignations, createDesignationTerm, importDesignations, createDesignation, searchOrgDesignations, uploadMasterDesignations, deleteDesignation, updateDesignation };
+export const designationService = { searchMasterDesignations, createDesignationTerm, importDesignations, createDesignation, searchOrgDesignations, uploadMasterDesignations, deleteDesignation, updateDesignation, createMasterDesignation };

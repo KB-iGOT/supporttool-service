@@ -58,12 +58,14 @@ interface CsvData {
   email: string;
   phone: string;
   channel: string;
+  userId: string;
 }
 
 interface MigrationFailure {
   email?: string;
   phone?: string;
   channel?: string;
+  userId?: string;
   reason: string;
   chunkId?: number;
 }
@@ -225,15 +227,18 @@ export const MigrateUsersV2 = () => {
           if (lowerCaseHeader === 'channel' || lowerCaseHeader === 'organization' || lowerCaseHeader === 'organisation') {
             return 'channel';
           }
+          if (lowerCaseHeader === 'userid' || lowerCaseHeader === 'identifier' || lowerCaseHeader === 'id') {
+            return 'userId';
+          }
           return header;
         },
         complete: (results: ParseResult<CsvData>) => {
-          const data = results.data.filter((row: CsvData) => (row.email || row.phone) && row.channel);
+          const data = results.data.filter((row: CsvData) => (row.email || row.phone || row.userId) && row.channel);
           
           if (data.length === 0) {
             setNotification({
               open: true,
-              message: 'CSV file must contain at least one row with an "email" or "phone" column and a "channel" column.',
+              message: 'CSV file must contain at least one row with an "email", "phone", or "userId" column and a "channel" column.',
               severity: 'error'
             });
             return;
@@ -313,13 +318,15 @@ export const MigrateUsersV2 = () => {
   const fetchUsersInBatches = async (
     emails: string[], 
     phones: string[], 
+    userIds: string[],
     searchFields: string[], 
     chunkIndex: number
   ) => {
     const USER_FETCH_BATCH_SIZE = 100; // Fetch users in smaller batches
     const userMapByEmail = new Map<string, UserProfile>();
     const userMapByPhone = new Map<string, UserProfile>();
-    const totalFetchOperations = Math.ceil(emails.length / USER_FETCH_BATCH_SIZE) + Math.ceil(phones.length / USER_FETCH_BATCH_SIZE);
+    const userMapByUserId = new Map<string, UserProfile>();
+    const totalFetchOperations = Math.ceil(emails.length / USER_FETCH_BATCH_SIZE) + Math.ceil(phones.length / USER_FETCH_BATCH_SIZE) + Math.ceil(userIds.length / USER_FETCH_BATCH_SIZE);
     let completedFetchOperations = 0;
 
     // Update chunk status to fetching
@@ -356,7 +363,7 @@ export const MigrateUsersV2 = () => {
             ...prev,
             chunks: prev.chunks.map(chunk => 
               chunk.chunkId === chunkIndex + 1 
-                ? { ...chunk, fetchProgress, fetchedUsers: userMapByEmail.size + userMapByPhone.size }
+                ? { ...chunk, fetchProgress, fetchedUsers: userMapByEmail.size + userMapByPhone.size + userMapByUserId.size }
                 : chunk
             )
           }));
@@ -397,7 +404,7 @@ export const MigrateUsersV2 = () => {
             ...prev,
             chunks: prev.chunks.map(chunk => 
               chunk.chunkId === chunkIndex + 1 
-                ? { ...chunk, fetchProgress, fetchedUsers: userMapByEmail.size + userMapByPhone.size }
+                ? { ...chunk, fetchProgress, fetchedUsers: userMapByEmail.size + userMapByPhone.size + userMapByUserId.size }
                 : chunk
             )
           }));
@@ -414,7 +421,52 @@ export const MigrateUsersV2 = () => {
       }
     }
 
-    return { userMapByEmail, userMapByPhone };
+    // Process userIds in batches
+    if (userIds.length > 0) {
+      for (let i = 0; i < userIds.length; i += USER_FETCH_BATCH_SIZE) {
+        const userIdBatch = userIds.slice(i, i + USER_FETCH_BATCH_SIZE);
+        try {
+          const userIdResponse = await usersService.getUsers({ 
+            request: { 
+              filters: { identifier: userIdBatch }, 
+              fields: searchFields,
+              limit: USER_FETCH_BATCH_SIZE
+            } 
+          });
+          userIdResponse.result.response.content.forEach((user: UserProfile) => {
+            userMapByUserId.set(user.userId, user);
+            // Also map by identifier if different from userId
+            if (user.identifier && user.identifier !== user.userId) {
+              userMapByUserId.set(user.identifier, user);
+            }
+          });
+          
+          completedFetchOperations++;
+          const fetchProgress = Math.round((completedFetchOperations / totalFetchOperations) * 100);
+          
+          // Update fetch progress
+          setProcessingState(prev => ({
+            ...prev,
+            chunks: prev.chunks.map(chunk => 
+              chunk.chunkId === chunkIndex + 1 
+                ? { ...chunk, fetchProgress, fetchedUsers: userMapByEmail.size + userMapByPhone.size + userMapByUserId.size }
+                : chunk
+            )
+          }));
+          
+          // Small delay between fetch batches
+          if (i + USER_FETCH_BATCH_SIZE < userIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        } catch (error: any) {
+          console.error(`Error fetching userId batch ${i + 1}-${Math.min(i + USER_FETCH_BATCH_SIZE, userIds.length)}:`, error);
+          completedFetchOperations++;
+          // Continue with next batch even if one fails
+        }
+      }
+    }
+
+    return { userMapByEmail, userMapByPhone, userMapByUserId };
   };
 
   const processChunk = async (chunkIndex: number): Promise<{ success: UserProfile[]; failure: MigrationFailure[] }> => {
@@ -438,13 +490,14 @@ export const MigrateUsersV2 = () => {
       // Step 1: Validate users with chunked fetching
       const emails = chunkData.map(d => d.email).filter(Boolean) as string[];
       const phones = chunkData.map(d => d.phone).filter(Boolean) as string[];
+      const userIds = chunkData.map(d => d.userId).filter(Boolean) as string[];
       
       const searchFields = ["userId", "email", "firstName", "lastName", "phone", "rootOrgId", "channel", "roles", "profileDetails", "createdDate", "rootOrgName", "organisations", "username", "status"];
       
       // Fetch users in smaller batches to avoid API limits
-      console.log(`🔍 Starting user fetch for chunk ${chunkIndex + 1}: ${emails.length} emails, ${phones.length} phones`);
-      const { userMapByEmail, userMapByPhone } = await fetchUsersInBatches(emails, phones, searchFields, chunkIndex);
-      console.log(`✅ User fetch completed for chunk ${chunkIndex + 1}: ${userMapByEmail.size} by email, ${userMapByPhone.size} by phone`);
+      console.log(`🔍 Starting user fetch for chunk ${chunkIndex + 1}: ${emails.length} emails, ${phones.length} phones, ${userIds.length} userIds`);
+      const { userMapByEmail, userMapByPhone, userMapByUserId } = await fetchUsersInBatches(emails, phones, userIds, searchFields, chunkIndex);
+      console.log(`✅ User fetch completed for chunk ${chunkIndex + 1}: ${userMapByEmail.size} by email, ${userMapByPhone.size} by phone, ${userMapByUserId.size} by userId`);
       
       const usersToMigrate: UserProfile[] = [];
       const validationErrors: MigrationFailure[] = [];
@@ -454,9 +507,37 @@ export const MigrateUsersV2 = () => {
       for (const row of chunkData) {
         const email = row.email?.trim().toLowerCase();
         const phone = row.phone?.trim();
+        const userId = row.userId?.trim();
         const targetChannel = row.channel?.trim();
-        
-        if (email && phone) {
+
+        // Priority: userId > email+phone > email > phone
+        if (userId) {
+          const user = userMapByUserId.get(userId);
+          if (user) {
+            if (!processedUserIds.has(user.userId)) {
+              if (user.channel === targetChannel) {
+                validationErrors.push({ 
+                  userId, 
+                  channel: targetChannel, 
+                  reason: 'User is already in the target channel.',
+                  chunkId: chunkIndex + 1
+                });
+                processedUserIds.add(user.userId);
+                continue;
+              }
+              (user as any).targetChannel = targetChannel;
+              usersToMigrate.push(user);
+              processedUserIds.add(user.userId);
+            }
+          } else {
+            validationErrors.push({ 
+              userId, 
+              channel: targetChannel, 
+              reason: 'User not found for userId/identifier.',
+              chunkId: chunkIndex + 1
+            });
+          }
+        } else if (email && phone) {
           const userByEmail = userMapByEmail.get(email);
           const userByPhone = userMapByPhone.get(phone);
           if (userByEmail && userByPhone) {
@@ -1484,6 +1565,7 @@ export const MigrateUsersV2 = () => {
                 <TableCell>Last Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
+                <TableCell>User ID</TableCell>
                 <TableCell>From Channel</TableCell>
                 <TableCell>To Channel</TableCell>
               </TableRow>
@@ -1495,6 +1577,7 @@ export const MigrateUsersV2 = () => {
                   <TableCell>{user.lastName || '-'}</TableCell>
                   <TableCell>{user.profileDetails?.personalDetails?.primaryEmail || user.email || '-'}</TableCell>
                   <TableCell>{user.profileDetails?.personalDetails?.mobile || user.phone || '-'}</TableCell>
+                  <TableCell>{user.userId || '-'}</TableCell>
                   <TableCell>{user.channel || '-'}</TableCell>
                   <TableCell>{(user as any).targetChannel || '-'}</TableCell>
                 </TableRow>
@@ -1527,6 +1610,7 @@ export const MigrateUsersV2 = () => {
               <TableRow>
                 <TableCell>Email</TableCell>
                 <TableCell>Phone</TableCell>
+                <TableCell>User ID</TableCell>
                 <TableCell>Target Channel</TableCell>
                 <TableCell>Chunk</TableCell>
                 <TableCell>Reason for Failure</TableCell>
@@ -1537,6 +1621,7 @@ export const MigrateUsersV2 = () => {
                 <TableRow key={i}>
                   <TableCell>{item.email || '-'}</TableCell>
                   <TableCell>{item.phone || '-'}</TableCell>
+                  <TableCell>{item.userId || '-'}</TableCell>
                   <TableCell>{item.channel || '-'}</TableCell>
                   <TableCell>
                     <Chip label={`Chunk ${item.chunkId}`} size="small" variant="outlined" />

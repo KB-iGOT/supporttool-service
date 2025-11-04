@@ -3,7 +3,6 @@ import { Suspense, lazy } from "react";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import { Organisations } from "../../organisation";
 import { OrganisationList } from "../../organisation/list";
-import { MasterDesignations } from "../../bulk-upload/master-designation";
 import { BulkUpload } from "../../bulk-upload";
 
 const DesignationView = lazy(() =>
@@ -183,6 +182,18 @@ const MigrateUsers = lazy(() =>
 );
 const MigrateUsersV2 = lazy(() =>
   import("../../bulk-upload/migrate-users-v2").then(module => ({ default: module.MigrateUsersV2 }))
+);
+
+const MasterDesignations = lazy(() =>
+  import("../../bulk-upload/master-designation").then((module) => ({
+    default: module.MasterDesignations,
+  }))
+);
+
+const GetUserDetails = lazy(() =>
+  import("../../bulk-upload/get-user-details").then((module) => ({
+    default: module.GetUserDetails,
+  }))
 );
 
 
@@ -380,6 +391,7 @@ const LazyApp = () => {
             <Route path="migrate-users" element={<MigrateUsers />} />
             <Route path="migrate-users-v2" element={<MigrateUsersV2 />} />
             <Route path="deactivate-user" element={<DeactivateUser />} />
+            <Route path="get-user-details" element={<GetUserDetails />} />
 
           <Route
             path="master-designation"

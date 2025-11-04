@@ -213,6 +213,57 @@ export const uploadDesignations: RequestHandler = async (
   }
 };
 
+export const createMasterDesignation: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const { jiraLink, module, ...requestPayload } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  const auditObject = {
+    user_id,
+    module: module || 'DESIGNATION_MASTER',
+    sub_module: 'CREATE_DESIGNATION',
+    action: 'CREATE',
+    entity_id: requestPayload.designation,
+    request_payload: requestPayload,
+    modified_payload: null,
+    status: 'PENDING',
+    message: `Attempting to create master designation: ${requestPayload.designation}`,
+    jira_link: jiraLink,
+  };
+
+  try {
+    logger.info(`Creating master designation with payload: ${JSON.stringify(requestPayload)}`);
+
+    const options = {
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/designation/create`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+      data: requestPayload,
+    };
+
+    const response = await axios(options);
+
+    await logAudit({ ...auditObject, status: 'SUCCESS', response_payload: response.data, message: `Successfully created master designation: ${requestPayload.designation}` });
+    res.status(200).send(response.data);
+
+  } catch (error) {
+    const errorMessage = `Error creating master designation: ${requestPayload.designation}`;
+    logger.error(`❌ ${errorMessage}: ${error}`);
+
+    const errorResponse = axios.isAxiosError(error) && error.response ? error.response.data : { message: 'Internal Server Error' };
+    const statusCode = axios.isAxiosError(error) && error.response ? error.response.status : 500;
+
+    await logAudit({ ...auditObject, status: 'FAILURE', response_payload: errorResponse, message: errorMessage });
+    res.status(statusCode).json(errorResponse);
+  }
+};
+
 export const deleteDesignation: RequestHandler = async (
   req: any,
   res: Response

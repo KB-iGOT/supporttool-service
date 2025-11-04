@@ -31,6 +31,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import EditIcon from '@mui/icons-material/Edit';
 import { ListItemIcon, ListItemText } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { designationService } from '../../../services/designations.service';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { AppContext } from '../../../Context/AppContext';
@@ -39,6 +40,7 @@ import { UploadDesignationsDialog } from './UploadDesignationsDialog';
 import sampleCsv from '../../../assets/sample-files/MasterDesignation_Sample.csv';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 import ConfirmationDialog from './ConfirmationDialog';
+import { CreateDesignationDialog } from './CreateDesignationDialog';
 import { UpdateDesignationDialog } from './UpdateDesignationDialog';
 
 interface MasterDesignation {
@@ -60,6 +62,7 @@ export const MasterDesignations = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
 
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MasterDesignation | null>(null);
   const [updateTarget, setUpdateTarget] = useState<MasterDesignation | null>(null);
@@ -164,6 +167,16 @@ export const MasterDesignations = () => {
           >
             Download Sample
           </Button>
+          {permissions.canWrite && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
+              sx={{ mr: 2 }}
+            >
+              Create Designation
+            </Button>
+          )}
           {permissions.canWrite && (
             <Button
               variant="contained"
@@ -280,6 +293,11 @@ export const MasterDesignations = () => {
           description={`Are you sure you want to delete the designation "${deleteTarget.designation}" (${deleteTarget.id})? This action cannot be undone.`}
         />
       )}
+      <CreateDesignationDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSuccess={() => fetchMasterDesignations(debouncedSearchQuery, statusFilter, page, rowsPerPage)}
+      />
       <UpdateDesignationDialog
         open={!!updateTarget}
         onClose={() => setUpdateTarget(null)}

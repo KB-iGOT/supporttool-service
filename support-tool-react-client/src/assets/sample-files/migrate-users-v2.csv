@@ -1,4 +1,5 @@
-Email,Phone,Channel
-user1@example.com,9876543210,Organization A
-user2@example.com,9876543211,Organization B
-user3@example.com,9876543212,Organization C
+Email,Phone,userId,Channel
+user1@example.com,9876543210,4eb61d68-04f3-4085-a872-4801838cf698,Organization A
+user2@example.com,9876543211,4eb61d68-04f3-4085-a872-4801838cf698,Organization B
+user3@example.com,9876543212,4eb61d68-04f3-4085-a872-4801838cf698,Organization C
+,,4eb61d68-04f3-4085-a872-4801838cf698,Ministry of pollution
