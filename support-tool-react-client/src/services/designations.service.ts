@@ -2,12 +2,12 @@ import axios from "axios";
 import apiClient from "./apiClient";
 import env from "../Config/env";
 
-const searchMasterDesignations = async (query: string, pageNumber: number, pageSize: number, status: string) => {
+const searchMasterDesignations = async (query: string, pageSize: number, offset: number, status: string = "Active") => {
   const requestData: any = {
-    pageNumber,
+    pageNumber: Math.floor(offset / pageSize),
     pageSize,
-    filterCriteriaMap: {status
-
+    filterCriteriaMap: {
+      status
     },
     requestedFields: []
   };
@@ -15,7 +15,7 @@ const searchMasterDesignations = async (query: string, pageNumber: number, pageS
   if (query) {
     requestData.searchString = query;
   }
-  const response = await apiClient.post('/designation/search', requestData);
+  const response = await apiClient.post('/designation/master/search', requestData);
   return response.data;
 };
 

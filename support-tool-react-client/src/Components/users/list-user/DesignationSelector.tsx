@@ -35,10 +35,13 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
   const [frameworkId, setFrameworkId] = useState<string | undefined>(undefined);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [inputValue, setInputValue] = useState("");
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const limit = 50;
+  const useMasterListRef = useRef(false); // Ref to store the current value of useMasterList
+  const [useMasterList, setUseMasterList] = useState(false); // State to track if we're using the master list
   const [WorkIcon, setWorkIcon] = useState<React.ComponentType | null>(null);
 
   useEffect(() => {
@@ -64,6 +67,11 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
 
     fetchFrameworkId();
   }, [user?.rootOrgId]);
+  
+  // Update the ref whenever useMasterList state changes
+  useEffect(() => {
+    useMasterListRef.current = useMasterList;
+  }, [useMasterList]);
 
   // Refs
   const listRef = useRef<HTMLUListElement>(null);
@@ -79,9 +87,47 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
       setLoading(true);
       // Dynamically import the service to avoid cycles
       const { designationService } = await import("../../../services/designations.service");
-      const response = await designationService.searchOrgDesignations(query, frameworkId, limit, currentOffset);
+      
+      let newDesignations: Designation[] = [];
+      let count = 0;
+ 
+      // Determine if we should use the master list for this fetch based on the ref.
+      const shouldSearchMasterList = useMasterListRef.current;
 
-      const newDesignations = response.result?.Term || [];
+      if (shouldSearchMasterList) {
+        console.log("Searching directly in master list.");
+        const masterResponse = await designationService.searchMasterDesignations(query, limit, currentOffset);
+        const masterData = masterResponse.result?.result?.data || [];
+        count = masterResponse.result?.result?.totalCount || 0;
+        newDesignations = masterData.map((item: any) => ({ name: item.designation, identifier: item.id }));
+      } else {
+        // Always try the organization-specific (composite) search first for new searches or initial load.
+        const orgResponse = await designationService.searchOrgDesignations(query, frameworkId, limit, currentOffset);
+        newDesignations = orgResponse.result?.Term || [];
+        count = orgResponse.result?.count || 0;
+ 
+        // If the org-specific search (composite) returns no results, try the master designation list.
+        if (count === 0) {
+          if (query) {
+            console.log(`No org-specific designations found for "${query}", trying master list.`);
+          } else {
+            console.log("No org-specific designations found on initial load, trying master list.");
+          }
+
+          // If this was the initial load (no query), set the flag to use the master list for subsequent pagination.
+          if (query === "" && currentOffset === 0) {
+            setUseMasterList(true); 
+          }
+
+          // Now, fetch from the master list using the same query.
+          const masterResponse = await designationService.searchMasterDesignations(query, limit, currentOffset);
+          const masterData = masterResponse.result?.result?.data || [];
+          count = masterResponse.result?.result?.totalCount || 0;
+          newDesignations = masterData.map((item: any) => ({ name: item.designation, identifier: item.id }));
+        }
+      }
+
+      console.log(`Fetched ${newDesignations.length} designations. Total available: ${count}. Using master list for pagination: ${useMasterList}`);
 
       if (reset) {
         setDesignations(newDesignations);
@@ -89,7 +135,7 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
         setDesignations(prev => [...prev, ...newDesignations]);
       }
 
-      setHasMore(newDesignations.length === limit);
+      setHasMore((currentOffset + newDesignations.length) < count);
       setOffset(currentOffset + newDesignations.length);
 
     } catch (error) {
@@ -97,7 +143,7 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [frameworkId, limit]);
+  }, [frameworkId, limit]); // Removed useMasterList from dependencies
 
   // Handle search change
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +159,7 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
     if (listRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = listRef.current;
       if (scrollHeight - scrollTop <= clientHeight + 50 && !loading && hasMore) {
-        fetchDesignations(offset, searchQuery);
+        fetchDesignations(offset, searchQuery); 
       }
     }
   }, [offset, loading, hasMore, searchQuery, fetchDesignations]);
@@ -122,9 +168,16 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
   useEffect(() => {
     setDesignations([]);
     setOffset(0);
+    setUseMasterList(false);
     setHasMore(true);
     fetchDesignations(0, "", true);
   }, [fetchDesignations, frameworkId]);
+
+  useEffect(() => {
+    if (selectedDesignation) {
+      setInputValue(selectedDesignation.name);
+    }
+  }, [selectedDesignation]);
 
   return (
     <Autocomplete
@@ -134,6 +187,12 @@ export const DesignationSelector: React.FC<DesignationSelectorProps> = ({
       value={selectedDesignation}
       onChange={(_event, value) => onDesignationSelect(value)}
       onBlur={onBlur}
+      inputValue={inputValue}
+      onInputChange={(_event, newInputValue, reason) => {
+        if (reason !== 'reset') {
+          setInputValue(newInputValue);
+        }
+      }}
       disabled={disabled || !frameworkId}
       renderInput={(params) => (
         <TextField

@@ -47,6 +47,49 @@ export const searchDesignations: RequestHandler = async (
   }
 };
 
+export const searchMasterDesignations: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  logger.info(`Searching for master designations with body: ${JSON.stringify(req.body)}`);
+
+  try {
+    const options = {
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/designation/search`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+      data: req.body,
+    };
+
+    const response = await axios(options);
+
+    if (response.data) {
+      logger.info(`Successfully fetched master designations`);
+      res.status(200).send(response.data);
+    } else {
+      logger.error("Empty response body from master designation search API");
+      res.status(500).send({ status: 500, message: "Internal server error" });
+    }
+  } catch (error) {
+    logger.error("❌ Error in searchMasterDesignations controller:" + error);
+    if (axios.isAxiosError(error) && error.response) {
+      res.status(error.response.status).json({
+        message: "Error from master designation API",
+        error: error.response.data,
+      });
+    } else {
+      res.status(500).send({
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+};
+
 export const searchCompositeDesignations: RequestHandler = async (
   req: any,
   res: Response
