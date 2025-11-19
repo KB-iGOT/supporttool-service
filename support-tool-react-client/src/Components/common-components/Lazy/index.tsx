@@ -196,6 +196,12 @@ const GetUserDetails = lazy(() =>
   }))
 );
 
+const Topics = lazy(() =>
+  import("../../topics/Topics").then((module) => ({
+    default: module.Topics,
+  }))
+);
+
 
 
 
@@ -376,6 +382,14 @@ const LazyApp = () => {
             element={
               <ProtectedRoute>
                 <Competency />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/topics"
+            element={
+              <ProtectedRoute>
+                <Topics />
               </ProtectedRoute>
             }
           />

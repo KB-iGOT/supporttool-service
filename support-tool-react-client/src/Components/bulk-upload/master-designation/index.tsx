@@ -78,7 +78,7 @@ export const MasterDesignations = () => {
     setLoading(true);
     setError(null);
     try {
-      const masterRes = await designationService.searchMasterDesignations(query, currentPage, pageSize, status);
+      const masterRes = await designationService.searchMasterDesignations(query, pageSize, currentPage, status);
       if (masterRes.result?.result?.data) {
         setMasterDesignations(masterRes.result.result.data);
         setTotalCount(masterRes.result.result.totalCount || 0);

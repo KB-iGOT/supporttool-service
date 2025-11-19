@@ -2,9 +2,9 @@ import axios from "axios";
 import apiClient from "./apiClient";
 import env from "../Config/env";
 
-const searchMasterDesignations = async (query: string, pageSize: number, offset: number, status: string = "Active") => {
+const searchMasterDesignations = async (query: string, pageSize: number, pageNumber: number, status: string = "Active") => {
   const requestData: any = {
-    pageNumber: Math.floor(offset / pageSize),
+    pageNumber,
     pageSize,
     filterCriteriaMap: {
       status

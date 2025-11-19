@@ -25,6 +25,7 @@ import {
   AdminPanelSettings as AdminPanelSettingsIcon,
   List as MasterDesignationsIcon,
   DashboardCustomize as ModuleDashboardIcon,
+  Topic as TopicsIcon,
 } from '@mui/icons-material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Module } from "../../../types";
@@ -88,6 +89,7 @@ const ICONS: { [key: string]: React.ElementType } = {
   'master-designations': MasterDesignationsIcon,
   'bulk-upload': CloudUploadIcon,
   'user-certificates': CardMembershipIcon,
+  topics: TopicsIcon,
   default: DashboardIcon,
 };
 
