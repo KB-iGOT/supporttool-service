@@ -100,4 +100,24 @@ export const contentsService = {
       throw error;
     }
   },
+
+  getContentDetails: async (identifier: string) => {
+    try {
+      const response = await apiClient.get(`/contents/private/read/${identifier}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching content details:", error);
+      throw error;
+    }
+  },
+
+  updateBatch: async (payload: any) => {
+    try {
+      const response = await apiClient.patch('/contents/batch/update', payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating batch:", error);
+      throw error;
+    }
+  },
 };

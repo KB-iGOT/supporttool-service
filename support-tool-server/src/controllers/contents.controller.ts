@@ -673,3 +673,150 @@ export const updateContentHierarchy: RequestHandler = async (
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const readContentDetails: RequestHandler = async (req: any, res: Response) => {
+  const { identifier } = req.params;
+  
+  logger.info(`Fetching content details for identifier: ${identifier}`);
+
+  try {
+    if (!identifier) {
+      logger.error("Content identifier is required");
+      res.status(400).json({ message: "Content identifier is required" });
+      return;
+    }
+
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/action/content/v3/read/${identifier}`,
+      headers: {
+        "Content-Type": "application/json",
+        "accept": "application/json, text/plain, */*",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+        "cache-control": "no-cache",
+        "pragma": "no-cache",
+      },
+    });
+
+    logger.info(`Successfully fetched content details for identifier: ${identifier}`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    logger.error(`Error fetching content details: ${error}`);
+    
+    if ((error as any).response) {
+      const axiosError = error as any;
+      res.status(axiosError.response.status).json({
+        message: "Error from content API",
+        error: axiosError.response.data,
+      });
+    } else if ((error as any).request) {
+      res.status(503).json({
+        message: "No response from content API",
+        error: "Service unavailable",
+      });
+    } else {
+      res.status(500).json({
+        message: "Internal server error",
+        error: (error as any).message,
+      });
+    }
+  }
+};
+
+export const updateBatch: RequestHandler = async (req: any, res: Response) => {
+  const { request, jiraLink, module } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  const auditObject = {
+    user_id,
+    module: module || 'CONTENTS',
+    sub_module: 'UPDATE_BATCH',
+    action: 'UPDATE',
+    entity_id: request?.id,
+    request_payload: request,
+    modified_payload: null,
+    response_payload: null,
+    status: 'PENDING',
+    message: `Attempting to update batch: ${request?.id}`,
+    jira_link: jiraLink,
+  };
+
+  logger.info(`Updating batch with ID: ${request?.id}`);
+
+  try {
+    if (!request || !request.id) {
+      logger.error("Batch request data is required");
+      const errorResponse = {
+        message: "Batch request data is required",
+      };
+      
+      await logAudit({
+        ...auditObject,
+        status: 'FAILURE',
+        response_payload: JSON.stringify(errorResponse),
+        message: errorResponse.message,
+      });
+
+      res.status(400).json(errorResponse);
+      return;
+    }
+
+    const response = await axios({
+      method: "PATCH",
+      url: `${process.env.KONG_API_URL}/api/course/v1/batch/update`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJhMTk5WXh3UkxNQWpBb3JVRmJUSkl4YjZDWE1JdUk4WVp4Y0pLaGxMdHQwIn0.eyJqdGkiOiI5MTdhMDA5OS1jMjgxLTQzMDQtOTQ1Yi04ZDY1ZDkzYmFlMGYiLCJleHAiOjE3NjM3MjIzODYsIm5iZiI6MCwiaWF0IjoxNzYzNTQ5NTg2LCJpc3MiOiJodHRwczovL3BvcnRhbC51YXQua2FybWF5b2dpYmhhcmF0Lm5ldC9hdXRoL3JlYWxtcy9zdW5iaXJkIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6ImY6OTFlYzk1ZDItYTNkNS00MTNlLWI0ZTQtNTNiMGRjYzk2NDg1OmNlZWMwMmM2LWMxOTEtNDlmZS04NDU2LTY2MjQ1YTlhNzgzNSIsInR5cCI6IkJlYXJlciIsImF6cCI6InN1cHBvcnRfaWdvdCIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6ImFmZmQxODcxLTMyNTQtNDY3ZC1iZGIxLTYxMTU2NTEyNzA2MyIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiIiwibmFtZSI6IlNwdiBBZG1pbiIsInByZWZlcnJlZF91c2VybmFtZSI6InNwdmFkbWluX2pnMnkiLCJnaXZlbl9uYW1lIjoiU3B2IEFkbWluIiwiZmFtaWx5X25hbWUiOiIiLCJlbWFpbCI6InNwKioqKioqKioqKipAeW9wbWFpbC5jb20ifQ.vTB7IZb2wsF6abg6kib4dBZZGhTs2b3BC93OCNLPZIL9lgUDRrK9PGCOJoS6Z-BSF0jFBNxmO58IfMgZENSQJOO95APzwj9RsxPhaWH44W2ot4Azkp8bjFVACh-S6bxy2GFLJ6VVieNRQ3QUC2zHzfjMXBNNhXBR48qi7eoT8OGpsZ9I0xtEQEss3nw8BmtOSMVBQva6Rzp4LAhHLaEspGpMKDrOX6lLOIKAAbHO7cpFHOFdwqTtIMplPXP03okx4Awah3CBer6THL82yCvRdyeVBZJYYOg42YsVxkZ8E1XMtdxBBZmEQEihNNhfbnDslP6V72qmgmlTIOoQ1ikCqg",
+      },
+      data: { request },
+    });
+
+    logger.info(`Successfully updated batch with ID: ${request.id}`);
+    
+    await logAudit({
+      ...auditObject,
+      status: 'SUCCESS',
+      response_payload: JSON.stringify(response.data),
+      message: `Successfully updated batch: ${request.id}`,
+    });
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    logger.error(`Error updating batch: ${error}`);
+    
+    const errorMessage = `Error updating batch: ${request?.id}`;
+    let errorResponse: any = { message: errorMessage, error: 'Internal Server Error' };
+    let statusCode = 500;
+
+    if ((error as any).response) {
+      const axiosError = error as any;
+      statusCode = axiosError.response.status;
+      errorResponse = {
+        message: "Error from batch API",
+        error: axiosError.response.data,
+      };
+    } else if ((error as any).request) {
+      statusCode = 503;
+      errorResponse = {
+        message: "No response from batch API",
+        error: "Service unavailable",
+      };
+    } else {
+      errorResponse = {
+        message: "Internal server error",
+        error: (error as any).message,
+      };
+    }
+
+    await logAudit({
+      ...auditObject,
+      status: 'FAILURE',
+      response_payload: JSON.stringify(errorResponse),
+      message: errorMessage,
+    });
+
+    res.status(statusCode).json(errorResponse);
+  }
+};

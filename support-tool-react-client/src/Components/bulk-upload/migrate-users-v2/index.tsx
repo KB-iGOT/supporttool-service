@@ -508,7 +508,7 @@ export const MigrateUsersV2 = () => {
         const email = row.email?.trim().toLowerCase();
         const phone = row.phone?.trim();
         const userId = row.userId?.trim();
-        const targetChannel = row.channel?.trim();
+        const targetChannel = row.channel;
 
         // Priority: userId > email+phone > email > phone
         if (userId) {

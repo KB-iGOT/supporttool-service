@@ -43,6 +43,13 @@ const Contents = lazy(() =>
     default: module.Contents,
   }))
 );
+
+const BatchDetails = lazy(() =>
+  import("../../contents/BatchDetails").then((module) => ({
+    default: module.BatchDetails,
+  }))
+);
+
 const ContentHierarchy = lazy(() =>
   import("../../content-hierarchy/index").then((module) => ({
     default: module.ContentHierarchy,
@@ -247,6 +254,14 @@ const LazyApp = () => {
             element={
               <ProtectedRoute>
                 <Contents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contents/batch-details/:contentId"
+            element={
+              <ProtectedRoute>
+                <BatchDetails />
               </ProtectedRoute>
             }
           />

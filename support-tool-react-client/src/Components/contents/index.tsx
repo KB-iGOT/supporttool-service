@@ -14,6 +14,7 @@ import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import GroupsIcon from '@mui/icons-material/Groups';
 import PencilIcon from "@mui/icons-material/Edit";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
@@ -34,7 +35,7 @@ import { appContextType } from "../../types";
 import { JsonViewerDialog } from "../common-components/JsonViewerDialog";
 import { useFormInterceptor } from "../../hooks/useFormsInterceptor";
 import { useActionInterceptor } from "../../hooks/useActionInterceptor";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -50,6 +51,7 @@ const filterConfig = {
 
 export const Contents = () => {
 const location = useLocation();
+const navigate = useNavigate();
 const moduleState = location.state;
   const [contents, setContents] = useState<Content[]>([]);
   const [contentsCount, setContentsCount] = useState<number>(0);
@@ -324,6 +326,15 @@ const moduleState = location.state;
     handleMenuClose();
   };
 
+  const handleGetBatchDetails = () => {
+    if (menuContent) {
+      navigate(`/contents/batch-details/${menuContent.identifier}`, { 
+        state: { content: menuContent } 
+      });
+    }
+    handleMenuClose();
+  };
+
   useEffect(() => {
     // Initial load - update facets
     const permissions = checkPermissions();
@@ -560,6 +571,14 @@ const moduleState = location.state;
               </ListItemIcon>
               <ListItemText>View Full Details</ListItemText>
             </MenuItem>
+            {/* {menuContent?.courseCategory  && (
+              <MenuItem onClick={handleGetBatchDetails}>
+                <ListItemIcon>
+                  <GroupsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Get Batch Details</ListItemText>
+              </MenuItem>
+            )} */}
             {checkPermissions().canDelete && (
               <MenuItem onClick={handleDeleteFromMenu}>
                 <ListItemIcon>

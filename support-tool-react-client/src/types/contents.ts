@@ -2,6 +2,7 @@ export interface Content {
     name: string;
     identifier: string;
     primaryCategory: string;
+    courseCategory: string;
     createdOn: string;
     creator: string;
   }
