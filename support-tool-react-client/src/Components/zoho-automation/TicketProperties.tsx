@@ -1,17 +1,37 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TicketDetails } from '../../services/zoho.service';
+import zohoService, { TicketDetails } from '../../services/zoho.service';
+import { DEFAULT_SUGGESTIONS } from './suggestionsData';
+import SuggestionModal from './SuggestionModal';
 
 interface TicketPropertiesProps {
     ticketDetails: TicketDetails;
     formFields?: any;
     onSave?: (modifiedFields: any) => Promise<void>;
+    onSuggestionSelected?: (content: string) => void;
 }
 
-const TicketProperties: React.FC<TicketPropertiesProps> = ({ ticketDetails, formFields, onSave }) => {
+const TicketProperties: React.FC<TicketPropertiesProps> = ({ ticketDetails, formFields, onSave, onSuggestionSelected }) => {
     // Edit mode state
     const [isEditMode, setIsEditMode] = useState(false);
     const [modifiedFields, setModifiedFields] = useState<Record<string, any>>({});
     const [isSaving, setIsSaving] = useState(false);
+
+    // View mode: 'properties' or 'suggestions'
+    const [viewMode, setViewMode] = useState<'properties' | 'suggestions'>('properties');
+
+    // Agents state for assignee dropdown
+    const [agents, setAgents] = useState<any[]>([]);
+    const [loadingAgents, setLoadingAgents] = useState(false);
+
+    // Suggestions state
+    // Suggestions state
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // Suggestion management
+    const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+    const [editingSuggestion, setEditingSuggestion] = useState<any>(null);
 
     // Original values for comparison
     const [originalValues, setOriginalValues] = useState<Record<string, any>>({});
@@ -37,11 +57,94 @@ const TicketProperties: React.FC<TicketPropertiesProps> = ({ ticketDetails, form
             description: ticketDetails.description || ticketDetails.summary || '',
             language: ticketDetails.language || 'English',
             channel: ticketDetails.channel || 'Email',
+            assigneeId: ticketDetails.assignee?.id || '',
+            status: ticketDetails.status || 'Open',
         });
         // Reset states when ticket changes
         setModifiedFields({});
         setIsEditMode(false);
     }, [ticketDetails]);
+
+    // Load agents on component mount
+    useEffect(() => {
+        const loadAgents = async () => {
+            setLoadingAgents(true);
+            try {
+                const agentsData = await zohoService.getAgents();
+                setAgents(agentsData?.data || []);
+            } catch (error) {
+                console.error('Failed to load agents:', error);
+            } finally {
+                setLoadingAgents(false);
+            }
+        };
+        loadAgents();
+    }, []);
+
+    // Load suggestions when view mode changes to suggestions
+    // Load suggestions from localStorage or defaults
+    useEffect(() => {
+        if (viewMode === 'suggestions') {
+            setLoadingSuggestions(true);
+            try {
+                const stored = localStorage.getItem('zoho_suggestions');
+                if (stored) {
+                    setSuggestions(JSON.parse(stored));
+                } else {
+                    // Initialize with defaults if empty
+                    const defaultsWithIds = DEFAULT_SUGGESTIONS.map((s, i) => ({ ...s, id: `def-${i}` }));
+                    setSuggestions(defaultsWithIds);
+                    localStorage.setItem('zoho_suggestions', JSON.stringify(defaultsWithIds));
+                }
+            } catch (err) {
+                console.error('Failed to load suggestions:', err);
+                const defaultsWithIds = DEFAULT_SUGGESTIONS.map((s, i) => ({ ...s, id: `def-${i}` }));
+                setSuggestions(defaultsWithIds);
+            } finally {
+                setLoadingSuggestions(false);
+            }
+        }
+    }, [viewMode]);
+
+    const handleAddSuggestion = () => {
+        setEditingSuggestion(null);
+        setIsSuggestionModalOpen(true);
+    };
+
+    const handleEditSuggestion = (suggestion: any) => {
+        setEditingSuggestion(suggestion);
+        setIsSuggestionModalOpen(true);
+    };
+
+    const handleSaveSuggestion = (data: { title: string; summary: string }) => {
+        let updatedSuggestions;
+        if (editingSuggestion) {
+            // Update existing
+            updatedSuggestions = suggestions.map(s =>
+                s.id === editingSuggestion.id ? { ...s, ...data } : s
+            );
+        } else {
+            // Add new
+            const newSuggestion = {
+                ...data,
+                id: `sug-${Date.now()}`
+            };
+            updatedSuggestions = [newSuggestion, ...suggestions];
+        }
+
+        setSuggestions(updatedSuggestions);
+        localStorage.setItem('zoho_suggestions', JSON.stringify(updatedSuggestions));
+        setIsSuggestionModalOpen(false);
+    };
+
+    const handleDeleteSuggestion = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this suggestion?')) {
+            const updatedSuggestions = suggestions.filter(s => s.id !== id);
+            setSuggestions(updatedSuggestions);
+            localStorage.setItem('zoho_suggestions', JSON.stringify(updatedSuggestions));
+        }
+    };
 
     const hasChanges = Object.keys(modifiedFields).length > 0;
 
@@ -146,6 +249,12 @@ const TicketProperties: React.FC<TicketPropertiesProps> = ({ ticketDetails, form
                     case 'requestor':
                         cfPayload.cf_requestor = value;
                         break;
+                    case 'assigneeId':
+                        payload.assigneeId = value;
+                        break;
+                    case 'status':
+                        payload.status = value;
+                        break;
                     default:
                         break;
                 }
@@ -198,352 +307,474 @@ const TicketProperties: React.FC<TicketPropertiesProps> = ({ ticketDetails, form
         return modifiedFields[field] !== undefined ? modifiedFields[field] : originalValues[field] || defaultValue;
     };
 
+    // Copy suggestion to clipboard
+    const handleCopySuggestion = (suggestion: any) => {
+        const textToCopy = suggestion.summary || suggestion.title || '';
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            setCopiedId(suggestion.id);
+            setTimeout(() => setCopiedId(null), 2000);
+        });
+    };
+
     return (
         <div className="ticket-properties-clean">
             <div className="properties-header-clean">
-                <h3>Ticket Properties</h3>
-                {!isEditMode ? (
+                <div className="view-toggle-tabs">
+                    <button
+                        className={`toggle-tab ${viewMode === 'properties' ? 'active' : ''}`}
+                        onClick={() => setViewMode('properties')}
+                    >
+                        Properties
+                    </button>
+                    <button
+                        className={`toggle-tab ${viewMode === 'suggestions' ? 'active' : ''}`}
+                        onClick={() => setViewMode('suggestions')}
+                    >
+                        Suggested Replies
+                    </button>
+                    {viewMode === 'suggestions' && (
+                        <button className="add-suggestion-btn" onClick={handleAddSuggestion} title="Add New Suggestion">
+                            + Add
+                        </button>
+                    )}
+                </div>
+                {viewMode === 'properties' && !isEditMode && (
                     <button className="edit-icon-btn" title="Edit properties" onClick={handleEditClick}>
                         ✏️
                     </button>
-                ) : (
+                )}
+                {viewMode === 'properties' && isEditMode && (
                     <span className="edit-mode-indicator">Editing...</span>
                 )}
             </div>
 
-            <div className="properties-scroll-content">
-                {/* Contact Info Section */}
-                <div className="property-section-clean">
-                    <h4 className="section-title">Contact Info</h4>
-                    <div className="section-fields">
-                        <div className="contact-display">
-                            <div className="contact-name-large">
-                                {ticketDetails.contact?.lastName || ticketDetails.contactId || 'Unknown'}
-                            </div>
-                            <div className="contact-email">{ticketDetails.contact?.email || ticketDetails.email || '-'}</div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Key Information Section */}
-                <div className="property-section-clean">
-                    <h4 className="section-title">Key Information</h4>
-                    <div className="section-fields">
-                        {/* Ticket Assigned To */}
-                        <div className="field-row">
-                            <label className="field-label">Ticket Assigned To</label>
-                            <div className="assignee-display">
-                                <span className="assignee-avatar">
-                                    {ticketDetails.assignee?.firstName?.[0] || ticketDetails.assignee?.lastName?.[0] || 'U'}
-                                </span>
-                                <div className="assignee-info">
-                                    <div className="assignee-name">
-                                        {ticketDetails.assignee?.firstName && ticketDetails.assignee?.lastName
-                                            ? `${ticketDetails.assignee.firstName} ${ticketDetails.assignee.lastName}`
-                                            : ticketDetails.assignee?.name || 'Unassigned'}
+            {viewMode === 'suggestions' ? (
+                <div className="suggestions-content">
+                    {loadingSuggestions ? (
+                        <div className="suggestions-loading">Loading suggestions...</div>
+                    ) : suggestions.length === 0 ? (
+                        <div className="suggestions-empty">No suggestions available for this ticket.</div>
+                    ) : (
+                        <div className="suggestions-list">
+                            {suggestions.map((suggestion: any, index: number) => (
+                                <div key={suggestion.id || index} className="suggestion-card">
+                                    <div className="suggestion-header">
+                                        <div className="suggestion-title-group">
+                                            <span className="suggestion-number">#{index + 1}</span>
+                                            <h4 className="suggestion-title">{suggestion.title || 'Untitled'}</h4>
+                                        </div>
+                                        <div className="suggestion-card-controls">
+                                            <button className="control-btn" onClick={() => handleEditSuggestion(suggestion)} title="Edit">✎</button>
+                                            <button className="control-btn delete" onClick={(e) => handleDeleteSuggestion(suggestion.id, e)} title="Delete">🗑️</button>
+                                        </div>
                                     </div>
-                                    <div className="assignee-email">{ticketDetails.assignee?.email || ''}</div>
+                                    <p className="suggestion-summary">
+                                        {suggestion.summary || 'No summary available'}
+                                    </p>
+                                    <div className="suggestion-actions-row">
+                                        <button
+                                            className={`suggestion-action-btn ${copiedId === suggestion.id ? 'copied' : ''}`}
+                                            onClick={() => handleCopySuggestion(suggestion)}
+                                        >
+                                            {copiedId === suggestion.id ? '✓ Copied' : '📋 Copy Content'}
+                                        </button>
+                                        <button
+                                            className="suggestion-action-btn primary-action"
+                                            onClick={() => onSuggestionSelected && onSuggestionSelected(suggestion.summary)}
+                                            title="Use this content in reply"
+                                        >
+                                            ↩ Use as Reply
+                                        </button>
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+            ) : (
+                <div className="properties-scroll-content">
+                    {/* Contact Info Section */}
+                    <div className="property-section-clean">
+                        <h4 className="section-title">Contact Info</h4>
+                        <div className="section-fields">
+                            <div className="contact-display">
+                                <div className="contact-name-large">
+                                    {ticketDetails.contact?.lastName || ticketDetails.contactId || 'Unknown'}
+                                </div>
+                                <div className="contact-email">{ticketDetails.contact?.email || ticketDetails.email || '-'}</div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Due Date */}
-                        <div className="field-row">
-                            <label className="field-label">Due Date</label>
-                            <input
-                                type="datetime-local"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={formatDate(getValue('dueDate'))}
-                                onChange={(e) => handleFieldChange('dueDate', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
+                    {/* Key Information Section */}
+                    <div className="property-section-clean">
+                        <h4 className="section-title">Key Information</h4>
+                        <div className="section-fields">
+                            {/* Ticket Owner (Assigned To) */}
+                            <div className="field-row">
+                                <label className="field-label">Ticket Owner</label>
+                                {isEditMode ? (
+                                    <select
+                                        className="field-select"
+                                        value={getValue('assigneeId')}
+                                        onChange={(e) => handleFieldChange('assigneeId', e.target.value)}
+                                        disabled={loadingAgents}
+                                    >
+                                        <option value="">Unassigned</option>
+                                        {agents.map((agent: any) => (
+                                            <option key={agent.id} value={agent.id}>
+                                                {agent.firstName && agent.lastName
+                                                    ? `${agent.firstName} ${agent.lastName}`
+                                                    : agent.name || agent.email}
+                                                {agent.email ? ` (${agent.email})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="assignee-display">
+                                        <span className="assignee-avatar">
+                                            {ticketDetails.assignee?.firstName?.[0] || ticketDetails.assignee?.lastName?.[0] || 'U'}
+                                        </span>
+                                        <div className="assignee-info">
+                                            <div className="assignee-name">
+                                                {ticketDetails.assignee?.firstName && ticketDetails.assignee?.lastName
+                                                    ? `${ticketDetails.assignee.firstName} ${ticketDetails.assignee.lastName}`
+                                                    : ticketDetails.assignee?.name || 'Unassigned'}
+                                            </div>
+                                            <div className="assignee-email">{ticketDetails.assignee?.email || ''}</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Status */}
+                            <div className="field-row">
+                                <label className="field-label">Status</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('status', ticketDetails.status || 'Open')}
+                                    onChange={(e) => handleFieldChange('status', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="Open">Open</option>
+                                    <option value="IN PROGRESS">IN PROGRESS</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Escalated">Escalated</option>
+                                    <option value="Closed">Closed</option>
+                                    <option value="Pending @ User">Pending @ User</option>
+                                    <option value="Pending for Approval">Pending for Approval</option>
+                                    <option value="Pending @ Content Team">Pending @ Content Team</option>
+                                </select>
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Response Due Date */}
-                        <div className="field-row">
-                            <label className="field-label">Response Due Date</label>
-                            <input
-                                type="datetime-local"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={formatDate(getValue('responseDueDate'))}
-                                onChange={(e) => handleFieldChange('responseDueDate', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
+                    {/* Ticket Information Section */}
+                    <div className="property-section-clean">
+                        <h4 className="section-title">Ticket Information</h4>
+                        <div className="section-fields">
+                            {/* Portal * (Mandatory) */}
+                            <div className="field-row">
+                                <label className="field-label mandatory">Portal</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('portal')}
+                                    onChange={(e) => handleFieldChange('portal', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('Portal').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Classifications * (Mandatory) */}
+                            <div className="field-row">
+                                <label className="field-label mandatory">Classifications</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('classifications')}
+                                    onChange={(e) => handleFieldChange('classifications', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('classification').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Categories */}
+                            <div className="field-row">
+                                <label className="field-label">Categories</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('categories')}
+                                    onChange={(e) => handleFieldChange('categories', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('Categories').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Sub-Categories */}
+                            <div className="field-row">
+                                <label className="field-label">Sub-Categories</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('subCategories')}
+                                    onChange={(e) => handleFieldChange('subCategories', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('Sub-Categories').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Priority */}
+                            <div className="field-row">
+                                <label className="field-label">Priority</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('priority', 'P3')}
+                                    onChange={(e) => handleFieldChange('priority', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="P1">P1</option>
+                                    <option value="P2">P2</option>
+                                    <option value="P3">P3</option>
+                                    <option value="P4">P4</option>
+                                </select>
+                            </div>
+
+                            {/* Severity */}
+                            <div className="field-row">
+                                <label className="field-label">Severity</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('severity', 'Sev 3')}
+                                    onChange={(e) => handleFieldChange('severity', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="Sev 1">Sev 1</option>
+                                    <option value="Sev 2">Sev 2</option>
+                                    <option value="Sev 3">Sev 3</option>
+                                    <option value="Sev 4">Sev 4</option>
+                                </select>
+                            </div>
+
+                            {/* Description */}
+                            <div className="field-row">
+                                <label className="field-label">Description</label>
+                                <textarea
+                                    className={`field-textarea ${!isEditMode ? 'readonly' : ''}`}
+                                    rows={4}
+                                    value={getValue('description')}
+                                    onChange={(e) => handleFieldChange('description', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Save/Cancel buttons - before Additional Information */}
+                    <div className="properties-actions-inline">
+                        <button
+                            className={`btn-save-inline ${!hasChanges || isSaving ? 'disabled' : ''}`}
+                            onClick={handleSaveClick}
+                            disabled={!hasChanges || isSaving}
+                        >
+                            {isSaving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                            className="btn-cancel-inline"
+                            onClick={handleCancelClick}
+                            disabled={isSaving}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+
+                    {/* Additional Information Section */}
+                    <div className="property-section-clean">
+                        <h4 className="section-title">Additional Information</h4>
+                        <div className="section-fields">
+                            {/* Requestor */}
+                            <div className="field-row">
+                                <label className="field-label">Requestor</label>
+                                <input
+                                    type="text"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('requestor', '-None-')}
+                                    onChange={(e) => handleFieldChange('requestor', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Ministry/State */}
+                            <div className="field-row">
+                                <label className="field-label">Ministry/State</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('ministryState')}
+                                    onChange={(e) => handleFieldChange('ministryState', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('Ministry/State').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Department Name */}
+                            <div className="field-row">
+                                <label className="field-label">Department Name</label>
+                                <input
+                                    type="text"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('departmentName', '-')}
+                                    onChange={(e) => handleFieldChange('departmentName', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Organization */}
+                            <div className="field-row">
+                                <label className="field-label">Organization</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('organization')}
+                                    onChange={(e) => handleFieldChange('organization', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="">-None-</option>
+                                    {getFieldOptions('Organization').map((option: any) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Jira ID */}
+                            <div className="field-row">
+                                <label className="field-label">Jira ID</label>
+                                <input
+                                    type="text"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('jiraId', '-')}
+                                    onChange={(e) => handleFieldChange('jiraId', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Working team */}
+                            <div className="field-row">
+                                <label className="field-label">Working team</label>
+                                <input
+                                    type="text"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('workingTeam', '-None-')}
+                                    onChange={(e) => handleFieldChange('workingTeam', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Due Date */}
+                            <div className="field-row">
+                                <label className="field-label">Due Date</label>
+                                <input
+                                    type="datetime-local"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={formatDate(getValue('dueDate'))}
+                                    onChange={(e) => handleFieldChange('dueDate', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Response Due Date */}
+                            <div className="field-row">
+                                <label className="field-label">Response Due Date</label>
+                                <input
+                                    type="datetime-local"
+                                    className={`field-input ${!isEditMode ? 'readonly' : ''}`}
+                                    value={formatDate(getValue('responseDueDate'))}
+                                    onChange={(e) => handleFieldChange('responseDueDate', e.target.value)}
+                                    readOnly={!isEditMode}
+                                />
+                            </div>
+
+                            {/* Closed Date */}
+                            <div className="field-row">
+                                <label className="field-label">Closed Date</label>
+                                <input
+                                    type="datetime-local"
+                                    className="field-input readonly"
+                                    value={ticketDetails.closedTime ? formatDate(ticketDetails.closedTime) : ''}
+                                    readOnly
+                                />
+                            </div>
+
+                            {/* Language */}
+                            <div className="field-row">
+                                <label className="field-label">Language</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('language', 'English')}
+                                    onChange={(e) => handleFieldChange('language', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="English">English</option>
+                                    <option value="Hindi">Hindi</option>
+                                </select>
+                            </div>
+
+                            {/* Channel */}
+                            <div className="field-row">
+                                <label className="field-label">Channel</label>
+                                <select
+                                    className={`field-select ${!isEditMode ? 'readonly' : ''}`}
+                                    value={getValue('channel', 'Email')}
+                                    onChange={(e) => handleFieldChange('channel', e.target.value)}
+                                    disabled={!isEditMode}
+                                >
+                                    <option value="Email">Email</option>
+                                    <option value="Phone">Phone</option>
+                                    <option value="Web">Web</option>
+                                    <option value="Chat">Chat</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Ticket Information Section */}
-                <div className="property-section-clean">
-                    <h4 className="section-title">Ticket Information</h4>
-                    <div className="section-fields">
-                        {/* Requestor */}
-                        <div className="field-row">
-                            <label className="field-label">Requestor</label>
-                            <input
-                                type="text"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('requestor', '-None-')}
-                                onChange={(e) => handleFieldChange('requestor', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
-                        </div>
+            )
+            }
 
-                        {/* Portal * (Mandatory) */}
-                        <div className="field-row">
-                            <label className="field-label mandatory">Portal</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('portal')}
-                                onChange={(e) => handleFieldChange('portal', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('Portal').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Ministry/State */}
-                        <div className="field-row">
-                            <label className="field-label">Ministry/State</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('ministryState')}
-                                onChange={(e) => handleFieldChange('ministryState', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('Ministry/State').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Department Name */}
-                        <div className="field-row">
-                            <label className="field-label">Department Name</label>
-                            <input
-                                type="text"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('departmentName', '-')}
-                                onChange={(e) => handleFieldChange('departmentName', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
-                        </div>
-
-                        {/* Organization */}
-                        <div className="field-row">
-                            <label className="field-label">Organization</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('organization')}
-                                onChange={(e) => handleFieldChange('organization', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('Organization').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Classifications * (Mandatory) */}
-                        <div className="field-row">
-                            <label className="field-label mandatory">Classifications</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('classifications')}
-                                onChange={(e) => handleFieldChange('classifications', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('classification').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Jira ID */}
-                        <div className="field-row">
-                            <label className="field-label">Jira ID</label>
-                            <input
-                                type="text"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('jiraId', '-')}
-                                onChange={(e) => handleFieldChange('jiraId', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
-                        </div>
-
-                        {/* Categories */}
-                        <div className="field-row">
-                            <label className="field-label">Categories</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('categories')}
-                                onChange={(e) => handleFieldChange('categories', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('Categories').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Sub-Categories */}
-                        <div className="field-row">
-                            <label className="field-label">Sub-Categories</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('subCategories')}
-                                onChange={(e) => handleFieldChange('subCategories', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="">-None-</option>
-                                {getFieldOptions('Sub-Categories').map((option: any) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Priority */}
-                        <div className="field-row">
-                            <label className="field-label">Priority</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('priority', 'P3')}
-                                onChange={(e) => handleFieldChange('priority', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="P1">P1</option>
-                                <option value="P2">P2</option>
-                                <option value="P3">P3</option>
-                                <option value="P4">P4</option>
-                            </select>
-                        </div>
-
-                        {/* Severity */}
-                        <div className="field-row">
-                            <label className="field-label">Severity</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('severity', 'Sev 3')}
-                                onChange={(e) => handleFieldChange('severity', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="Sev 1">Sev 1</option>
-                                <option value="Sev 2">Sev 2</option>
-                                <option value="Sev 3">Sev 3</option>
-                                <option value="Sev 4">Sev 4</option>
-                            </select>
-                        </div>
-
-                        {/* Working team */}
-                        <div className="field-row">
-                            <label className="field-label">Working team</label>
-                            <input
-                                type="text"
-                                className={`field-input ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('workingTeam', '-None-')}
-                                onChange={(e) => handleFieldChange('workingTeam', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
-                        </div>
-
-                        {/* Description */}
-                        <div className="field-row">
-                            <label className="field-label">Description</label>
-                            <textarea
-                                className={`field-textarea ${!isEditMode ? 'readonly' : ''}`}
-                                rows={4}
-                                value={getValue('description')}
-                                onChange={(e) => handleFieldChange('description', e.target.value)}
-                                readOnly={!isEditMode}
-                            />
-                        </div>
-
-                        {/* Closed Date */}
-                        <div className="field-row">
-                            <label className="field-label">Closed Date</label>
-                            <input
-                                type="datetime-local"
-                                className="field-input readonly"
-                                value={ticketDetails.closedTime ? formatDate(ticketDetails.closedTime) : ''}
-                                readOnly
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Additional Information Section */}
-                <div className="property-section-clean">
-                    <h4 className="section-title">Additional Information</h4>
-                    <div className="section-fields">
-                        {/* Language */}
-                        <div className="field-row">
-                            <label className="field-label">Language</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('language', 'English')}
-                                onChange={(e) => handleFieldChange('language', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="English">English</option>
-                                <option value="Hindi">Hindi</option>
-                            </select>
-                        </div>
-
-                        {/* Channel */}
-                        <div className="field-row">
-                            <label className="field-label">Channel</label>
-                            <select
-                                className={`field-select ${!isEditMode ? 'readonly' : ''}`}
-                                value={getValue('channel', 'Email')}
-                                onChange={(e) => handleFieldChange('channel', e.target.value)}
-                                disabled={!isEditMode}
-                            >
-                                <option value="Email">Email</option>
-                                <option value="Phone">Phone</option>
-                                <option value="Web">Web</option>
-                                <option value="Chat">Chat</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Footer with Save/Cancel buttons */}
-            <div className="properties-footer-clean">
-                <button
-                    className={`btn-save-large ${!hasChanges || isSaving ? 'disabled' : ''}`}
-                    onClick={handleSaveClick}
-                    disabled={!hasChanges || isSaving}
-                >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                    className="btn-cancel"
-                    onClick={handleCancelClick}
-                    disabled={isSaving}
-                >
-                    Cancel
-                </button>
-            </div>
+            <SuggestionModal
+                isOpen={isSuggestionModalOpen}
+                initialData={editingSuggestion}
+                onSave={handleSaveSuggestion}
+                onClose={() => setIsSuggestionModalOpen(false)}
+            />
         </div>
     );
 };

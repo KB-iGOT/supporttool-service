@@ -157,7 +157,10 @@ class ZohoService {
      */
     async getAllTicketThreads(ticketId: string, retryCount: number = 0): Promise<any> {
         try {
-            const url = `${this.baseUrl}/${this.portalName}/api/v1/tickets/${ticketId}/threads`;
+            // Use supportapi endpoint for better compatibility
+            const url = `https://desk.zoho.in/supportapi/zd/${this.portalName}/api/v1/tickets/${ticketId}/threads`;
+
+            logger.info(`📞 Fetching all ticket threads - URL: ${url}`);
 
             const response = await axios.get(url, {
                 headers: {
@@ -168,6 +171,7 @@ class ZohoService {
                 },
             });
 
+            logger.info(`✅ All ticket threads fetched successfully`);
             return response.data;
         } catch (error: any) {
             if (error.response?.status === 401 && retryCount < 1) {
@@ -178,6 +182,43 @@ class ZohoService {
             }
 
             logger.error(`❌ Failed to fetch all ticket threads: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Get content for a specific thread
+     */
+    async getThreadContent(ticketId: string, threadId: string, retryCount: number = 0): Promise<any> {
+        try {
+            const url = `https://desk.zoho.in/supportapi/zd/${this.portalName}/api/v1/tickets/${ticketId}/threads/${threadId}`;
+
+            logger.info(`📞 Fetching thread content - URL: ${url}`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': '*/*',
+                    'content-type': 'application/json',
+                    'orgid': this.orgId,
+                    'Authorization': `Zoho-oauthtoken ${this.accessToken}`,
+                },
+            });
+
+            logger.info(`✅ Thread content fetched successfully`);
+            return response.data;
+        } catch (error: any) {
+            if (error.response?.status === 401 && retryCount < 1) {
+                // Token expired, refresh and retry
+                logger.info('🔄 Token expired, refreshing...');
+                await this.refreshAccessToken();
+                return this.getThreadContent(ticketId, threadId, retryCount + 1);
+            }
+
+            logger.error(`❌ Failed to fetch thread content: ${error.message}`);
+            if (error.response) {
+                logger.error(`Response status: ${error.response.status}`);
+                logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+            }
             throw error;
         }
     }
@@ -355,6 +396,138 @@ class ZohoService {
             throw error;
         }
     }
+
+    /**
+     * Get active agents for ticket assignment
+     */
+    async getAgents(departmentId: string = '120349000000010772', retryCount: number = 0): Promise<any> {
+        try {
+            const url = `https://desk.zoho.in/supportapi/zd/${this.portalName}/api/v1/agents`;
+
+            logger.info(`📞 Fetching agents - URL: ${url}`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': '*/*',
+                    'content-type': 'application/json',
+                    'orgid': this.orgId,
+                    'Authorization': `Zoho-oauthtoken ${this.accessToken}`,
+                    'featureflags': 'multiLayout,agentDeptOpt,pvtThread,ticketTeam,commentAttachment,spamDetails,taskReminder,showI18NFields,onholdTicketStatus,Blueprint,timeTracking,sharedDepartments,secondaryContacts,truncateContent,customChannels,apiName,blockQuoteContent,reactChanges,newHistoryFormat,getVisitorInfo,sanitizedName,sanitizedDeptNameOpt,handleClosedStatusPermission,providePHIDetails,contact,showIsNested,requestFromNewClient',
+                },
+                params: {
+                    status: 'ACTIVE',
+                    isConfirmed: true,
+                    rolePermissionType: '${NON_LIGHT}',
+                    from: 1,
+                    limit: 100,
+                    departmentId: departmentId,
+                },
+            });
+
+            logger.info(`✅ Agents fetched successfully - ${response.data?.data?.length || 0} agents`);
+            return response.data;
+        } catch (error: any) {
+            if (error.response?.status === 401 && retryCount < 1) {
+                // Token expired, refresh and retry
+                logger.info('🔄 Token expired, refreshing...');
+                await this.refreshAccessToken();
+                return this.getAgents(departmentId, retryCount + 1);
+            }
+
+            logger.error(`❌ Failed to fetch agents: ${error.message}`);
+            if (error.response) {
+                logger.error(`Response status: ${error.response.status}`);
+                logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Get article/reply suggestions for a ticket
+     */
+    async getArticleSuggestions(ticketId: string, departmentId: string = '120349000000010772', from: number = 0, limit: number = 15, retryCount: number = 0): Promise<any> {
+        try {
+            const url = `https://desk.zoho.in/supportapi/zd/${this.portalName}/api/v1/tickets/${ticketId}/articleSuggestion`;
+
+            logger.info(`📞 Fetching article suggestions - URL: ${url}`);
+
+            const response = await axios.get(url, {
+                headers: {
+                    'accept': '*/*',
+                    'content-type': 'application/json',
+                    'orgid': this.orgId,
+                    'Authorization': `Zoho-oauthtoken ${this.accessToken}`,
+                },
+                params: {
+                    departmentId,
+                    from,
+                    limit,
+                },
+            });
+
+            logger.info(`✅ Article suggestions fetched successfully - ${response.data?.data?.length || 0} suggestions`);
+            return response.data;
+        } catch (error: any) {
+            if (error.response?.status === 401 && retryCount < 1) {
+                logger.info('🔄 Token expired, refreshing...');
+                await this.refreshAccessToken();
+                return this.getArticleSuggestions(ticketId, departmentId, from, limit, retryCount + 1);
+            }
+
+            logger.error(`❌ Failed to fetch article suggestions: ${error.message}`);
+            if (error.response) {
+                logger.error(`Response status: ${error.response.status}`);
+                logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Send a reply to a ticket
+     */
+    async sendReply(ticketId: string, replyData: any, retryCount: number = 0): Promise<any> {
+        try {
+            const url = `https://desk.zoho.in/supportapi/zd/${this.portalName}/api/v1/tickets/${ticketId}/sendReply`;
+
+            logger.info(`✉️ Sending reply to ticket ${ticketId}`);
+
+            const headers: any = {
+                'accept': '*/*',
+                'content-type': 'application/json',
+                'orgid': this.orgId,
+                'Authorization': `Zoho-oauthtoken ${this.accessToken}`,
+                'featureflags': 'multiLayout,agentDeptOpt,pvtThread,ticketTeam,commentAttachment,spamDetails,taskReminder,showI18NFields,onholdTicketStatus,Blueprint,timeTracking,sharedDepartments,secondaryContacts,truncateContent,customChannels,apiName,blockQuoteContent,reactChanges,newHistoryFormat,getVisitorInfo,sanitizedName,sanitizedDeptNameOpt,handleClosedStatusPermission,providePHIDetails,contact,showIsNested,requestFromNewClient',
+            };
+
+            const payload = {
+                channel: 'EMAIL',
+                attachmentIds: [],
+                contentType: 'html',
+                isForward: false,
+                ...replyData
+            };
+
+            const response = await axios.post(url, payload, { headers });
+
+            logger.info(`✅ Reply sent successfully`);
+            return response.data;
+        } catch (error: any) {
+            if (error.response?.status === 401 && retryCount < 1) {
+                logger.info('🔄 Token expired while sending reply, refreshing...');
+                await this.refreshAccessToken();
+                return this.sendReply(ticketId, replyData, retryCount + 1);
+            }
+
+            logger.error(`❌ Failed to send reply: ${error.message}`);
+            if (error.response) {
+                logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+            }
+            throw error;
+        }
+    }
 }
 
 export default new ZohoService();
+

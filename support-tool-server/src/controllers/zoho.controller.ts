@@ -96,6 +96,97 @@ export const getAllTicketThreads: RequestHandler = async (req: any, res: Respons
 };
 
 /**
+ * Get content for a specific thread
+ */
+export const getThreadContent: RequestHandler = async (req: any, res: Response) => {
+    try {
+        const { ticketId, threadId } = req.params;
+
+        if (!ticketId || !threadId) {
+            res.status(400).json({
+                success: false,
+                message: 'Ticket ID and Thread ID are required',
+            });
+            return;
+        }
+
+        const threadContent = await zohoService.getThreadContent(ticketId, threadId);
+
+        res.status(200).json({
+            success: true,
+            data: threadContent,
+        });
+    } catch (error: any) {
+        logger.error(`Error fetching thread content: ${error.message}`);
+        res.status(error.response?.status || 500).json({
+            success: false,
+            message: error.message || 'Failed to fetch thread content',
+            error: error.response?.data || error.message,
+        });
+    }
+};
+
+/**
+ * Get active agents for ticket assignment
+ */
+export const getAgents: RequestHandler = async (req: any, res: Response) => {
+    try {
+        const { departmentId } = req.query;
+
+        const agents = await zohoService.getAgents(departmentId as string);
+
+        res.status(200).json({
+            success: true,
+            data: agents,
+        });
+    } catch (error: any) {
+        logger.error(`Error fetching agents: ${error.message}`);
+        res.status(error.response?.status || 500).json({
+            success: false,
+            message: error.message || 'Failed to fetch agents',
+            error: error.response?.data || error.message,
+        });
+    }
+};
+
+/**
+ * Get article/reply suggestions for a ticket
+ */
+export const getArticleSuggestions: RequestHandler = async (req: any, res: Response) => {
+    try {
+        const { ticketId } = req.params;
+        const { departmentId, from, limit } = req.query;
+
+        if (!ticketId) {
+            res.status(400).json({
+                success: false,
+                message: 'Ticket ID is required',
+            });
+            return;
+        }
+
+        const suggestions = await zohoService.getArticleSuggestions(
+            ticketId as string,
+            departmentId as string,
+            from ? parseInt(from as string) : 0,
+            limit ? parseInt(limit as string) : 15
+        );
+
+        res.status(200).json({
+            success: true,
+            data: suggestions,
+        });
+    } catch (error: any) {
+        logger.error(`Error fetching article suggestions: ${error.message}`);
+        res.status(error.response?.status || 500).json({
+            success: false,
+            message: error.message || 'Failed to fetch article suggestions',
+            error: error.response?.data || error.message,
+        });
+    }
+};
+
+/**
  * Refresh Zoho access token
  */
 export const refreshToken: RequestHandler = async (req: any, res: Response) => {
@@ -243,6 +334,47 @@ export const getTicketSummary: RequestHandler = async (req: any, res: Response) 
         res.status(error.response?.status || 500).json({
             success: false,
             message: error.message || 'Failed to fetch ticket summary',
+            error: error.response?.data || error.message,
+        });
+    }
+};
+
+/**
+ * Send a reply to a ticket
+ */
+export const sendReply: RequestHandler = async (req: any, res: Response) => {
+    try {
+        const { ticketId } = req.params;
+        const replyData = req.body;
+
+        if (!ticketId) {
+            res.status(400).json({
+                success: false,
+                message: 'Ticket ID is required',
+            });
+            return;
+        }
+
+        if (!replyData.content) {
+            res.status(400).json({
+                success: false,
+                message: 'Reply content is required',
+            });
+            return;
+        }
+
+        const result = await zohoService.sendReply(ticketId, replyData);
+
+        res.status(200).json({
+            success: true,
+            data: result,
+            message: 'Reply sent successfully'
+        });
+    } catch (error: any) {
+        logger.error(`Error sending reply: ${error.message}`);
+        res.status(error.response?.status || 500).json({
+            success: false,
+            message: error.message || 'Failed to send reply',
             error: error.response?.data || error.message,
         });
     }

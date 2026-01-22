@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import TicketProperties from './TicketProperties';
 import ConversationView from './ConversationView';
-import zohoService, { TicketDetails, TicketConversation, HistoryEvent } from '../../services/zoho.service';
+import zohoService, { TicketDetails, ThreadMessage, HistoryEvent } from '../../services/zoho.service';
 import './styles.css';
 
 export const ZohoAutomation: React.FC = () => {
     const [ticketId, setTicketId] = useState('');
     const [inputValue, setInputValue] = useState('');
     const [ticketDetails, setTicketDetails] = useState<TicketDetails | null>(null);
-    const [conversation, setConversation] = useState<TicketConversation | null>(null);
+    const [threads, setThreads] = useState<ThreadMessage[]>([]);
     const [history, setHistory] = useState<HistoryEvent[]>([]);
     const [formFields, setFormFields] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Reply state lifted up
+    const [replyContent, setReplyContent] = useState('');
+    const [openReplyEditor, setOpenReplyEditor] = useState(false);
+
+    const handleSuggestionSelected = (content: string) => {
+        setReplyContent(content);
+        setOpenReplyEditor(true);
+    };
 
     // Fetch form fields on component mount
     useEffect(() => {
@@ -37,24 +46,23 @@ export const ZohoAutomation: React.FC = () => {
         setLoading(true);
         setError(null);
         setTicketDetails(null);
-        setConversation(null);
+        setThreads([]);
         setHistory([]);
 
         try {
-            // Fetch ticket details, conversation, and history in parallel
-            const [details, conv, hist] = await Promise.all([
+            // Fetch ticket details, all threads with content, and history in parallel
+            const [details, threadsData, hist] = await Promise.all([
                 zohoService.getTicketDetails(inputValue),
-                zohoService.getTicketConversation(inputValue),
+                zohoService.getAllThreadsWithContent(inputValue),
                 zohoService.getTicketHistory(inputValue),
             ]);
 
             console.log('📊 Ticket Details:', details);
-            console.log('💬 Conversation Data:', conv);
-            console.log('💬 Conversation.data:', conv?.data);
+            console.log('💬 Threads Data:', threadsData);
             console.log('📜 History Data:', hist);
 
             setTicketDetails(details);
-            setConversation(conv);
+            setThreads(threadsData);
             setHistory(hist || []);
             setTicketId(inputValue);
         } catch (err: any) {
@@ -73,7 +81,7 @@ export const ZohoAutomation: React.FC = () => {
                     description: 'This is a mock ticket loaded because the Zoho API limit was exceeded.',
                     summary: 'Mock ticket summary.'
                 });
-                setConversation({ data: [] });
+                setThreads([]);
                 setHistory([]);
                 setTicketId(inputValue);
                 setError(null); // Clear error to allow rendering
@@ -156,20 +164,24 @@ export const ZohoAutomation: React.FC = () => {
                 </div>
             )}
 
-            {!loading && ticketDetails && conversation && (
+            {!loading && ticketDetails && (
                 <div className="zoho-content">
                     <div className="ticket-properties-panel">
                         <TicketProperties
                             ticketDetails={ticketDetails}
                             formFields={formFields}
                             onSave={handleSaveTicket}
+                            onSuggestionSelected={handleSuggestionSelected}
                         />
                     </div>
                     <div className="conversation-panel">
                         <ConversationView
                             ticketDetails={ticketDetails}
-                            conversation={conversation}
+                            threads={threads}
                             history={history}
+                            initialReplyContent={replyContent}
+                            forceOpenReplyEditor={openReplyEditor}
+                            onReplyEditorClosed={() => setOpenReplyEditor(false)}
                         />
                     </div>
                 </div>

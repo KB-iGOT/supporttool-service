@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TicketDetails, TicketConversation, HistoryEvent } from '../../services/zoho.service';
+import { TicketDetails, ThreadMessage, HistoryEvent } from '../../services/zoho.service';
+import ReplyEditor from './ReplyEditor';
 import HistoryView from './HistoryView';
 import UserDetailsView from './UserDetailsView';
 import CertificatesView from './CertificatesView';
@@ -8,14 +9,49 @@ import { DesignationsView } from './DesignationsView';
 
 interface ConversationViewProps {
     ticketDetails: TicketDetails;
-    conversation: TicketConversation;
+    threads: ThreadMessage[];
     history?: HistoryEvent[];
+    initialReplyContent?: string;
+    forceOpenReplyEditor?: boolean;
+    onReplyEditorClosed?: () => void;
 }
 
-const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conversation, history }) => {
+const ConversationView: React.FC<ConversationViewProps> = ({
+    ticketDetails,
+    threads,
+    history,
+    initialReplyContent,
+    forceOpenReplyEditor,
+    onReplyEditorClosed
+}) => {
     const [activeTab, setActiveTab] = useState('conversation');
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [selectedUserInfo, setSelectedUserInfo] = useState<{ name: string; email: string } | null>(null);
+
+    const [showReplyEditor, setShowReplyEditor] = useState(false);
+
+    // React to parent forcing editor open
+    React.useEffect(() => {
+        if (forceOpenReplyEditor) {
+            setShowReplyEditor(true);
+        }
+    }, [forceOpenReplyEditor]);
+
+    const handleReplyEditorClose = () => {
+        setShowReplyEditor(false);
+        if (onReplyEditorClosed) onReplyEditorClosed();
+    };
+
+    const handleReplySent = () => {
+        setShowReplyEditor(false);
+        if (onReplyEditorClosed) onReplyEditorClosed();
+        // Ideally enforce refresh here, but for now user can navigate away or rely on auto-refresh if any
+        // In a real app we'd trigger a reload of threads via prop or context
+        // Check if there is a refresh mechanism available?
+        // The parent index.tsx fetches data. We might need a callback to refresh.
+        // For now, simple close is fine, user will see it eventually or we can notify.
+        alert('Reply sent successfully!');
+    };
 
     const formatDate = (dateString: string) => {
         try {
@@ -85,7 +121,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
     };
 
     const tabs = [
-        { id: 'conversation', label: 'CONVERSATION', count: 1 },
+        { id: 'conversation', label: 'CONVERSATION', count: threads.length || 0 },
         { id: 'user-details', label: 'USER DETAILS' },
         { id: 'certificates', label: 'CERTIFICATES' },
         { id: 'contents', label: 'CONTENTS' },
@@ -93,6 +129,74 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
         { id: 'approval', label: 'APPROVAL' },
         { id: 'history', label: 'HISTORY' },
     ];
+
+    const renderThread = (thread: ThreadMessage) => (
+        <div key={thread.id} className="thread-item">
+            <div className="thread-header">
+                <div className="thread-author">
+                    <div className="author-avatar">
+                        <span>
+                            {thread.author?.firstName?.[0] ||
+                                thread.author?.lastName?.[0] ||
+                                thread.author?.name?.[0] ||
+                                ticketDetails.contact?.lastName?.[0] ||
+                                'U'}
+                        </span>
+                    </div>
+                    <div className="author-info">
+                        <div className="author-name">
+                            {thread.author?.firstName && thread.author?.lastName
+                                ? `${thread.author.firstName} ${thread.author.lastName}`
+                                : thread.author?.name ||
+                                ticketDetails.contact?.lastName ||
+                                ticketDetails.email ||
+                                'User'}
+                        </div>
+                        <div className="thread-meta">
+                            <span className="thread-time">{formatDateRelative(thread.createdTime || ticketDetails.createdTime || '')}</span>
+                            {thread.channel && (
+                                <>
+                                    <span className="meta-separator">•</span>
+                                    <span className="thread-channel">{thread.channel}</span>
+                                </>
+                            )}
+                            {thread.direction && (
+                                <>
+                                    <span className="meta-separator">•</span>
+                                    <span className={`thread-direction ${thread.direction.toLowerCase()}`}>
+                                        {thread.direction === 'in' ? '📥 Incoming' : '📤 Outgoing'}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="thread-body">
+                {thread.contentType === 'text/html' || thread.contentType === 'html' ? (
+                    <div
+                        className="thread-text-content"
+                        style={{ whiteSpace: 'pre-wrap' }}
+                        dangerouslySetInnerHTML={{ __html: thread.content || ticketDetails.summary || ticketDetails.description || 'No content available' }}
+                    />
+                ) : (
+                    <div className="thread-text-content" style={{ whiteSpace: 'pre-wrap' }}>
+                        {thread.content || ticketDetails.summary || ticketDetails.description || 'No content available'}
+                    </div>
+                )}
+                {thread.hasAttach && thread.attachments && thread.attachments.length > 0 && (
+                    <div className="thread-attachments">
+                        <strong>Attachments:</strong>
+                        <ul>
+                            {thread.attachments.map((attachment: any, idx: number) => (
+                                <li key={idx}>{attachment.name || attachment.fileName || `Attachment ${idx + 1}`}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     return (
         <div className="conversation-view">
@@ -107,6 +211,15 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
                         </h2>
                     </div>
                     <div className="header-actions">
+                        <div className="ticket-actions">
+                            <button className="action-btn primary" onClick={() => setShowReplyEditor(!showReplyEditor)}>
+                                <span className="btn-icon">↩</span> Reply
+                            </button>
+                            {/* Forward button placeholder - functionality not requested yet */}
+                            <button className="action-btn">
+                                <span className="btn-icon">⏩</span> Forward
+                            </button>
+                        </div>
                         {/* Status Badge */}
                         <span className={`status-badge-enhanced ${getStatusColor(ticketDetails.status)}`}>
                             {ticketDetails.status || 'Open'}
@@ -127,6 +240,19 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
                 </div>
             </div>
 
+            {/* Reply Editor */}
+            {showReplyEditor && (
+                <ReplyEditor
+                    ticketId={ticketDetails.id}
+                    contactEmail={ticketDetails.email}
+                    fromEmail={ticketDetails.assignee?.email}
+                    initialContent={initialReplyContent}
+                    inReplyToThreadId={threads.length > 0 ? threads[0].id : undefined}
+                    onReplySent={handleReplySent}
+                    onCancel={handleReplyEditorClose}
+                />
+            )}
+
             {/* Tabs */}
             <div className="conversation-tabs">
                 {tabs.map((tab) => (
@@ -136,7 +262,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
                         onClick={() => setActiveTab(tab.id)}
                     >
                         {tab.label}
-                        {tab.count && (
+                        {tab.count !== undefined && tab.count > 0 && (
                             <span className="tab-badge">{tab.count}</span>
                         )}
                         {tab.id === 'conversation' && <span className="tab-dropdown">▾</span>}
@@ -148,64 +274,8 @@ const ConversationView: React.FC<ConversationViewProps> = ({ ticketDetails, conv
             <div className="conversation-content">
                 {activeTab === 'conversation' && (
                     <div className="thread-list">
-                        {conversation && conversation.content ? (
-                            <div key={conversation.id} className="thread-item">
-                                <div className="thread-header">
-                                    <div className="thread-author">
-                                        <div className="author-avatar">
-                                            <span>
-                                                {conversation.author?.firstName?.[0] ||
-                                                    conversation.author?.lastName?.[0] ||
-                                                    conversation.author?.name?.[0] ||
-                                                    ticketDetails.contact?.lastName?.[0] ||
-                                                    'U'}
-                                            </span>
-                                        </div>
-                                        <div className="author-info">
-                                            <div className="author-name">
-                                                {conversation.author?.firstName && conversation.author?.lastName
-                                                    ? `${conversation.author.firstName} ${conversation.author.lastName}`
-                                                    : conversation.author?.name ||
-                                                    ticketDetails.contact?.lastName ||
-                                                    ticketDetails.email ||
-                                                    'User'}
-                                            </div>
-                                            <div className="thread-meta">
-                                                <span className="thread-time">{formatDateRelative(conversation.createdTime || ticketDetails.createdTime || '')}</span>
-                                                {conversation.channel && (
-                                                    <>
-                                                        <span className="meta-separator">•</span>
-                                                        <span className="thread-channel">{conversation.channel}</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="thread-body">
-                                    {conversation.contentType === 'text/html' || conversation.contentType === 'html' ? (
-                                        <div
-                                            className="thread-text-content"
-                                            style={{ whiteSpace: 'pre-wrap' }}
-                                            dangerouslySetInnerHTML={{ __html: conversation.content || ticketDetails.summary || ticketDetails.description || 'No conversation content available' }}
-                                        />
-                                    ) : (
-                                        <div className="thread-text-content" style={{ whiteSpace: 'pre-wrap' }}>
-                                            {conversation.content || ticketDetails.summary || ticketDetails.description || 'No conversation content available'}
-                                        </div>
-                                    )}
-                                    {conversation.hasAttach && conversation.attachments && conversation.attachments.length > 0 && (
-                                        <div className="thread-attachments">
-                                            <strong>Attachments:</strong>
-                                            <ul>
-                                                {conversation.attachments.map((attachment: any, idx: number) => (
-                                                    <li key={idx}>{attachment.name || attachment.fileName || `Attachment ${idx + 1}`}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                        {threads.length > 0 ? (
+                            threads.map(thread => renderThread(thread))
                         ) : (
                             <div className="thread-item">
                                 <div className="thread-header">

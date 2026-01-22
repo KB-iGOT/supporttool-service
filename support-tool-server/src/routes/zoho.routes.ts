@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
-import { getTicketDetails, getTicketConversation, getAllTicketThreads, refreshToken, getFormFields, updateTicket, getTicketHistory, getTicketSummary } from '../controllers/zoho.controller';
+import { getTicketDetails, getTicketConversation, getAllTicketThreads, getThreadContent, getAgents, getArticleSuggestions, sendReply, refreshToken, getFormFields, updateTicket, getTicketHistory, getTicketSummary } from '../controllers/zoho.controller';
 
 const router = Router();
 
@@ -12,6 +12,9 @@ router.get('/tickets/:ticketId/conversation', getTicketConversation);
 
 // Get all ticket threads
 router.get('/tickets/:ticketId/threads', getAllTicketThreads);
+
+// Get content for a specific thread
+router.get('/tickets/:ticketId/threads/:threadId', getThreadContent);
 
 // Get ticket history
 router.get('/tickets/:ticketId/history', getTicketHistory);
@@ -27,6 +30,15 @@ router.get('/form-fields', getFormFields);
 
 // Refresh access token
 router.post('/token/refresh', refreshToken);
+
+// Get active agents
+router.get('/agents', getAgents);
+
+// Get article suggestions
+router.get('/tickets/:ticketId/suggestions', getArticleSuggestions);
+
+// Send reply
+router.post('/tickets/:ticketId/reply', sendReply);
 
 // OAuth callback - automatically exchanges code for tokens
 router.get('/oauth/callback', async (req: Request, res: Response) => {
