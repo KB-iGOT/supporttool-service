@@ -32,6 +32,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import { Organization } from "./types";
 import { OrganizationSelector } from "./OrganizationSelector";
+import env from "../../../Config/env";
 
 // Type definitions
 export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId' | 'roles' | 'maskedEmail' | 'maskedPhone';
@@ -149,17 +150,16 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 }) => {
   // State for validation
   const [searchErrors, setSearchErrors] = useState<Record<string, string | undefined>>({});
-  
-  // Available roles options from environment variables
+
+  // Available roles options from centralized config
   const rolesOptions: string[] = useMemo(() => {
-    const rolesString = process.env.REACT_APP_ROLES_LIST || '';
-    return rolesString ? rolesString.split(',').sort() : [];
+    return env.rolesList;
   }, []);
 
   // Validation functions
   const validateInput = (value: string, type: SearchFieldType): boolean => {
     if (!value.trim()) return true;
-    
+
     switch (type) {
       case 'email':
         return VALIDATION_PATTERNS.email.test(value);
@@ -190,12 +190,12 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     onSearchQueryChange(value);
-    
+
     if (!value.trim()) {
       setSearchErrors({});
       return;
     }
-    
+
     // Only validate specific search types
     if (['email', 'phone', 'userId', 'maskedEmail', 'maskedPhone'].includes(searchType)) {
       const isValid = validateInput(value.trim(), searchType);
@@ -225,7 +225,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 
   const handleSearchFieldBlur = () => {
     if (!searchQuery.trim()) return;
-    
+
     if (['email', 'phone', 'userId', 'maskedEmail', 'maskedPhone'].includes(searchType)) {
       const isValid = validateInput(searchQuery.trim(), searchType);
       if (!isValid) {
@@ -303,10 +303,10 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               {/* Organization Selector - shown for name searches and role searches */}
               {(searchType === 'name' || searchType === 'roles') && (
                 <Grid item xs={12} sm={6}>
-                  <OrganizationSelector 
+                  <OrganizationSelector
                     selectedOrg={selectedOrg}
                     onOrgSelect={onOrgSelect}
-                    onBlur={() => {}}
+                    onBlur={() => { }}
                     error={(searchType === 'name' || searchType === 'roles') && !selectedOrg && searchQuery.trim() !== ''}
                   />
                 </Grid>
@@ -341,8 +341,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                     endAdornment={
                       searchQuery ? (
                         <InputAdornment position="end">
-                          <IconButton 
-                            size="small" 
+                          <IconButton
+                            size="small"
                             onClick={onClearSearch}
                             aria-label="clear search"
                           >
@@ -352,7 +352,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                       ) : null
                     }
                   >
-                    {rolesOptions && rolesOptions.map((role:any) => (
+                    {rolesOptions && rolesOptions.map((role: any) => (
                       <MenuItem key={role} value={role}>
                         {role}
                       </MenuItem>
@@ -377,8 +377,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                   required
                   error={!searchQuery.trim() || Boolean(searchErrors[searchType])}
                   helperText={
-                    !searchQuery.trim() 
-                      ? `${searchFields[searchType].label} is required` 
+                    !searchQuery.trim()
+                      ? `${searchFields[searchType].label} is required`
                       : searchErrors[searchType] || ' '
                   }
                   FormHelperTextProps={{ sx: { mt: 0, minHeight: '1.25em' } }}
@@ -390,8 +390,8 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                     ),
                     endAdornment: searchQuery ? (
                       <InputAdornment position="end">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           onClick={onClearSearch}
                           aria-label="clear search"
                         >
@@ -422,14 +422,14 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
       {/* Active Search Display */}
       {(searchQuery || selectedOrg || userStatus !== 'all') && (
         <Box mt={3}>
-          <Alert 
+          <Alert
             severity="info"
             icon={<FilterAltIcon />}
             sx={{ '& .MuiAlert-message': { width: '100%' } }}
           >
-            <Stack 
+            <Stack
               direction={{ xs: 'column', sm: 'row' }}
-              spacing={1} 
+              spacing={1}
               alignItems={{ xs: 'flex-start', sm: 'center' }}
               flexWrap="wrap"
               sx={{ width: '100%' }}
@@ -437,17 +437,17 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 Active filters:
               </Typography>
-              
+
               {userStatus !== 'all' && (
-                <Chip 
-                  label={STATUS_CONFIG[userStatus].label} 
+                <Chip
+                  label={STATUS_CONFIG[userStatus].label}
                   color={STATUS_CONFIG[userStatus].color}
                   icon={STATUS_CONFIG[userStatus].icon}
                   size="small"
                   sx={{ mr: { xs: 0, sm: 1 } }}
                 />
               )}
-              
+
               {searchQuery && (
                 <Chip
                   icon={searchFields[searchType].icon as React.ReactElement}
@@ -457,7 +457,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
                   sx={{ mr: { xs: 0, sm: 1 } }}
                 />
               )}
-              
+
               {selectedOrg && (
                 <Chip
                   icon={<BusinessIcon />}
