@@ -33,6 +33,7 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import { Organization } from "./types";
 import { OrganizationSelector } from "./OrganizationSelector";
 import env from "../../../Config/env";
+import { AnyARecord } from "dns";
 
 // Type definitions
 export type SearchFieldType = 'name' | 'email' | 'phone' | 'userId' | 'roles' | 'maskedEmail' | 'maskedPhone';
@@ -152,8 +153,15 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   const [searchErrors, setSearchErrors] = useState<Record<string, string | undefined>>({});
 
   // Available roles options from centralized config
-  const rolesOptions: string[] = useMemo(() => {
-    return env.rolesList;
+  const rolesOptions: any[] = useMemo(() => {
+    if (typeof env.rolesList === 'string') {
+      try {
+        return JSON.parse(env.rolesList);
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(env.rolesList) ? env.rolesList : [];
   }, []);
 
   // Validation functions
