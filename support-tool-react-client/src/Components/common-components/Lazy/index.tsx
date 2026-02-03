@@ -209,148 +209,154 @@ const Topics = lazy(() =>
   }))
 );
 
+const ZohoAutomation = lazy(() =>
+  import("../../zoho-automation").then((module) => ({
+    default: module.ZohoAutomation,
+  }))
+);
+
 
 
 
 const LazyApp = () => {
   return (
-      <Suspense fallback={<div>Loading route...</div>}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/support-users"
-            element={
-              <ProtectedRoute>
-                <SupportUsers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/modules"
-            element={
-              <ProtectedRoute>
-                <Modules />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contents"
-            element={
-              <ProtectedRoute>
-                <Contents />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contents/batch-details/:contentId"
-            element={
-              <ProtectedRoute>
-                <BatchDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/content-hierarchy"
-            element={
-              <ProtectedRoute>
-                <ContentHierarchy />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <ProtectedRoute>
-                <Users />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<UsersList />} />
-            <Route path="certificates" element={<ReissueCertificate />} />
-          </Route>
-          <Route
-            path="/sessions"
-            element={
-              <ProtectedRoute>
-                <Sessions />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/forms"
-            element={
-              <ProtectedRoute>
-                <Forms />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/system-settings"
-            element={
-              <ProtectedRoute>
-                <SystemSettings />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<ListSystemSettings />} />
-            <Route path="edit/:id" element={<Edit />} />
-            <Route path="create" element={<Create />} />
-            <Route path="cadre-edit/:id" element={<CadreEdit />} />
-          </Route>
-          <Route
-            path="/organisations"
-            element={
-              <ProtectedRoute>
-                <Organisations />
-              </ProtectedRoute>
-            }
-          >
-            
-            <Route index element={<OrganisationList />} />
-            <Route path="designations/:orgId/:frameworkId" element={<DesignationView />} />
-            <Route path="designations/import/:orgId/:frameworkId" element={<ImportDesignationsPage />} />
-          </Route>
-          <Route
-            path="/org-delete"
-            element={
-              <ProtectedRoute>
-                <DeleteOrg />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/domain"
-            element={
-              <ProtectedRoute>
-                <Domains />
-              </ProtectedRoute>
-            }
-          /> 
-          <Route
-            path="/roles"
-            element={
-              <ProtectedRoute>
-                <Roles />
-              </ProtectedRoute>
-            }
-          /> 
-          {/* <Route
+    <Suspense fallback={<div>Loading route...</div>}>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/support-users"
+          element={
+            <ProtectedRoute>
+              <SupportUsers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/modules"
+          element={
+            <ProtectedRoute>
+              <Modules />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contents"
+          element={
+            <ProtectedRoute>
+              <Contents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contents/batch-details/:contentId"
+          element={
+            <ProtectedRoute>
+              <BatchDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/content-hierarchy"
+          element={
+            <ProtectedRoute>
+              <ContentHierarchy />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <Users />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<UsersList />} />
+          <Route path="certificates" element={<ReissueCertificate />} />
+        </Route>
+        <Route
+          path="/sessions"
+          element={
+            <ProtectedRoute>
+              <Sessions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms"
+          element={
+            <ProtectedRoute>
+              <Forms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/system-settings"
+          element={
+            <ProtectedRoute>
+              <SystemSettings />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ListSystemSettings />} />
+          <Route path="edit/:id" element={<Edit />} />
+          <Route path="create" element={<Create />} />
+          <Route path="cadre-edit/:id" element={<CadreEdit />} />
+        </Route>
+        <Route
+          path="/organisations"
+          element={
+            <ProtectedRoute>
+              <Organisations />
+            </ProtectedRoute>
+          }
+        >
+
+          <Route index element={<OrganisationList />} />
+          <Route path="designations/:orgId/:frameworkId" element={<DesignationView />} />
+          <Route path="designations/import/:orgId/:frameworkId" element={<ImportDesignationsPage />} />
+        </Route>
+        <Route
+          path="/org-delete"
+          element={
+            <ProtectedRoute>
+              <DeleteOrg />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/domain"
+          element={
+            <ProtectedRoute>
+              <Domains />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roles"
+          element={
+            <ProtectedRoute>
+              <Roles />
+            </ProtectedRoute>
+          }
+        />
+        {/* <Route
           path="/upload-contents"
           element={
             <ProtectedRoute>
@@ -361,66 +367,66 @@ const LazyApp = () => {
 
         <Route path="/api-cals" element={<ApiCalls />} />
         <Route
-            path="/audit-logs"
-            element={
-              <ProtectedRoute>
-                <AuditLogs />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user-dashboard"
-            element={
-              <ProtectedRoute>
-                <UserDashboard />
-              </ProtectedRoute>
-            }
-          />
-           <Route
-            path="/module-dashboard"
-            element={
-              <ProtectedRoute>
-                <ModuleDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/competency"
-            element={
-              <ProtectedRoute>
-                <Competency />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/topics"
-            element={
-              <ProtectedRoute>
-                <Topics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bulk-upload"
-            element={
-              <ProtectedRoute>
-                <BulkUpload />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<BulkFeaturesList />} />
-            <Route path="migrate-users" element={<MigrateUsers />} />
-            <Route path="migrate-users-v2" element={<MigrateUsersV2 />} />
-            <Route path="deactivate-user" element={<DeactivateUser />} />
-            <Route path="get-user-details" element={<GetUserDetails />} />
+          path="/audit-logs"
+          element={
+            <ProtectedRoute>
+              <AuditLogs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user-dashboard"
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/module-dashboard"
+          element={
+            <ProtectedRoute>
+              <ModuleDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/competency"
+          element={
+            <ProtectedRoute>
+              <Competency />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/topics"
+          element={
+            <ProtectedRoute>
+              <Topics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bulk-upload"
+          element={
+            <ProtectedRoute>
+              <BulkUpload />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<BulkFeaturesList />} />
+          <Route path="migrate-users" element={<MigrateUsers />} />
+          <Route path="migrate-users-v2" element={<MigrateUsersV2 />} />
+          <Route path="deactivate-user" element={<DeactivateUser />} />
+          <Route path="get-user-details" element={<GetUserDetails />} />
 
           <Route
             path="master-designation"
@@ -430,23 +436,31 @@ const LazyApp = () => {
               </ProtectedRoute>
             }
           />
-          </Route>
+        </Route>
         <Route
-            path="/non-logged-in-page"
-            element={
-              <ProtectedRoute>
-                <NonLoggedInPage />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<ModuleCards />} />
-            <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
-            
-            <Route path="/non-logged-in-page/:id/upload-contents" element={<UploadContents />} />
-            <Route path="/non-logged-in-page/:id/edit/:doId" element={<UploadContents />} />
-          </Route>
-        </Routes>
-      </Suspense>
+          path="/zoho-automation"
+          element={
+            <ProtectedRoute>
+              <ZohoAutomation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/non-logged-in-page"
+          element={
+            <ProtectedRoute>
+              <NonLoggedInPage />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ModuleCards />} />
+          <Route path="/non-logged-in-page/:id" element={<AnnouncementSection />} />
+
+          <Route path="/non-logged-in-page/:id/upload-contents" element={<UploadContents />} />
+          <Route path="/non-logged-in-page/:id/edit/:doId" element={<UploadContents />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 };
 

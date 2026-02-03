@@ -7,14 +7,14 @@ import pool from "./config/database";
 import logger from "./utils/logger";
 
 import connectPgSimple from "connect-pg-simple";
-import {isAuthenticated} from './helpers/sessionValidator';
+import { isAuthenticated } from './helpers/sessionValidator';
 
 import authRoutes from './routes/authentication.routes';
 import supportUserRoutes from "./routes/support-user.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import moduleRoutes from './routes/modules.routes';
 import channelsRoutes from './routes/channels.routes';
-import ContentsRoutes  from "./routes/contents.routes";
+import ContentsRoutes from "./routes/contents.routes";
 import UsersRoutes from "./routes/users.routes";
 import FormsRoutes from "./routes/forms.routes";
 import SystemSettingsRoutes from "./routes/systems-settings.routes";
@@ -33,6 +33,7 @@ import designationRoutes from "./routes/designation.routes";
 import sessionsRoutes from "./routes/sessions.routes";
 import competencyRoutes from "./routes/competency.routes";
 import TopicsRoutes from "./routes/topics.routes";
+import zohoRoutes from "./routes/zoho.routes";
 
 const app = express();
 app.use(bodyParser.json());
@@ -88,7 +89,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: false,
-      secure: false, maxAge: 24 * 60 * 60 * 1000 },
+      secure: false, maxAge: 24 * 60 * 60 * 1000
+    },
   })
 );
 
@@ -177,6 +179,7 @@ app.use("/api/designation", designationRoutes);
 app.use("/api/competency", competencyRoutes);
 app.use("/api/sessions", sessionsRoutes);
 app.use("/api/topics", TopicsRoutes);
+app.use("/api/zoho", zohoRoutes);
 
 // Register client routes AFTER API routes (this includes the catch-all route)
 clientRoutes(app, isAuthenticated);
