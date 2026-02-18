@@ -153,14 +153,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   const [searchErrors, setSearchErrors] = useState<Record<string, string | undefined>>({});
 
   // Available roles options from centralized config
-  const rolesOptions: any[] = useMemo(() => {
-    if (typeof env.rolesList === 'string') {
-      try {
-        return JSON.parse(env.rolesList);
-      } catch {
-        return [];
-      }
-    }
+  const rolesOptions: string[] = useMemo(() => {
     return Array.isArray(env.rolesList) ? env.rolesList : [];
   }, []);
 

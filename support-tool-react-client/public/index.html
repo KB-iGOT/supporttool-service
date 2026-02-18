@@ -26,8 +26,19 @@
     -->
     <script src="%PUBLIC_URL%/env.js"></script>
     <title>Support Tool | Karmayogi Bharat</title>
-    <!-- Runtime Environment Configuration - Can be updated by DevOps after build -->
-    <script src="./../env-config.js"></script>
+    <!-- Runtime Environment Configuration: fetches env-config.json before React bundle runs -->
+    <script>
+      window._envConfigPromise = (async function () {
+        try {
+          var response = await fetch('/env-config.json');
+          if (!response.ok) throw new Error('Status: ' + response.status);
+          var config = await response.json();
+          window._env_ = config;
+        } catch (e) {
+          console.warn('[env-config] Failed to load env-config.json, using build-time defaults.', e);
+        }
+      })();
+    </script>
   </head>
   <body class="sidebar-collapsed">
     <noscript>You need to enable JavaScript to run this app.</noscript>
