@@ -24,18 +24,17 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <script src="%PUBLIC_URL%/env.js"></script>
     <title>Support Tool | Karmayogi Bharat</title>
-    <!-- Runtime Environment Configuration: fetches env-config.json before React bundle runs -->
+    <!-- Runtime Environment Configuration: fetches env.json before React bundle runs -->
     <script>
       window._envConfigPromise = (async function () {
         try {
-          var response = await fetch('/env-config.json');
+          var response = await fetch('/env.json');
           if (!response.ok) throw new Error('Status: ' + response.status);
           var config = await response.json();
           window._env_ = config;
         } catch (e) {
-          console.warn('[env-config] Failed to load env-config.json, using build-time defaults.', e);
+          console.warn('[env.json] Failed to load env.json, using build-time defaults.', e);
         }
       })();
     </script>
