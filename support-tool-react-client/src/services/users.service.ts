@@ -196,5 +196,32 @@ export const usersService = {
   fetchGroups: async () => {
     const response = await apiClient.get(`/users/v1/groups`);
     return response.data;
+  },
+  getCBPlan: async (email: string, rootOrgId: string) => {
+    try {
+      const response = await apiClient.post(`/users/v1/cbplan`, { email, rootOrgId });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching CBP plan:", error);
+      throw error;
+    }
+  },
+  getAssignedCAP: async (email: string, userId: string) => {
+    try {
+      const response = await apiClient.post(`/users/v2/assigned-cap`, { email, userId });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching assigned CAP:", error);
+      throw error;
+    }
+  },
+  getCBPlanDetails: async (planId: string) => {
+    try {
+      const response = await apiClient.get(`/users/v2/cbplan/${planId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching CBP plan details:", error);
+      throw error;
+    }
   }
 };

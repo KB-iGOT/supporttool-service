@@ -80,6 +80,11 @@ const moduleState = location.state;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<'name' | 'identifier'>('name');
 
+  // Access Settings Dialog state
+  const [accessSettingsOpen, setAccessSettingsOpen] = useState(false);
+  const [accessSettingsData, setAccessSettingsData] = useState<any>(null);
+  const [loadingAccessSettings, setLoadingAccessSettings] = useState(false);
+
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contentToDelete, setContentToDelete] = useState<Content | null>(null);
@@ -335,6 +340,35 @@ const moduleState = location.state;
     handleMenuClose();
   };
 
+   const handleGetAccessSettings = async () => {
+    if (!menuContent) return;
+    
+    handleMenuClose();
+    setLoadingAccessSettings(true);
+    setAccessSettingsOpen(true);
+    setAccessSettingsData(null);
+    
+    try {
+      const response = await contentsService.getAccessSettings(menuContent.identifier);
+      setAccessSettingsData(response?.result || response);
+    } catch (error) {
+      console.error("Error fetching access settings:", error);
+      setToasts({
+        message: "Failed to fetch access settings. Please try again.",
+        open: true,
+        severity: "error"
+      });
+      setAccessSettingsOpen(false);
+    } finally {
+      setLoadingAccessSettings(false);
+    }
+  };
+
+  const handleAccessSettingsClose = () => {
+    setAccessSettingsOpen(false);
+    setAccessSettingsData(null);
+  };
+
   useEffect(() => {
     // Initial load - update facets
     const permissions = checkPermissions();
@@ -571,14 +605,22 @@ const moduleState = location.state;
               </ListItemIcon>
               <ListItemText>View Full Details</ListItemText>
             </MenuItem>
-            {/* {menuContent?.courseCategory  && (
+             {menuContent?.courseCategory && (
+              <MenuItem onClick={handleGetAccessSettings}>
+                <ListItemIcon>
+                  <GroupsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Get Access Settings</ListItemText>
+              </MenuItem>
+            )}
+             {/* {menuContent?.courseCategory  && (
               <MenuItem onClick={handleGetBatchDetails}>
                 <ListItemIcon>
                   <GroupsIcon fontSize="small" />
                 </ListItemIcon>
                 <ListItemText>Get Batch Details</ListItemText>
               </MenuItem>
-            )} */}
+            )}  */}
             {checkPermissions().canDelete && (
               <MenuItem onClick={handleDeleteFromMenu}>
                 <ListItemIcon>
@@ -701,6 +743,14 @@ const moduleState = location.state;
               </Button>
             </DialogActions>
           </Dialog>
+
+          {/* Access Settings Dialog */}
+          <JsonViewerDialog
+            open={accessSettingsOpen}
+            onClose={handleAccessSettingsClose}
+            title={`Access Settings: ${menuContent?.name || ''}`}
+            data={loadingAccessSettings ? { loading: "Fetching access settings..." } : accessSettingsData}
+          />
 
           <Snackbar
             anchorOrigin={{ vertical: "top", horizontal: "right" }}

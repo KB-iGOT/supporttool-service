@@ -820,3 +820,52 @@ export const updateBatch: RequestHandler = async (req: any, res: Response) => {
     res.status(statusCode).json(errorResponse);
   }
 };
+
+
+
+export const getAccessSettings: RequestHandler = async (req: any, res: Response) => {
+  const { identifier } = req.params;
+  
+  logger.info(`Fetching access settings for identifier: ${identifier}`);
+
+  try {
+    if (!identifier) {
+      logger.warn("Access settings request received without an identifier.");
+      res.status(400).json({ message: "Identifier is required" });
+      return;
+    }
+
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/accessSettings/read/${identifier}`,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": process.env.AUTHORIZATION,
+        "x-authenticated-user-token": req.user.token.trim(),
+      },
+    });
+
+    logger.info(`Successfully fetched access settings for identifier: ${identifier}`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    logger.error(`Error fetching access settings: ${error}`);
+    
+    if ((error as any).response) {
+      const axiosError = error as any;
+      res.status(axiosError.response.status).json({
+        message: "Error fetching access settings",
+        error: axiosError.response.data,
+      });
+    } else if ((error as any).request) {
+      res.status(503).json({
+        message: "No response from access settings API",
+        error: "Service unavailable",
+      });
+    } else {
+      res.status(500).json({
+        message: "Internal server error",
+        error: (error as any).message,
+      });
+    }
+  }
+};
