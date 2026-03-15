@@ -33,6 +33,8 @@ import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import SchoolIcon from "@mui/icons-material/School";
 import { UserProfile } from "../../../types/users";
 import { JsonViewerDialog } from "../../common-components/JsonViewerDialog";
 import { RoleAssignmentDialog } from "./RoleAssignmentDialog";
@@ -263,6 +265,25 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const handleEditPrimaryDetailsFromMenu = () => {
     if (menuUser) {
       openDialog('editPrimary', menuUser);
+    }
+  };
+
+  const handleCBPlanFromMenu = () => {
+    if (menuUser) {
+      const email = menuUser?.profileDetails?.personalDetails?.primaryEmail || '';
+      const rootOrgId = menuUser?.rootOrgId || '';
+      const name = `${menuUser?.firstName || ''} ${menuUser?.lastName || ''}`.trim();
+      navigate(`/users/cbp-plan?email=${encodeURIComponent(email)}&rootOrgId=${encodeURIComponent(rootOrgId)}&name=${encodeURIComponent(name)}&userId=${menuUser.identifier}`);
+      handleMenuClose();
+    }
+  };
+
+  const handleAssignedCAPFromMenu = () => {
+    if (menuUser) {
+      const email = menuUser?.profileDetails?.personalDetails?.primaryEmail || '';
+      const name = `${menuUser?.firstName || ''} ${menuUser?.lastName || ''}`.trim();
+      navigate(`/users/assigned-cap?email=${encodeURIComponent(email)}&userId=${menuUser.identifier}&name=${encodeURIComponent(name)}`);
+      handleMenuClose();
     }
   };
 
@@ -782,6 +803,24 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <CardMembershipIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Re-issue Certificate</ListItemText>
+          </MenuItem>
+        )}
+
+        {permissions.canWrite && (
+          <MenuItem onClick={handleCBPlanFromMenu}>
+            <ListItemIcon>
+              <AssignmentIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>CBP Plan</ListItemText>
+          </MenuItem>
+        )}
+
+        {permissions.canWrite && (
+          <MenuItem onClick={handleAssignedCAPFromMenu}>
+            <ListItemIcon>
+              <SchoolIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Assigned CAP</ListItemText>
           </MenuItem>
         )}
       </Menu>

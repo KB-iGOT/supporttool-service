@@ -765,7 +765,7 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
 };
 
 // AUTHENTICATION & TOKEN MANAGEMENT
-export const fetchAdminAccessToken = async (): Promise<string> => {
+export const fetchAdminAccessToken = async (userEmail?:string): Promise<string> => {
   logger.info(`Fetching admin access token for system admin`);
   
   try {
@@ -776,8 +776,13 @@ export const fetchAdminAccessToken = async (): Promise<string> => {
     const params = new URLSearchParams();
     params.append('client_id', 'admin-cli');
     params.append('grant_type', 'password');
-    params.append('username', process.env.ADMIN_USERNAME);
-    params.append('password', process.env.ADMIN_PASSWORD);
+    console.log("userEmail",userEmail);
+    if(userEmail){
+      params.append('username', userEmail);
+    } else {
+      params.append('username',  process.env.ADMIN_USERNAME);
+      params.append('password', process.env.ADMIN_PASSWORD);
+    }
     
     const response = await axios({
       method: "POST",
@@ -803,6 +808,101 @@ export const getAdminAccessToken: RequestHandler = async (req: any, res: Respons
     res.status(200).send({ access_token: accessToken });
   } catch (error) {
     handleApiError(error, res, "Error fetching admin access token");
+  }
+};
+
+// GET CBP PLAN
+export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
+  const { email, rootOrgId } = req.body;
+
+  if (!email || !rootOrgId) {
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "email and rootOrgId are required",
+    });
+    return;
+  }
+
+  try {
+    console.log('req.user.token', req.user);
+    const requestUserToken = await fetchAdminAccessToken(req.body.email);
+    console.log('requestUserToken', requestUserToken);
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/user/v1/cbplan`,
+      headers: {
+        ...createApiHeaders(requestUserToken),
+        "x-authenticated-user-orgid": rootOrgId,
+      },
+      params: { email },
+    });
+
+    res.status(200).send(response.data);
+  } catch (error) {
+    handleApiError(error, res, `Error fetching CBP plan for ${email}`);
+  }
+};
+
+// GET ASSIGNED CAP (Comprehensive Assessment Program)
+export const getAssignedCAP: RequestHandler = async (req: any, res: Response) => {
+  const { email, userId } = req.body;
+
+  if (!email || !userId) {
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "email and userId are required",
+    });
+    return;
+  }
+
+  try {
+    const requestUserToken = await fetchAdminAccessToken(email);
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/user/v2/assignedcourses`,
+      headers: {
+        ...createApiHeaders(requestUserToken),
+        "wid": userId,
+        "hostpath": process.env.HOST_PATH || "portal.igotkarmayogi.gov.in",
+        "rootorg": "igot",
+        "org": "dopt",
+        "locale": "en",
+      },
+      data: { courseCategory: "Comprehensive Assessment Program" },
+    });
+
+    res.status(200).send(response.data);
+  } catch (error) {
+    handleApiError(error, res, `Error fetching assigned CAP for ${email}`);
+  }
+};
+
+// GET CBP PLAN DETAILS BY ID
+export const getCBPlanDetails: RequestHandler = async (req: any, res: Response) => {
+  const { planId } = req.params;
+
+  if (!planId) {
+    res.status(400).json({
+      responseCode: "CLIENT_ERROR",
+      responseMessage: "planId is required",
+    });
+    return;
+  }
+
+  try {
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/cbplan/v2/read/${planId}`,
+      headers: {
+        ...createApiHeaders(),
+        "x-authenticated-user-token": "",
+        "x-authenticated-user-orgid": "",
+      },
+    });
+
+    res.status(200).send(response.data);
+  } catch (error) {
+    handleApiError(error, res, `Error fetching CBP plan details for ${planId}`);
   }
 };
 

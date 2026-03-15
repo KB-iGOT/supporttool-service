@@ -120,4 +120,13 @@ export const contentsService = {
       throw error;
     }
   },
+    getAccessSettings: async (identifier: string) => {
+    try {
+      const response = await apiClient.get(`/contents/access-settings/${identifier}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching access settings:", error);
+      throw error;
+    }
+  },
 };

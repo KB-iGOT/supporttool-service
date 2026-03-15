@@ -71,6 +71,16 @@ const ReissueCertificate = lazy(() =>
     default: module.ReissueCertificate,
   }))
 );
+const CBPPlanPage = lazy(() =>
+  import("../../users/cbp-plan").then((module) => ({
+    default: module.CBPlanPage,
+  }))
+);
+const AssignedCAPPage = lazy(() =>
+  import("../../users/assigned-cap").then((module) => ({
+    default: module.AssignedCAPPage,
+  }))
+);
 const Sessions = lazy(() =>
   import("../../sessions/index").then((module) => ({
     default: module.Sessions,
@@ -289,6 +299,8 @@ const LazyApp = () => {
         >
           <Route index element={<UsersList />} />
           <Route path="certificates" element={<ReissueCertificate />} />
+          <Route path="cbp-plan" element={<CBPPlanPage />} />
+          <Route path="assigned-cap" element={<AssignedCAPPage />} />
         </Route>
         <Route
           path="/sessions"
