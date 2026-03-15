@@ -1,11 +1,8 @@
 import axios from 'axios';
 import env from "../Config/env";
 import { getCookie } from '../utils';
-// Base URL (Change according to your backend server)
-const API_BASE_URL = env.apiBaseUrl;
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -13,7 +10,9 @@ const apiClient = axios.create({
 });
 
 // Use an interceptor to dynamically add the userId to every request
+// Also set baseURL here so it reads env.apiBaseUrl after window._env_ is populated
 apiClient.interceptors.request.use((config) => {
+  config.baseURL = env.apiBaseUrl;
   const userId = getCookie('userId');
   if (userId) {
     config.headers['x-user-id'] = userId;
