@@ -159,15 +159,22 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index }) => {
 
 // ------- Main Page Component -------
 
-export const AssignedCAPPage: React.FC = () => {
+interface AssignedCAPPageProps {
+  userIdProp?: string;
+  emailProp?: string;
+  userNameProp?: string;
+  embedded?: boolean;
+}
+
+export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, emailProp, userNameProp, embedded = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const moduleState = location.state;
 
   const queryParams = new URLSearchParams(location.search);
-  const email = queryParams.get('email') || '';
-  const userId = queryParams.get('userId') || '';
-  const userName = queryParams.get('name') || '';
+  const email = emailProp || queryParams.get('email') || '';
+  const userId = userIdProp || queryParams.get('userId') || '';
+  const userName = userNameProp || queryParams.get('name') || '';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,10 +239,11 @@ export const AssignedCAPPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: embedded ? 0 : 3 }}>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Header */}
+      {!embedded && (
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center">
           <IconButton
@@ -267,6 +275,7 @@ export const AssignedCAPPage: React.FC = () => {
           <Chip label={`Total Courses: ${totalCount}`} color="primary" variant="outlined" />
         )}
       </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
