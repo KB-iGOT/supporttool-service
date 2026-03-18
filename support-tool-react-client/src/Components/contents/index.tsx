@@ -9,7 +9,7 @@ import TablePagination from '@mui/material/TablePagination';
 import Paper from "@mui/material/Paper";
 import { useEffect, useState, useRef } from "react";
 import { contentsService } from "../../services/contents.service";
-import { LinearProgress, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { LinearProgress, Menu, MenuItem, ListItemIcon, ListItemText, Tab, Tabs } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -22,6 +22,7 @@ import Box from "@mui/material/Box";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
 import { Content, Facets } from "../../types/contents";
+import { OrgWiseContents } from "./OrgWiseContents";
 
 import { FormControl, TextField, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from "@mui/material";
 
@@ -53,6 +54,7 @@ export const Contents = () => {
 const location = useLocation();
 const navigate = useNavigate();
 const moduleState = location.state;
+  const [activeTab, setActiveTab] = useState(0);
   const [contents, setContents] = useState<Content[]>([]);
   const [contentsCount, setContentsCount] = useState<number>(0);
   const [facets, setFacets] = useState<Facets[]>([]);
@@ -383,26 +385,37 @@ const moduleState = location.state;
 
   return (
     <>
+      <Box display="flex" alignItems={"center"} justifyContent="space-between" mb={2}>
+        <div>
+          <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
+          <Typography variant="body2">Contents Data goes here.</Typography>
+        </div>
+        <Tooltip title="Help">
+          <IconButton 
+            color="primary" 
+            onClick={handleHelpOpen}
+            sx={{ ml: 1 }}
+          >
+            <HelpOutlineIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
+
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+          <Tab label="Content List" />
+          <Tab label="Org-Wise Contents" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 1 && <OrgWiseContents />}
+
+      {activeTab === 0 && (
+      <>
       {loading ? (
         <LinearProgress />
       ) : (
         <>
-          <Box display="flex" alignItems={"center"} justifyContent="space-between" mb={2}>
-            <div>
-              <Typography variant="h4" component="h1" sx={{ margin: 0 }}>Contents</Typography>
-              <Typography variant="body2">Contents Data goes here.</Typography>
-            </div>
-            <Tooltip title="Help">
-              <IconButton 
-                color="primary" 
-                onClick={handleHelpOpen}
-                sx={{ ml: 1 }}
-              >
-                <HelpOutlineIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
-
           <Paper sx={{ p: 3, mb: 3 }}>
             <Box display="flex" flexDirection="column" gap={2}>
               <Box display="flex" gap={2} alignItems="center">
@@ -763,6 +776,8 @@ const moduleState = location.state;
             </Alert>
           </Snackbar>
         </>
+      )}
+      </>
       )}
     </>
   );
