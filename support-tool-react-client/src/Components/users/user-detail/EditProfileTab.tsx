@@ -151,7 +151,9 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
       // Additional (read-only)
       externalSystemDor: additional.externalSystemDor || '',
       // Cadre
-      isCadre: cadre.civilServiceType ? true : (personal.isCadre === true || personal.isCadre === 'true'),
+      isCadre: personal.isCadre === false
+        ? false
+        : (personal.isCadre === true || personal.isCadre === 'true' || !!cadre.civilServiceType),
       civilServiceType: cadre.civilServiceType || '',
       civilServiceName: cadre.civilServiceName || '',
       cadreName: cadre.cadreName || '',
@@ -427,8 +429,8 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
         };
       }
 
-      // --- 1) Build the updateUser payload for personal/additional/cadre ---
-      if (personalChanged.length > 0 || cadreChanged) {
+      // --- 1) Build the updateUser payload for personal/additional ---
+      if (personalChanged.length > 0) {
         // Deep clone existing profileDetails to preserve all existing data
         const existingPD = JSON.parse(JSON.stringify((user as any).profileDetails || {}));
 
@@ -478,25 +480,6 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
           updatePayload.request.profileDetails.additionalProperties.externalSystem = f.externalSystem;
         }
 
-        // Cadre details
-        if (cadreChanged) {
-          if (f.isCadre && f.civilServiceType && f.civilServiceName) {
-            updatePayload.request.profileDetails.cadreDetails = {
-              civilServiceTypeId: selectedServiceType?.id || f.civilServiceTypeId || '',
-              civilServiceType: f.civilServiceType,
-              civilServiceId: selectedService?.id || f.civilServiceId || '',
-              civilServiceName: f.civilServiceName,
-              cadreId: selectedCadre?.id || f.cadreId || null,
-              cadreName: f.cadreName || null,
-              cadreBatch: f.cadreBatch ? Number(f.cadreBatch) : null,
-              cadreControllingAuthorityName: cadreControllingAuthority || f.cadreControllingAuthorityName || null,
-              isOnCentralDeputation: f.isOnCentralDeputation || false,
-            };
-          } else {
-            updatePayload.request.profileDetails.cadreDetails = null;
-          }
-        }
-
         // Clean up internal flags that should not be sent
         if (updatePayload.request.profileDetails?.verifiedKarmayogi) {
           delete updatePayload.request.profileDetails.verifiedKarmayogi;
@@ -519,7 +502,49 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
         }
       }
 
-      // --- 2) Professional details via updateUserExt ---
+      // --- 2) Cadre details (minimal payload) ---
+      if (cadreChanged) {
+        const cadrePayload: any = {
+          request: {
+            userId: user.identifier,
+            profileDetails: {
+              personalDetails: { isCadre: !!f.isCadre },
+            }
+          }
+        };
+
+        if (f.isCadre && f.civilServiceType && f.civilServiceName) {
+          cadrePayload.request.profileDetails.cadreDetails = {
+            civilServiceTypeId: selectedServiceType?.id || f.civilServiceTypeId || '',
+            civilServiceType: f.civilServiceType,
+            civilServiceId: selectedService?.id || f.civilServiceId || '',
+            civilServiceName: f.civilServiceName,
+            cadreId: selectedCadre?.id || f.cadreId || null,
+            cadreName: f.cadreName || null,
+            cadreBatch: f.cadreBatch ? Number(f.cadreBatch) : null,
+            cadreControllingAuthorityName: cadreControllingAuthority || f.cadreControllingAuthorityName || null,
+            isOnCentralDeputation: f.isOnCentralDeputation || false,
+          };
+        } else {
+          // Explicitly clear stale cadreDetails when disabling cadre
+          cadrePayload.request.profileDetails.cadreDetails = null;
+        }
+
+        const cadreRequest = {
+          payload: cadrePayload,
+          changedFields: changedFieldsSummary,
+          userId: user.identifier,
+          jiraLink: interceptPayload?.jiraLink || '',
+          module: moduleName || 'users',
+        };
+
+        const cadreResponse: any = await usersService.updateUser(cadreRequest);
+        if (!cadreResponse || cadreResponse.responseCode !== 'OK') {
+          throw new Error(cadreResponse?.responseMessage || 'Failed to update cadre details');
+        }
+      }
+
+      // --- 3) Professional details via updateUserExt ---
       if (professionalChanged.length > 0) {
         const existingProf = (user.profileDetails as any)?.professionalDetails?.[0] || {};
         const extPayload = {
@@ -563,6 +588,27 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
   const isModified = (key: string) => String((form as any)[key] ?? '') !== String((original as any)[key] ?? '');
   const isProcessing = saving || externalLoading;
 
+  // Keep isModified in a ref so Field's stable component reference can read the latest value
+  const isModifiedRef = React.useRef(isModified);
+  isModifiedRef.current = isModified;
+
+  // Stable Field component — same reference across renders so React reconciles instead of remounting
+  const Field = useMemo(() => {
+    const FieldComponent: React.FC<{ fieldKey: string; children: React.ReactNode; sm?: number }> = ({ fieldKey, children, sm = 6 }) => (
+      <Grid item xs={12} sm={sm}>
+        {children}
+        {isModifiedRef.current(fieldKey) && (
+          <Typography variant="caption" sx={{ color: 'warning.main', fontSize: '0.65rem', mt: 0.25, display: 'block' }}>
+            • Modified
+          </Typography>
+        )}
+      </Grid>
+    );
+    FieldComponent.displayName = 'Field';
+    return FieldComponent;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const renderReadOnlyField = (label: string, path: string) => {
     let val = getVal(user, path);
     if (val === true) val = 'Yes';
@@ -591,18 +637,6 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
       </Typography>
       <Typography variant="body2" sx={{ fontSize: '0.85rem', mt: 0.25 }}>{value || 'NA'}</Typography>
     </Box>
-  );
-
-  // Consistent field wrapper with modified indicator
-  const Field: React.FC<{ fieldKey: string; children: React.ReactNode; sm?: number }> = ({ fieldKey, children, sm = 6 }) => (
-    <Grid item xs={12} sm={sm}>
-      {children}
-      {isModified(fieldKey) && (
-        <Typography variant="caption" sx={{ color: 'warning.main', fontSize: '0.65rem', mt: 0.25, display: 'block' }}>
-          • Modified
-        </Typography>
-      )}
-    </Grid>
   );
 
   return (
@@ -822,6 +856,8 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
             </FormControl>
           </Field>
 
+          {form.isCadre && (
+            <>
           {/* Type of Civil Services */}
           {form.isCadre && (
             <Field fieldKey="civilServiceType">
@@ -915,6 +951,8 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
                 </Select>
               </FormControl>
             </Field>
+          )}
+            </>
           )}
 
           {!form.isCadre && (
