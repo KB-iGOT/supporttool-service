@@ -995,6 +995,40 @@ export const fetchGroups: RequestHandler = async (req: any, res: Response) => {
   }
 };
 
+export const fetchCadreData: RequestHandler = async (req: any, res: Response) => {
+  logger.info(`Fetching cadre configuration data`);
+  try {
+    const adminToken = await fetchAdminAccessToken();
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/data/v2/system/settings/get/cadreConfig`,
+      headers: createApiHeaders(adminToken),
+    });
+
+    logger.info(`Successfully fetched cadre configuration data`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    handleApiError(error, res, "Error fetching cadre configuration data");
+  }
+};
+
+export const fetchMasterLanguages: RequestHandler = async (req: any, res: Response) => {
+  logger.info(`Fetching master languages`);
+  try {
+    const adminToken = await fetchAdminAccessToken();
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}/api/user/profileRegistry/getMasterLanguages`,
+      headers: createApiHeaders(adminToken),
+    });
+
+    logger.info(`Successfully fetched master languages`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    handleApiError(error, res, "Error fetching master languages");
+  }
+};
+
 
 // 🚀 **Deactivate Bulk Users in DB**
 export const deactivateBulkUser: RequestHandler = async (req: any, res: any) => {

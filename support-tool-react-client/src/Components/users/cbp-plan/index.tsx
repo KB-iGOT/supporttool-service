@@ -40,6 +40,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Autocomplete from '@mui/material/Autocomplete';
 import Editor from '@monaco-editor/react';
 import { usersService } from '../../../services/users.service';
 
@@ -113,10 +114,34 @@ interface CollapsibleRowProps {
   plan: CBPlanItem;
   index: number;
   onViewDetails: (planId: string) => void;
+  onCopy: (text: string, label: string) => void;
 }
 
-const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDetails }) => {
+const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDetails, onCopy }) => {
   const [open, setOpen] = useState(false);
+  const [selectedCopyKey, setSelectedCopyKey] = useState<string>('');
+
+  // Dynamically derive all keys present across content items
+  const allContentKeys = useMemo(() => {
+    if (!plan.contentList || plan.contentList.length === 0) return [];
+    const keySet = new Set<string>();
+    plan.contentList.forEach((c) => {
+      Object.keys(c).forEach((k) => {
+        const v = c[k];
+        if (v !== null && v !== undefined && v !== '') keySet.add(k);
+      });
+    });
+    return Array.from(keySet).sort();
+  }, [plan.contentList]);
+
+  const handleCopyByKey = () => {
+    if (!selectedCopyKey || !plan.contentList) return;
+    const values = plan.contentList
+      .map((c) => c[selectedCopyKey])
+      .filter((v) => v !== null && v !== undefined && v !== '')
+      .map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v)));
+    onCopy(values.join(', '), `${selectedCopyKey} (${values.length} items)`);
+  };
 
   return (
     <>
@@ -156,9 +181,35 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 2, px: 1 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
-                Content List ({plan.contentList?.length || 0})
-              </Typography>
+              {/* Copy-all-by-key toolbar */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mr: 1 }}>
+                  Content List ({plan.contentList?.length || 0})
+                </Typography>
+                <Autocomplete
+                  size="small"
+                  sx={{ minWidth: 220 }}
+                  options={allContentKeys}
+                  value={selectedCopyKey || null}
+                  onChange={(_, newVal) => setSelectedCopyKey(newVal || '')}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Copy all by key" placeholder="Search key..." />
+                  )}
+                />
+                <Tooltip title={selectedCopyKey ? `Copy all "${selectedCopyKey}" values (${plan.contentList?.length || 0} items)` : 'Select a key first'}>
+                  <span>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ContentCopyIcon fontSize="small" />}
+                      disabled={!selectedCopyKey}
+                      onClick={handleCopyByKey}
+                    >
+                      Copy
+                    </Button>
+                  </span>
+                </Tooltip>
+              </Box>
               {plan.contentList && plan.contentList.length > 0 ? (
                 plan.contentList.map((content, cIdx) => (
                   <Card
@@ -167,9 +218,18 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
                     sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}
                   >
                     <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: 'primary.main' }}>
-                        {content.name || 'Unnamed Content'}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                          {content.name || 'Unnamed Content'}
+                        </Typography>
+                        {content.name && (
+                          <Tooltip title="Copy content name">
+                            <IconButton size="small" onClick={() => onCopy(content.name!, 'Content name')}>
+                              <ContentCopyIcon fontSize="inherit" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
                       {content.description && (
                         <Typography
                           variant="body2"
@@ -191,13 +251,25 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
                           if (value === null || value === undefined || value === '') return null;
                           return (
                             <Grid item xs={12} sm={6} key={key}>
-                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 110 }}>
                                   {label}:
                                 </Typography>
-                                <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
+                                <Typography variant="caption" sx={{ wordBreak: 'break-all', flex: 1 }}>
                                   {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                 </Typography>
+                                <Tooltip title={`Copy ${label}`}>
+                                  <IconButton
+                                    size="small"
+                                    sx={{ p: 0.25 }}
+                                    onClick={() => onCopy(
+                                      typeof value === 'object' ? JSON.stringify(value) : String(value),
+                                      label
+                                    )}
+                                  >
+                                    <ContentCopyIcon sx={{ fontSize: 12 }} />
+                                  </IconButton>
+                                </Tooltip>
                               </Box>
                             </Grid>
                           );
@@ -236,16 +308,24 @@ const PLAN_DETAIL_FIELDS: { key: string; label: string }[] = [
 
 // ------- Main Page Component -------
 
-export const CBPlanPage: React.FC = () => {
+interface CBPlanPageProps {
+  userIdProp?: string;
+  emailProp?: string;
+  rootOrgIdProp?: string;
+  userNameProp?: string;
+  embedded?: boolean;
+}
+
+export const CBPlanPage: React.FC<CBPlanPageProps> = ({ userIdProp, emailProp, rootOrgIdProp, userNameProp, embedded = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const moduleState = location.state;
 
   const queryParams = new URLSearchParams(location.search);
-  const email = queryParams.get('email') || '';
-  const rootOrgId = queryParams.get('rootOrgId') || '';
-  const userName = queryParams.get('name') || '';
-  const userId = queryParams.get('userId') || '';
+  const email = emailProp || queryParams.get('email') || '';
+  const rootOrgId = rootOrgIdProp || queryParams.get('rootOrgId') || '';
+  const userName = userNameProp || queryParams.get('name') || '';
+  const userId = userIdProp || queryParams.get('userId') || '';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -354,10 +434,11 @@ export const CBPlanPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: embedded ? 0 : 3 }}>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Header */}
+      {!embedded && (
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center">
           <IconButton
@@ -389,6 +470,7 @@ export const CBPlanPage: React.FC = () => {
           <Chip label={`Total Plans: ${totalCount}`} color="primary" variant="outlined" />
         )}
       </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -453,6 +535,7 @@ export const CBPlanPage: React.FC = () => {
                         plan={plan}
                         index={page * rowsPerPage + idx}
                         onViewDetails={handleViewDetails}
+                        onCopy={handleCopy}
                       />
                     ))}
                   </TableBody>

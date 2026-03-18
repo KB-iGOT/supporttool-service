@@ -53,15 +53,20 @@ function TabPanel(props: TabPanelProps) {
 }
 
 
-export const ReissueCertificate: React.FC = () => {
+interface ReissueCertificateProps {
+  userIdProp?: string;
+  embedded?: boolean;
+}
+
+export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdProp, embedded = false }) => {
   // Use useLocation to access query parameters
   const location = useLocation();
   const navigate = useNavigate();
   const moduleState = location.state;
   
-  // Extract userId from query parameters
+  // Extract userId from props or query parameters
   const queryParams = new URLSearchParams(location.search);
-  const userId: any = queryParams.get('userId');
+  const userId: any = userIdProp || queryParams.get('userId');
 
   // State declarations
   const [loading, setLoading] = useState(false);
@@ -666,9 +671,10 @@ export const ReissueCertificate: React.FC = () => {
   };
 
   return (   
-    <Box sx={{ padding: 3 }}>
+    <Box sx={{ padding: embedded ? 0 : 3 }}>
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       
+      {!embedded && (
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
         <Box display="flex" alignItems="center">
           <IconButton 
@@ -703,6 +709,7 @@ export const ReissueCertificate: React.FC = () => {
           )}
         </Box>
       </Box>
+      )}
       
       {/* Display top-level errors but still show the UI */}
       {error && (

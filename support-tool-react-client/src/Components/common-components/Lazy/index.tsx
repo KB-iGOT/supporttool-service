@@ -81,6 +81,11 @@ const AssignedCAPPage = lazy(() =>
     default: module.AssignedCAPPage,
   }))
 );
+const UserDetailPage = lazy(() =>
+  import("../../users/user-detail").then((module) => ({
+    default: module.UserDetailPage,
+  }))
+);
 const Sessions = lazy(() =>
   import("../../sessions/index").then((module) => ({
     default: module.Sessions,
@@ -298,6 +303,7 @@ const LazyApp = () => {
           }
         >
           <Route index element={<UsersList />} />
+          <Route path=":userId" element={<UserDetailPage />} />
           <Route path="certificates" element={<ReissueCertificate />} />
           <Route path="cbp-plan" element={<CBPPlanPage />} />
           <Route path="assigned-cap" element={<AssignedCAPPage />} />

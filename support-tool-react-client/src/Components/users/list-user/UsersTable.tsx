@@ -47,6 +47,7 @@ import { usersService } from "../../../services/users.service";
 import { AppContext } from "../../../Context/AppContext";
 import { appContextType } from "../../../types";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useActionInterceptor } from "../../../hooks/useActionInterceptor";
 
 interface UsersTableProps {
@@ -622,7 +623,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                 {users.map((row) => (
                   <TableRow
                     key={row.identifier}
-                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                    hover
+                    sx={{ 
+                      "&:last-child td, &:last-child th": { border: 0 },
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'action.hover' }
+                    }}
+                    onClick={() => navigate(`/users/${row.identifier}`, { state: { user: row, moduleState, name: moduleState?.name } })}
                   >
                     <TableCell component="th" scope="row">
                       {row.firstName} {row.lastName || ""}
@@ -660,11 +667,27 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                 </TableCell>
                     <TableCell>{row?.profileDetails?.profileStatus || "-"}</TableCell>
                     <TableCell align="right">
-                      <Tooltip title="User Actions">
+                      <Tooltip title="Open User Details">
+                        <IconButton
+                          aria-label="open-details"
+                          size="small"
+                          color="primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/users/${row.identifier}`, { state: { user: row, moduleState, name: moduleState?.name } });
+                          }}
+                        >
+                          <OpenInNewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Quick Actions">
                         <IconButton
                           aria-label="actions"
                           size="small"
-                          onClick={(event) => handleMenuOpen(event, row)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleMenuOpen(event, row);
+                          }}
                         >
                           <MoreVertIcon fontSize="small" />
                         </IconButton>

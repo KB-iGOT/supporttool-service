@@ -197,6 +197,14 @@ export const usersService = {
     const response = await apiClient.get(`/users/v1/groups`);
     return response.data;
   },
+  fetchCadreData: async () => {
+    const response = await apiClient.get(`/users/v1/cadre-config`);
+    return response.data;
+  },
+  fetchMasterLanguages: async () => {
+    const response = await apiClient.get(`/users/v1/master-languages`);
+    return response.data;
+  },
   getCBPlan: async (email: string, rootOrgId: string) => {
     try {
       const response = await apiClient.post(`/users/v1/cbplan`, { email, rootOrgId });
