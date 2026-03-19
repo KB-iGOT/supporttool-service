@@ -116,7 +116,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
   // Refs for action interceptors
   const latestFormDataRef = useRef<any>({});
-  const latestPasswordResetRef = useRef<{ userId: string; type: "email"; selectedUser?: UserProfile | null }>({ userId: "", type: "email" });
+  const latestPasswordResetRef = useRef<{ userId: string; type: "email"; selectedUser?: UserProfile | null; setLoading?: (v: boolean) => void }>({ userId: "", type: "email" });
   const passwordResetResolver = useRef<((value: string) => void) | null>(null);
 
   // Helper functions
@@ -407,11 +407,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   }, [moduleState?.name, showNotification, closeDialog, refreshData]);
 
   // Password reset functionality
-  const handlePasswordResetAction = useCallback(async (userId: string, notificationType: "email"): Promise<string> => {
+  const handlePasswordResetAction = useCallback(async (userId: string, notificationType: "email", setLoading?: (v: boolean) => void): Promise<string> => {
     latestPasswordResetRef.current = { 
       userId, 
       type: notificationType,
-      selectedUser: selectedUser // Include the selected user for reference
+      selectedUser: selectedUser, // Include the selected user for reference
+      setLoading,
     };
 
     const resetPromise = new Promise<string>((resolve) => {
@@ -430,6 +431,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
   const handlePasswordReset = useCallback(async (ticket: any, data: any): Promise<void> => {
     try {
+      data?.setLoading?.(true);
       const request = {
         payload: {
           request: {

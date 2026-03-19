@@ -580,7 +580,7 @@ export const OrgWiseContents: React.FC = () => {
                                   <TableRow>
                                     <TableCell sx={{ maxWidth: 250 }}>Name</TableCell>
                                     <TableCell sx={{ maxWidth: 150 }}>
-                                      Primary Category
+                                      Course Category
                                     </TableCell>
                                     <TableCell sx={{ maxWidth: 120 }}>
                                       Created On
@@ -624,7 +624,7 @@ export const OrgWiseContents: React.FC = () => {
                                           textOverflow: "ellipsis",
                                         }}
                                       >
-                                        {row.primaryCategory}
+                                        {row.courseCategory}
                                       </TableCell>
                                       <TableCell sx={{ maxWidth: 120 }}>
                                         {new Date(row.createdOn).toLocaleDateString()}
