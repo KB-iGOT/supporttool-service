@@ -128,7 +128,6 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
     const pd = (u as any).profileDetails || {};
     const personal = pd.personalDetails || {};
     const additional = pd.additionalProperties || {};
-    const cadre = pd.cadreDetails || {};
     const prof = pd.professionalDetails?.[0] || {};
 
     return {
@@ -136,10 +135,10 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
       firstName: u.firstName || '',
       primaryEmail: personal.primaryEmail || '',
       mobile: personal.mobile != null ? String(personal.mobile) : '',
-      gender: (u as any).gender || '',
-      dob: (u as any).dob || '',
+      gender: personal.gender || (u as any).gender || '',
+      dob: personal.dob || (u as any).dob || '',
       category: personal.category || '',
-      pinCode: personal.pinCode || '',
+      pinCode: personal.pincode || personal.pinCode || '',
       employeeCode: personal.employeeCode || '',
       domicileMedium: personal.domicileMedium || '',
       // Professional
@@ -150,19 +149,19 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
       externalSystem: additional.externalSystem || '',
       // Additional (read-only)
       externalSystemDor: additional.externalSystemDor || '',
-      // Cadre
+      // Cadre — all stored inside personalDetails in the API
       isCadre: personal.isCadre === false
         ? false
-        : (personal.isCadre === true || personal.isCadre === 'true' || !!cadre.civilServiceType),
-      civilServiceType: cadre.civilServiceType || '',
-      civilServiceName: cadre.civilServiceName || '',
-      cadreName: cadre.cadreName || '',
-      cadreBatch: cadre.cadreBatch != null ? String(cadre.cadreBatch) : '',
-      isOnCentralDeputation: cadre.isOnCentralDeputation === true,
-      civilServiceTypeId: cadre.civilServiceTypeId || '',
-      civilServiceId: cadre.civilServiceId || '',
-      cadreId: cadre.cadreId || '',
-      cadreControllingAuthorityName: cadre.cadreControllingAuthorityName || '',
+        : (personal.isCadre === true || personal.isCadre === 'true' || !!personal.typeOfCivilService),
+      civilServiceType: personal.typeOfCivilService || '',
+      civilServiceName: personal.serviceType || '',
+      cadreName: personal.cadre || '',
+      cadreBatch: personal.batch != null ? String(personal.batch) : '',
+      isOnCentralDeputation: personal.isOnCentralDeputation === true,
+      civilServiceTypeId: personal.civilServiceTypeId || '',
+      civilServiceId: personal.civilServiceId || '',
+      cadreId: personal.cadreId || '',
+      cadreControllingAuthorityName: personal.cadreControllingAuthority || '',
     };
   }, []);
 
@@ -445,7 +444,7 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
           }
         };
 
-        // Top-level user fields
+        // Top-level user fields (also mirrored inside personalDetails)
         if (f.firstName !== original.firstName) {
           updatePayload.request.firstName = f.firstName;
           updatePayload.request.profileDetails.personalDetails.firstname = f.firstName;
@@ -458,19 +457,27 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
           updatePayload.request.phone = f.mobile;
           updatePayload.request.profileDetails.personalDetails.mobile = f.mobile;
         }
-        if (f.gender !== original.gender) {
-          updatePayload.request.gender = f.gender || null;
-        }
-        if (f.dob !== original.dob) {
-          updatePayload.request.dob = f.dob || null;
-        }
+        // gender and dob — commented out
+        // if (f.gender !== original.gender) {
+        //   updatePayload.request.profileDetails.personalDetails.gender = f.gender || null;
+        // }
+        // if (f.dob !== original.dob) {
+        //   updatePayload.request.profileDetails.personalDetails.dob = f.dob || null;
+        // }
 
-        // Personal details sub-fields
-        ['category', 'pinCode', 'employeeCode', 'domicileMedium'].forEach(k => {
-          if (String(f[k] ?? '') !== String((original as any)[k] ?? '')) {
-            updatePayload.request.profileDetails.personalDetails[k] = f[k] || '';
-          }
-        });
+        // Personal details sub-fields — pincode, category, employeeCode, domicileMedium commented out
+        // if (String(f.category ?? '') !== String(original.category ?? '')) {
+        //   updatePayload.request.profileDetails.personalDetails.category = f.category || '';
+        // }
+        // if (String(f.pinCode ?? '') !== String(original.pinCode ?? '')) {
+        //   updatePayload.request.profileDetails.personalDetails.pincode = f.pinCode || '';
+        // }
+        // if (String(f.employeeCode ?? '') !== String(original.employeeCode ?? '')) {
+        //   updatePayload.request.profileDetails.personalDetails.employeeCode = f.employeeCode || '';
+        // }
+        // if (String(f.domicileMedium ?? '') !== String(original.domicileMedium ?? '')) {
+        //   updatePayload.request.profileDetails.personalDetails.domicileMedium = f.domicileMedium || '';
+        // }
 
         // Additional properties
         if (f.externalSystemId !== original.externalSystemId) {
@@ -502,33 +509,26 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
         }
       }
 
-      // --- 2) Cadre details (minimal payload) ---
+      // --- 2) Cadre details — all stored inside personalDetails as per API structure ---
       if (cadreChanged) {
+        const cadrePersonalDetails: any = {
+          isCadre: !!f.isCadre,
+          typeOfCivilService: f.isCadre ? (f.civilServiceType || null) : null,
+          serviceType: f.isCadre ? (f.civilServiceName || null) : null,
+          cadre: f.isCadre ? (f.cadreName || null) : null,
+          batch: f.isCadre && f.cadreBatch ? Number(f.cadreBatch) : null,
+          cadreControllingAuthority: f.isCadre ? (cadreControllingAuthority || null) : null,
+          isOnCentralDeputation: f.isCadre ? (f.isOnCentralDeputation || false) : false,
+        };
+
         const cadrePayload: any = {
           request: {
             userId: user.identifier,
             profileDetails: {
-              personalDetails: { isCadre: !!f.isCadre },
+              personalDetails: cadrePersonalDetails,
             }
           }
         };
-
-        if (f.isCadre && f.civilServiceType && f.civilServiceName) {
-          cadrePayload.request.profileDetails.cadreDetails = {
-            civilServiceTypeId: selectedServiceType?.id || f.civilServiceTypeId || '',
-            civilServiceType: f.civilServiceType,
-            civilServiceId: selectedService?.id || f.civilServiceId || '',
-            civilServiceName: f.civilServiceName,
-            cadreId: selectedCadre?.id || f.cadreId || null,
-            cadreName: f.cadreName || null,
-            cadreBatch: f.cadreBatch ? Number(f.cadreBatch) : null,
-            cadreControllingAuthorityName: cadreControllingAuthority || f.cadreControllingAuthorityName || null,
-            isOnCentralDeputation: f.isOnCentralDeputation || false,
-          };
-        } else {
-          // Explicitly clear stale cadreDetails when disabling cadre
-          cadrePayload.request.profileDetails.cadreDetails = null;
-        }
 
         const cadreRequest = {
           payload: cadrePayload,
@@ -698,8 +698,8 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
               sx={modifiedInputSx(isModified('primaryEmail'))} />
           </Field>
 
-          {/* Gender */}
-          <Field fieldKey="gender">
+          {/* Gender — commented out */}
+          {/* <Field fieldKey="gender">
             <FormControl fullWidth size="small" disabled={!canWrite || saving}>
               <InputLabel>Gender</InputLabel>
               <Select value={form.gender} label="Gender" onChange={e => handleChange('gender', e.target.value)}
@@ -708,20 +708,20 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
                 {GENDER_OPTIONS.map(g => <MenuItem key={g} value={g}>{g}</MenuItem>)}
               </Select>
             </FormControl>
-          </Field>
+          </Field> */}
 
-          {/* Date of Birth */}
-          <Field fieldKey="dob">
+          {/* Date of Birth — commented out */}
+          {/* <Field fieldKey="dob">
             <TextField fullWidth size="small" label="Date of Birth" type="date"
               value={form.dob} onChange={e => handleChange('dob', e.target.value)}
               InputLabelProps={{ shrink: true }}
               inputProps={{ max: new Date().toISOString().split('T')[0] }}
               disabled={!canWrite || saving}
               sx={modifiedInputSx(isModified('dob'))} />
-          </Field>
+          </Field> */}
 
-          {/* Category */}
-          <Field fieldKey="category">
+          {/* Category — commented out */}
+          {/* <Field fieldKey="category">
             <FormControl fullWidth size="small" disabled={!canWrite || saving}>
               <InputLabel>Category</InputLabel>
               <Select value={form.category} label="Category" onChange={e => handleChange('category', e.target.value)}
@@ -730,16 +730,16 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
                 {CATEGORY_OPTIONS.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
               </Select>
             </FormControl>
-          </Field>
+          </Field> */}
 
-          {/* Office Pin Code */}
-          <Field fieldKey="pinCode">
+          {/* Office Pin Code — commented out */}
+          {/* <Field fieldKey="pinCode">
             <TextField fullWidth size="small" label="Office Pin Code"
               value={form.pinCode} onChange={e => handleChange('pinCode', e.target.value)}
               inputProps={{ maxLength: 6 }}
               disabled={!canWrite || saving} error={!!errors.pinCode} helperText={errors.pinCode}
               sx={modifiedInputSx(isModified('pinCode'))} />
-          </Field>
+          </Field> */}
 
           {/* Mobile Number */}
           <Field fieldKey="mobile">
@@ -751,8 +751,8 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
               sx={modifiedInputSx(isModified('mobile'))} />
           </Field>
 
-          {/* Mother Tongue */}
-          <Field fieldKey="domicileMedium">
+          {/* Mother Tongue — commented out */}
+          {/* <Field fieldKey="domicileMedium">
             <Autocomplete
               freeSolo
               options={masterLanguages.map(l => l.name)}
@@ -767,15 +767,15 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
                   sx={modifiedInputSx(isModified('domicileMedium'))} />
               )}
             />
-          </Field>
+          </Field> */}
 
-          {/* Employee ID */}
-          <Field fieldKey="employeeCode">
+          {/* Employee ID — commented out */}
+          {/* <Field fieldKey="employeeCode">
             <TextField fullWidth size="small" label="Employee ID"
               value={form.employeeCode} onChange={e => handleChange('employeeCode', e.target.value)}
               disabled={!canWrite || saving} error={!!errors.employeeCode} helperText={errors.employeeCode}
               sx={modifiedInputSx(isModified('employeeCode'))} />
-          </Field>
+          </Field> */}
 
           {/* eHRMS ID - Read only */}
           <Grid item xs={12} sm={6}>

@@ -281,8 +281,8 @@ export const UserDetailPage: React.FC = () => {
 
   // -------------------- Password Reset --------------------
 
-  const handlePasswordResetAction = useCallback(async (userId: string, notificationType: 'email'): Promise<string> => {
-    latestPasswordResetRef.current = { userId, type: notificationType, selectedUser: userData };
+  const handlePasswordResetAction = useCallback(async (userId: string, notificationType: 'email', setLoading?: (v: boolean) => void): Promise<string> => {
+    latestPasswordResetRef.current = { userId, type: notificationType, selectedUser: userData, setLoading };
     const resetPromise = new Promise<string>((resolve) => {
       passwordResetResolver.current = resolve;
     });
@@ -298,6 +298,7 @@ export const UserDetailPage: React.FC = () => {
 
   const handlePasswordReset = useCallback(async (ticket: any, data: any) => {
     try {
+      data?.setLoading?.(true);
       const request = {
         payload: {
           request: { userId: data?.userId, key: 'test', type: data?.type }

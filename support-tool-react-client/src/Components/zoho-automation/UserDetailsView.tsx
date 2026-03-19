@@ -896,7 +896,8 @@ const UserDetailsView: React.FC<UserDetailsViewProps> = ({ ticketDetails, onUser
                     setEditingUser(null);
                 }}
                 user={editingUser as any}
-                onResetPassword={async (userId, notificationType) => {
+                onResetPassword={async (userId, notificationType, setLoading) => {
+                    setLoading(true);
                     const response = await usersService.resetPassword({
                         userId,
                         type: notificationType,

@@ -28,7 +28,7 @@ interface PasswordResetDialogProps {
   open: boolean;
   onClose: () => void;
   user: UserProfile | null;
-  onResetPassword: (userId: string, notificationType: 'email') => Promise<string>;
+  onResetPassword: (userId: string, notificationType: 'email', setLoading: (v: boolean) => void) => Promise<string>;
 }
 
 export const PasswordResetDialog: React.FC<PasswordResetDialogProps> = ({
@@ -60,12 +60,11 @@ export const PasswordResetDialog: React.FC<PasswordResetDialogProps> = ({
       return;
     }
 
-    setProcessing(true);
     setError(null);
     setResetLink(null);
 
     try {
-      const link = await onResetPassword(user.identifier, notificationType);
+      const link = await onResetPassword(user.identifier, notificationType, setProcessing);
       setResetLink(link);
     } catch (err: any) {
       console.error("Password reset error:", err);
