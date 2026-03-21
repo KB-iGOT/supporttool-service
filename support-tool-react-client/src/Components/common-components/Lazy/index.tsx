@@ -230,6 +230,12 @@ const ZohoAutomation = lazy(() =>
   }))
 );
 
+const OrgStoreUpload = lazy(() =>
+  import("../../org-store-upload").then((module) => ({
+    default: module.OrgStoreUpload,
+  }))
+);
+
 
 
 
@@ -460,6 +466,14 @@ const LazyApp = () => {
           element={
             <ProtectedRoute>
               <ZohoAutomation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/org-store-upload"
+          element={
+            <ProtectedRoute>
+              <OrgStoreUpload />
             </ProtectedRoute>
           }
         />
