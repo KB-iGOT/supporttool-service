@@ -3,6 +3,7 @@ import pool from "../config/database";
 import { RequestHandler } from "express";
 import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
+import { fetchAdminAccessToken } from "../helpers/apiHelpers";
 
 export const getList: RequestHandler = async (req: any, res: Response) => {
   try {
@@ -97,13 +98,15 @@ export const updateConfig: RequestHandler = async (
 ) => {
   console.log("Updating system settings with data:", req.body);
   try {
+    const adminToken = await fetchAdminAccessToken();
+
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}api/data/v1/system/settings/set`,
       headers: {
         "Content-Type": "application/json",
         Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.user.token.trim(),
+        "x-authenticated-user-token": adminToken,
       },
       data: req.body,
     });

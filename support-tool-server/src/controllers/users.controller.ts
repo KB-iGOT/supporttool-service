@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import { createApiHeaders, fetchAdminAccessToken } from "../helpers/apiHelpers";
 
 // Types
 interface AuditObject {
@@ -55,18 +56,7 @@ const createAuditObject = (
   jira_link: jira_link || null,
 });
 
-const createApiHeaders = (token?: string) => {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Authorization": process.env.AUTHORIZATION || "",
-  };
-  
-  if (token) {
-    headers["x-authenticated-user-token"] = token.trim();
-  }
-  
-  return headers;
-};
+// createApiHeaders and fetchAdminAccessToken are imported from ../helpers/apiHelpers
 
 const validateRequiredFields = (fields: Record<string, any>, requiredFields: string[]): string | null => {
   for (const field of requiredFields) {
@@ -765,42 +755,7 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
 };
 
 // AUTHENTICATION & TOKEN MANAGEMENT
-export const fetchAdminAccessToken = async (userEmail?:string): Promise<string> => {
-  logger.info(`Fetching admin access token for system admin`);
-  
-  try {
-    if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
-      throw new Error('Admin credentials not configured in environment variables');
-    }
-    
-    const params = new URLSearchParams();
-    params.append('client_id', 'admin-cli');
-    params.append('grant_type', 'password');
-    console.log("userEmail",userEmail);
-    if(userEmail){
-      params.append('username', userEmail);
-    } else {
-      params.append('username',  process.env.ADMIN_USERNAME);
-      params.append('password', process.env.ADMIN_PASSWORD);
-    }
-    
-    const response = await axios({
-      method: "POST",
-      url: `${process.env.KONG_API_URL}/auth/realms/sunbird/protocol/openid-connect/token`,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      data: params
-    });
-
-    logger.info(`Admin access token retrieved successfully`);
-    return response.data.access_token;
-  } catch (error) {
-    logger.error(`❌ Error fetching admin access token`);
-    logErrorDetails(error);
-    throw error;
-  }
-};
+// fetchAdminAccessToken is imported from ../helpers/apiHelpers
 
 export const getAdminAccessToken: RequestHandler = async (req: any, res: Response) => {
   try {

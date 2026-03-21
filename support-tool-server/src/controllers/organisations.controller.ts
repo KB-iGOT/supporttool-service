@@ -4,6 +4,7 @@ import axios from "axios";
 import { connectPostgres } from "../utils/postgres";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import { fetchAdminAccessToken, createApiHeaders } from "../helpers/apiHelpers";
 
 export const fetchOrganisations: RequestHandler = async (
   req: Request,
@@ -251,14 +252,12 @@ export const updateOrganisationStatus: RequestHandler = async (
   }
 
   try {
+    const adminToken = await fetchAdminAccessToken();
+
     const options = {
       method: "PATCH",
       url: `${process.env.KONG_API_URL}api/org/v1/status/update`,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: process.env.AUTHORIZATION,
-        "x-authenticated-user-token": req.user.token.trim(),
-      },
+      headers: createApiHeaders(adminToken),
       data: payload,
     };
 

@@ -634,31 +634,76 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                     onClick={() => navigate(`/users/${row.identifier}`, { state: { user: row, moduleState, name: moduleState?.name } })}
                   >
                     <TableCell component="th" scope="row">
-                      {row.firstName} {row.lastName || ""}
-                    </TableCell>
-                    <TableCell>{row.rootOrgName || "-"}</TableCell>
-                    <TableCell>
-                      {row?.profileDetails?.personalDetails?.primaryEmail ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{row.profileDetails.personalDetails.primaryEmail}</span>
-                          {searchType === 'roles' && (
-                            <Tooltip title="Copy email">
+                      {(() => {
+                        const name = `${row.firstName || ''} ${row.lastName || ''}`.trim();
+                        return name ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <span>{name}</span>
+                            <Tooltip title="Copy name">
                               <IconButton
                                 size="small"
-                                onClick={(e) => handleCopyEmail(row.profileDetails.personalDetails.primaryEmail, e)}
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(name).then(() => showNotification(`Name "${name}" copied`, 'success')).catch(() => showNotification('Failed to copy', 'error')); }}
                                 sx={{ padding: 0.5 }}
                               >
                                 <ContentCopyIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          )}
+                          </Box>
+                        ) : "-";
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {row.rootOrgName ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <span>{row.rootOrgName}</span>
+                          <Tooltip title="Copy organisation">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(row.rootOrgName).then(() => showNotification(`Organisation "${row.rootOrgName}" copied`, 'success')).catch(() => showNotification('Failed to copy', 'error')); }}
+                              sx={{ padding: 0.5 }}
+                            >
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      ) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {row?.profileDetails?.personalDetails?.primaryEmail ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <span>{row.profileDetails.personalDetails.primaryEmail}</span>
+                          <Tooltip title="Copy email">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleCopyEmail(row.profileDetails.personalDetails.primaryEmail, e)}
+                              sx={{ padding: 0.5 }}
+                            >
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
                       ) : (
                         "-"
                       )}
                     </TableCell>
                     <TableCell>
-                      {row?.profileDetails?.personalDetails?.mobile || "-"}
+                      {(() => {
+                        const mobile = row?.profileDetails?.personalDetails?.mobile;
+                        return mobile ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <span>{mobile}</span>
+                            <Tooltip title="Copy mobile">
+                              <IconButton
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(mobile).then(() => showNotification(`Mobile "${mobile}" copied`, 'success')).catch(() => showNotification('Failed to copy', 'error')); }}
+                                sx={{ padding: 0.5 }}
+                              >
+                                <ContentCopyIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        ) : "-";
+                      })()}
                     </TableCell>
                     <TableCell><Chip 
                         label={row?.status === 1 ? "Active" : "Inactive"}

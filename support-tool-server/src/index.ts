@@ -34,6 +34,7 @@ import sessionsRoutes from "./routes/sessions.routes";
 import competencyRoutes from "./routes/competency.routes";
 import TopicsRoutes from "./routes/topics.routes";
 import zohoRoutes from "./routes/zoho.routes";
+import OrgStoreUploadRoutes from "./routes/org-store-upload.routes";
 
 const app = express();
 app.use(bodyParser.json());
@@ -180,6 +181,7 @@ app.use("/api/competency", competencyRoutes);
 app.use("/api/sessions", sessionsRoutes);
 app.use("/api/topics", TopicsRoutes);
 app.use("/api/zoho", zohoRoutes);
+app.use("/api/org-store-upload", OrgStoreUploadRoutes);
 
 // Register client routes AFTER API routes (this includes the catch-all route)
 clientRoutes(app, isAuthenticated);
