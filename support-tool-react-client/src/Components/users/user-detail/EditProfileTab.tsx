@@ -129,6 +129,9 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
     const personal = pd.personalDetails || {};
     const additional = pd.additionalProperties || {};
     const prof = pd.professionalDetails?.[0] || {};
+    const cadre = pd.cadreDetails || {};
+    // Only bind cadre values if personalDetails.isCadre is not explicitly false
+    const isCadreFlag = personal.isCadre !== false && !!cadre.civilServiceType;
 
     return {
       // Personal
@@ -149,19 +152,18 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
       externalSystem: additional.externalSystem || '',
       // Additional (read-only)
       externalSystemDor: additional.externalSystemDor || '',
-      // Cadre — all stored inside personalDetails in the API
-      isCadre: personal.isCadre === false
-        ? false
-        : (personal.isCadre === true || personal.isCadre === 'true' || !!personal.typeOfCivilService),
-      civilServiceType: personal.typeOfCivilService || '',
-      civilServiceName: personal.serviceType || '',
-      cadreName: personal.cadre || '',
-      cadreBatch: personal.batch != null ? String(personal.batch) : '',
-      isOnCentralDeputation: personal.isOnCentralDeputation === true,
-      civilServiceTypeId: personal.civilServiceTypeId || '',
-      civilServiceId: personal.civilServiceId || '',
-      cadreId: personal.cadreId || '',
-      cadreControllingAuthorityName: personal.cadreControllingAuthority || '',
+      // Cadre — stored inside profileDetails.cadreDetails in the API
+      // Only populate if personalDetails.isCadre is not false
+      isCadre: isCadreFlag,
+      civilServiceType: isCadreFlag ? (cadre.civilServiceType || '') : '',
+      civilServiceName: isCadreFlag ? (cadre.civilServiceName || '') : '',
+      cadreName: isCadreFlag ? (cadre.cadreName || '') : '',
+      cadreBatch: isCadreFlag && cadre.cadreBatch != null ? String(cadre.cadreBatch) : '',
+      isOnCentralDeputation: isCadreFlag ? (cadre.isOnCentralDeputation === true) : false,
+      civilServiceTypeId: isCadreFlag ? (cadre.civilServiceTypeId || '') : '',
+      civilServiceId: isCadreFlag ? (cadre.civilServiceId || '') : '',
+      cadreId: isCadreFlag ? (cadre.cadreId || '') : '',
+      cadreControllingAuthorityName: isCadreFlag ? (cadre.cadreControllingAuthorityName || '') : '',
     };
   }, []);
 
@@ -509,23 +511,28 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
         }
       }
 
-      // --- 2) Cadre details — all stored inside personalDetails as per API structure ---
+      // --- 2) Cadre details — stored inside profileDetails.cadreDetails + personalDetails.isCadre ---
       if (cadreChanged) {
-        const cadrePersonalDetails: any = {
-          isCadre: !!f.isCadre,
-          typeOfCivilService: f.isCadre ? (f.civilServiceType || null) : null,
-          serviceType: f.isCadre ? (f.civilServiceName || null) : null,
-          cadre: f.isCadre ? (f.cadreName || null) : null,
-          batch: f.isCadre && f.cadreBatch ? Number(f.cadreBatch) : null,
-          cadreControllingAuthority: f.isCadre ? (cadreControllingAuthority || null) : null,
-          isOnCentralDeputation: f.isCadre ? (f.isOnCentralDeputation || false) : false,
-        };
+        const cadreDetailsPayload: any = f.isCadre ? {
+          civilServiceTypeId: f.civilServiceTypeId || (selectedServiceType?.id || ''),
+          civilServiceType: f.civilServiceType || null,
+          civilServiceId: f.civilServiceId || (selectedService?.id || ''),
+          civilServiceName: f.civilServiceName || null,
+          cadreId: f.cadreId || (selectedCadre?.id || ''),
+          cadreName: f.cadreName || null,
+          cadreBatch: f.cadreBatch ? Number(f.cadreBatch) : null,
+          cadreControllingAuthorityName: cadreControllingAuthority || null,
+          isOnCentralDeputation: f.isOnCentralDeputation || false,
+        } : {};
 
         const cadrePayload: any = {
           request: {
             userId: user.identifier,
             profileDetails: {
-              personalDetails: cadrePersonalDetails,
+              personalDetails: {
+                isCadre: !!f.isCadre,
+              },
+              cadreDetails: cadreDetailsPayload,
             }
           }
         };
