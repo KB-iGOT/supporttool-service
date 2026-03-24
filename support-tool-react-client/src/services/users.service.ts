@@ -231,5 +231,14 @@ export const usersService = {
       console.error("Error fetching CBP plan details:", error);
       throw error;
     }
+  },
+  getEnrollmentDetails: async (userId: string, courseIds: string[]) => {
+    try {
+      const response = await apiClient.post(`/users/enrollment/details/${userId}`, { courseIds });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching enrollment details:", error);
+      throw error;
+    }
   }
 };

@@ -22,12 +22,16 @@ import {
   Grid,
   Card,
   CardContent,
+  Button,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { usersService } from '../../../services/users.service';
+import { CourseCertificateActions } from '../../common-components/CourseCertificateActions';
 
 // ------- Types -------
 
@@ -71,15 +75,38 @@ const CONTENT_DISPLAY_FIELDS: { key: string; label: string }[] = [
   { key: 'createdOn', label: 'Created On' },
 ];
 
+// ------- Enrollment Helpers -------
+
+type EnrollStatus = 'notStarted' | 'inProgress' | 'completed';
+
+const getEnrollStatus = (status: number | null | undefined): EnrollStatus => {
+  if (status === 2) return 'completed';
+  if (status === 1) return 'inProgress';
+  return 'notStarted';
+};
+
+const STATUS_CONFIG: Record<EnrollStatus, { label: string; color: 'default' | 'warning' | 'success' }> = {
+  notStarted: { label: 'Not Started', color: 'default' },
+  inProgress: { label: 'In Progress', color: 'warning' },
+  completed: { label: 'Completed', color: 'success' },
+};
+
 // ------- Collapsible Row -------
 
 interface CollapsibleRowProps {
   content: ContentItem;
   index: number;
+  enroll: any | undefined;
+  userId: string;
+  onCopy: (text: string) => void;
 }
 
-const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index }) => {
+const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index, enroll, userId, onCopy }) => {
   const [open, setOpen] = useState(false);
+
+  const enrollStatus = getEnrollStatus(enroll?.status);
+  const statusConf = STATUS_CONFIG[enrollStatus];
+  const progress: number = enroll?.completionPercentage ?? 0;
 
   return (
     <>
@@ -113,19 +140,48 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index }) => {
         </TableCell>
         <TableCell>{content.courseCategory || '—'}</TableCell>
         <TableCell>{content.creator || '—'}</TableCell>
+        {/* Enrollment status column */}
+        <TableCell>
+          {enroll !== undefined ? (
+            <Box sx={{ minWidth: 120 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                <Chip label={statusConf.label} size="small" color={statusConf.color} />
+                <Typography variant="caption" color="text.secondary">{progress}%</Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                color={enrollStatus === 'completed' ? 'success' : enrollStatus === 'inProgress' ? 'warning' : 'inherit'}
+                sx={{ height: 4, borderRadius: 2 }}
+              />
+            </Box>
+          ) : (
+            <Typography variant="caption" color="text.secondary">—</Typography>
+          )}
+        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 2, px: 1 }}>
               <Card variant="outlined">
                 <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  {/* Certificate actions */}
+                  {enroll && (
+                    <Box sx={{ mb: 1.5 }}>
+                      <CourseCertificateActions
+                        userId={userId}
+                        courseId={enroll.courseId || content.identifier || ''}
+                        batchId={enroll.batchId || ''}
+                        courseName={content.name || ''}
+                        enrollStatus={enroll.status}
+                        issuedCertificates={enroll.issuedCertificates || []}
+                        completedOn={enroll.completedOn}
+                      />
+                    </Box>
+                  )}
                   {content.description && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1.5 }}
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                       {content.description}
                     </Typography>
                   )}
@@ -133,15 +189,21 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index }) => {
                     {CONTENT_DISPLAY_FIELDS.map(({ key, label }) => {
                       const value = content[key];
                       if (value === null || value === undefined || value === '') return null;
+                      const displayVal = typeof value === 'object' ? JSON.stringify(value) : String(value);
                       return (
                         <Grid item xs={12} sm={6} key={key}>
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 110 }}>
                               {label}:
                             </Typography>
-                            <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            <Typography variant="caption" sx={{ wordBreak: 'break-all', flex: 1 }}>
+                              {displayVal}
                             </Typography>
+                            <Tooltip title={`Copy ${label}`}>
+                              <IconButton size="small" sx={{ p: 0.25 }} onClick={() => onCopy(displayVal)}>
+                                <ContentCopyIcon sx={{ fontSize: 12 }} />
+                              </IconButton>
+                            </Tooltip>
                           </Box>
                         </Grid>
                       );
@@ -183,6 +245,14 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
+  // Enrollment state
+  const [enrollmentMap, setEnrollmentMap] = useState<Record<string, any>>({});
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<EnrollStatus | 'all'>('all');
+
+  // Clipboard snackbar (simple)
+  const [copied, setCopied] = React.useState(false);
+
   useEffect(() => {
     if (email && userId) {
       fetchAssignedCAP();
@@ -193,9 +263,27 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
     setLoading(true);
     setError(null);
     setData(null);
+    setEnrollmentMap({});
     try {
       const response = await usersService.getAssignedCAP(email, userId);
       setData(response);
+      // Fetch enrollment details for all courses
+      const courses: ContentItem[] = response?.result?.content || [];
+      const courseIds = courses.map((c: ContentItem) => c.identifier).filter(Boolean) as string[];
+      if (courseIds.length > 0 && userId) {
+        setEnrollLoading(true);
+        try {
+          const enrollResponse = await usersService.getEnrollmentDetails(userId, courseIds);
+          const enrollCourses: any[] = enrollResponse?.result?.courses || [];
+          const map: Record<string, any> = {};
+          enrollCourses.forEach((c) => { map[c.courseId] = c; });
+          setEnrollmentMap(map);
+        } catch (e) {
+          console.error('Failed to fetch enrollment details', e);
+        } finally {
+          setEnrollLoading(false);
+        }
+      }
     } catch (err: any) {
       const msg =
         err?.response?.data?.responseMessage ||
@@ -214,15 +302,34 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
 
   const totalCount: number = data?.result?.count || contentItems.length;
 
+  const statusCounts = useMemo(() => {
+    const counts = { notStarted: 0, inProgress: 0, completed: 0 };
+    contentItems.forEach((c) => {
+      const enroll = enrollmentMap[c.identifier || ''];
+      const s = getEnrollStatus(enroll?.status);
+      counts[s]++;
+    });
+    return counts;
+  }, [contentItems, enrollmentMap]);
+
   const filteredItems: ContentItem[] = useMemo(() => {
-    if (!searchQuery.trim()) return contentItems;
-    const query = searchQuery.toLowerCase().trim();
-    return contentItems.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(query) ||
-        c.identifier?.toLowerCase().includes(query)
-    );
-  }, [contentItems, searchQuery]);
+    let items = contentItems;
+    if (statusFilter !== 'all') {
+      items = items.filter((c) => {
+        const enroll = enrollmentMap[c.identifier || ''];
+        return getEnrollStatus(enroll?.status) === statusFilter;
+      });
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      items = items.filter(
+        (c) =>
+          c.name?.toLowerCase().includes(query) ||
+          c.identifier?.toLowerCase().includes(query)
+      );
+    }
+    return items;
+  }, [contentItems, searchQuery, statusFilter, enrollmentMap]);
 
   const paginatedItems = useMemo(() => {
     const start = page * rowsPerPage;
@@ -238,9 +345,16 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
     setPage(0);
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <Box sx={{ padding: embedded ? 0 : 3 }}>
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {(loading || enrollLoading) && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* Header */}
       {!embedded && (
@@ -311,11 +425,52 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
             />
           </Box>
 
+          {/* Status Filter Buttons */}
+          {Object.keys(enrollmentMap).length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Button
+                size="small"
+                variant={statusFilter === 'all' ? 'contained' : 'outlined'}
+                onClick={() => { setStatusFilter('all'); setPage(0); }}
+              >
+                All ({contentItems.length})
+              </Button>
+              <Button
+                size="small"
+                variant={statusFilter === 'notStarted' ? 'contained' : 'outlined'}
+                color="inherit"
+                onClick={() => { setStatusFilter('notStarted'); setPage(0); }}
+              >
+                Not Started ({statusCounts.notStarted})
+              </Button>
+              <Button
+                size="small"
+                variant={statusFilter === 'inProgress' ? 'contained' : 'outlined'}
+                color="warning"
+                onClick={() => { setStatusFilter('inProgress'); setPage(0); }}
+                sx={{ color: statusFilter === 'inProgress' ? 'white' : undefined }}
+              >
+                In Progress ({statusCounts.inProgress})
+              </Button>
+              <Button
+                size="small"
+                variant={statusFilter === 'completed' ? 'contained' : 'outlined'}
+                color="success"
+                onClick={() => { setStatusFilter('completed'); setPage(0); }}
+                sx={{ color: statusFilter === 'completed' ? 'white' : undefined }}
+              >
+                Completed ({statusCounts.completed})
+              </Button>
+            </Box>
+          )}
+
           {/* Table */}
           {!loading && filteredItems.length === 0 ? (
             <Alert severity="info">
               {searchQuery
                 ? 'No courses match your search.'
+                : statusFilter !== 'all'
+                ? `No ${STATUS_CONFIG[statusFilter].label} courses found.`
                 : 'No assigned CAP courses found for this user.'}
             </Alert>
           ) : (
@@ -327,9 +482,10 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
                       <TableCell width={50} />
                       <TableCell width={60}>#</TableCell>
                       <TableCell>Course Name</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell>Content Status</TableCell>
                       <TableCell>Category</TableCell>
                       <TableCell>Creator</TableCell>
+                      <TableCell>Enrollment</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -338,6 +494,9 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
                         key={content.identifier || idx}
                         content={content}
                         index={page * rowsPerPage + idx}
+                        enroll={enrollmentMap[content.identifier || '']}
+                        userId={userId}
+                        onCopy={handleCopy}
                       />
                     ))}
                   </TableBody>
@@ -355,6 +514,26 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
             </>
           )}
         </Paper>
+      )}
+
+      {/* Copy feedback */}
+      {copied && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            bgcolor: 'grey.800',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: 1,
+            fontSize: 14,
+            zIndex: 9999,
+          }}
+        >
+          Copied!
+        </Box>
       )}
     </Box>
   );
