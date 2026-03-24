@@ -861,6 +861,33 @@ export const getCBPlanDetails: RequestHandler = async (req: any, res: Response) 
   }
 };
 
+export const getEnrollmentDetails: RequestHandler = async (req: any, res: Response) => {
+  const { userId } = req.params;
+  const { courseIds } = req.body;
+
+  if (!userId) {
+    res.status(400).json({ responseCode: "CLIENT_ERROR", responseMessage: "userId is required" });
+    return;
+  }
+  if (!Array.isArray(courseIds) || courseIds.length === 0) {
+    res.status(400).json({ responseCode: "CLIENT_ERROR", responseMessage: "courseIds array is required" });
+    return;
+  }
+
+  try {
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}api/course/admin/v4/user/enrollment/details/${userId}`,
+      headers: createApiHeaders(),
+      data: { request: { retiredCoursesEnabled: true, courseId: courseIds } },
+    });
+    logger.info(`Successfully retrieved enrollment details for user: ${userId}`);
+    res.status(200).json(response.data);
+  } catch (error) {
+    handleApiError(error, res, `Error fetching enrollment details for user ${userId}`);
+  }
+};
+
 // UTILITY FUNCTIONS
 function sanitizeUserPayload(payload: any) {
   const sanitized = { ...payload };

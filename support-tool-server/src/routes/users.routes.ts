@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, fetchCadreData, fetchMasterLanguages, deactivateBulkUser, migrateBulkUser, migrateBulkUserV2, getCBPlan, getAssignedCAP, getCBPlanDetails } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, fetchCadreData, fetchMasterLanguages, deactivateBulkUser, migrateBulkUser, migrateBulkUserV2, getCBPlan, getAssignedCAP, getCBPlanDetails, getEnrollmentDetails } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -33,6 +33,7 @@ UsersRoutes.route("/v1/master-languages").get(userSession, fetchMasterLanguages)
 UsersRoutes.route("/v1/cbplan").post(userSession, getCBPlan);
 UsersRoutes.route("/v2/assigned-cap").post(userSession, getAssignedCAP);
 UsersRoutes.route("/v2/cbplan/:planId").get(userSession, getCBPlanDetails);
+UsersRoutes.route("/enrollment/details/:userId").post(userSession, getEnrollmentDetails);
 
 export default UsersRoutes ;
 

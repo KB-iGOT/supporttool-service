@@ -43,6 +43,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Autocomplete from '@mui/material/Autocomplete';
 import Editor from '@monaco-editor/react';
 import { usersService } from '../../../services/users.service';
+import { CourseCertificateActions } from '../../common-components/CourseCertificateActions';
 
 // ------- Types -------
 
@@ -108,18 +109,58 @@ const formatDate = (dateStr: string | null | undefined): string => {
   }
 };
 
+// ------- Enrollment Helpers -------
+
+type EnrollStatus = 'notStarted' | 'inProgress' | 'completed';
+
+const getEnrollStatus = (status: number | null | undefined): EnrollStatus => {
+  if (status === 2) return 'completed';
+  if (status === 1) return 'inProgress';
+  return 'notStarted';
+};
+
+const STATUS_CONFIG: Record<EnrollStatus, { label: string; color: 'default' | 'warning' | 'success' }> = {
+  notStarted: { label: 'Not Started', color: 'default' },
+  inProgress: { label: 'In Progress', color: 'warning' },
+  completed: { label: 'Completed', color: 'success' },
+};
+
 // ------- Collapsible Row -------
 
 interface CollapsibleRowProps {
   plan: CBPlanItem;
   index: number;
+  userId: string;
   onViewDetails: (planId: string) => void;
   onCopy: (text: string, label: string) => void;
 }
 
-const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDetails, onCopy }) => {
+const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, userId, onViewDetails, onCopy }) => {
   const [open, setOpen] = useState(false);
   const [selectedCopyKey, setSelectedCopyKey] = useState<string>('');
+  const [enrollmentMap, setEnrollmentMap] = useState<Record<string, any>>({});
+  const [enrollLoading, setEnrollLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<EnrollStatus | 'all'>('all');
+
+  const handleToggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && Object.keys(enrollmentMap).length === 0 && plan.contentList?.length > 0) {
+      setEnrollLoading(true);
+      try {
+        const courseIds = plan.contentList.map((c) => c.identifier).filter(Boolean) as string[];
+        const response = await usersService.getEnrollmentDetails(userId, courseIds);
+        const courses: any[] = response?.result?.courses || [];
+        const map: Record<string, any> = {};
+        courses.forEach((c) => { map[c.courseId] = c; });
+        setEnrollmentMap(map);
+      } catch (err) {
+        console.error('Failed to fetch enrollment details', err);
+      } finally {
+        setEnrollLoading(false);
+      }
+    }
+  };
 
   // Dynamically derive all keys present across content items
   const allContentKeys = useMemo(() => {
@@ -143,11 +184,29 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
     onCopy(values.join(', '), `${selectedCopyKey} (${values.length} items)`);
   };
 
+  const statusCounts = useMemo(() => {
+    const counts = { notStarted: 0, inProgress: 0, completed: 0 };
+    (plan.contentList || []).forEach((c) => {
+      const enroll = enrollmentMap[c.identifier || ''];
+      const s = getEnrollStatus(enroll?.status);
+      counts[s]++;
+    });
+    return counts;
+  }, [plan.contentList, enrollmentMap]);
+
+  const filteredContents = useMemo(() => {
+    if (statusFilter === 'all') return plan.contentList || [];
+    return (plan.contentList || []).filter((c) => {
+      const enroll = enrollmentMap[c.identifier || ''];
+      return getEnrollStatus(enroll?.status) === statusFilter;
+    });
+  }, [plan.contentList, enrollmentMap, statusFilter]);
+
   return (
     <>
       <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
         <TableCell>
-          <IconButton size="small" onClick={() => setOpen(!open)}>
+          <IconButton size="small" onClick={handleToggle}>
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
@@ -181,7 +240,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ py: 2, px: 1 }}>
-              {/* Copy-all-by-key toolbar */}
+              {/* Top toolbar: copy-by-key + status filter buttons */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, mr: 1 }}>
                   Content List ({plan.contentList?.length || 0})
@@ -196,7 +255,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
                     <TextField {...params} label="Copy all by key" placeholder="Search key..." />
                   )}
                 />
-                <Tooltip title={selectedCopyKey ? `Copy all "${selectedCopyKey}" values (${plan.contentList?.length || 0} items)` : 'Select a key first'}>
+                <Tooltip title={selectedCopyKey ? `Copy all "${selectedCopyKey}" values` : 'Select a key first'}>
                   <span>
                     <Button
                       size="small"
@@ -210,78 +269,168 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ plan, index, onViewDeta
                   </span>
                 </Tooltip>
               </Box>
-              {plan.contentList && plan.contentList.length > 0 ? (
-                plan.contentList.map((content, cIdx) => (
-                  <Card
-                    key={content.identifier || cIdx}
-                    variant="outlined"
-                    sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}
+
+              {/* Status Filter Buttons */}
+              {Object.keys(enrollmentMap).length > 0 && (
+                <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Button
+                    size="small"
+                    variant={statusFilter === 'all' ? 'contained' : 'outlined'}
+                    onClick={() => setStatusFilter('all')}
                   >
-                    <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                          {content.name || 'Unnamed Content'}
-                        </Typography>
-                        {content.name && (
-                          <Tooltip title="Copy content name">
-                            <IconButton size="small" onClick={() => onCopy(content.name!, 'Content name')}>
-                              <ContentCopyIcon fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
+                    All ({plan.contentList?.length || 0})
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={statusFilter === 'notStarted' ? 'contained' : 'outlined'}
+                    color="inherit"
+                    onClick={() => setStatusFilter('notStarted')}
+                  >
+                    Not Started ({statusCounts.notStarted})
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={statusFilter === 'inProgress' ? 'contained' : 'outlined'}
+                    color="warning"
+                    onClick={() => setStatusFilter('inProgress')}
+                    sx={{ color: statusFilter === 'inProgress' ? 'white' : undefined }}
+                  >
+                    In Progress ({statusCounts.inProgress})
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={statusFilter === 'completed' ? 'contained' : 'outlined'}
+                    color="success"
+                    onClick={() => setStatusFilter('completed')}
+                    sx={{ color: statusFilter === 'completed' ? 'white' : undefined }}
+                  >
+                    Completed ({statusCounts.completed})
+                  </Button>
+                </Box>
+              )}
+
+              {enrollLoading && <LinearProgress sx={{ mb: 2 }} />}
+
+              {filteredContents.length > 0 ? (
+                filteredContents.map((content, cIdx) => {
+                  const enroll = enrollmentMap[content.identifier || ''];
+                  const enrollStatus = getEnrollStatus(enroll?.status);
+                  const statusConf = STATUS_CONFIG[enrollStatus];
+                  const progress: number = enroll?.completionPercentage ?? 0;
+
+                  return (
+                    <Card
+                      key={content.identifier || cIdx}
+                      variant="outlined"
+                      sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}
+                    >
+                      <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                        {/* Name row + status chip + progress */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1, flexWrap: 'wrap' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                              {content.name || 'Unnamed Content'}
+                            </Typography>
+                            {content.name && (
+                              <Tooltip title="Copy content name">
+                                <IconButton size="small" onClick={() => onCopy(content.name!, 'Content name')}>
+                                  <ContentCopyIcon fontSize="inherit" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {enroll && (
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                {progress}%
+                              </Typography>
+                            )}
+                            <Chip
+                              label={statusConf.label}
+                              size="small"
+                              color={statusConf.color}
+                            />
+                          </Box>
+                        </Box>
+                        {/* Progress bar */}
+                        {enroll && (
+                          <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            color={enrollStatus === 'completed' ? 'success' : enrollStatus === 'inProgress' ? 'warning' : 'inherit'}
+                            sx={{ mb: 1, height: 4, borderRadius: 2 }}
+                          />
                         )}
-                      </Box>
-                      {content.description && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            mb: 1.5,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {content.description}
-                        </Typography>
-                      )}
-                      <Grid container spacing={1}>
-                        {CONTENT_DISPLAY_FIELDS.map(({ key, label }) => {
-                          const value = content[key];
-                          if (value === null || value === undefined || value === '') return null;
-                          return (
-                            <Grid item xs={12} sm={6} key={key}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 110 }}>
-                                  {label}:
-                                </Typography>
-                                <Typography variant="caption" sx={{ wordBreak: 'break-all', flex: 1 }}>
-                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                </Typography>
-                                <Tooltip title={`Copy ${label}`}>
-                                  <IconButton
-                                    size="small"
-                                    sx={{ p: 0.25 }}
-                                    onClick={() => onCopy(
-                                      typeof value === 'object' ? JSON.stringify(value) : String(value),
-                                      label
-                                    )}
-                                  >
-                                    <ContentCopyIcon sx={{ fontSize: 12 }} />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    </CardContent>
-                  </Card>
-                ))
+                        {/* Certificate actions */}
+                        {enroll && (
+                          <Box sx={{ mb: 1 }}>
+                            <CourseCertificateActions
+                              userId={userId}
+                              courseId={enroll.courseId || content.identifier || ''}
+                              batchId={enroll.batchId || ''}
+                              courseName={content.name || ''}
+                              enrollStatus={enroll.status}
+                              issuedCertificates={enroll.issuedCertificates || []}
+                              completedOn={enroll.completedOn}
+                              compact
+                            />
+                          </Box>
+                        )}
+                        {content.description && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              mb: 1.5,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {content.description}
+                          </Typography>
+                        )}
+                        <Grid container spacing={1}>
+                          {CONTENT_DISPLAY_FIELDS.map(({ key, label }) => {
+                            const value = content[key];
+                            if (value === null || value === undefined || value === '') return null;
+                            return (
+                              <Grid item xs={12} sm={6} key={key}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', minWidth: 110 }}>
+                                    {label}:
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ wordBreak: 'break-all', flex: 1 }}>
+                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                  </Typography>
+                                  <Tooltip title={`Copy ${label}`}>
+                                    <IconButton
+                                      size="small"
+                                      sx={{ p: 0.25 }}
+                                      onClick={() => onCopy(
+                                        typeof value === 'object' ? JSON.stringify(value) : String(value),
+                                        label
+                                      )}
+                                    >
+                                      <ContentCopyIcon sx={{ fontSize: 12 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Grid>
+                            );
+                          })}
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No content in this plan.
-                </Typography>
+                !enrollLoading && (
+                  <Typography variant="body2" color="text.secondary">
+                    {statusFilter === 'all' ? 'No content in this plan.' : `No ${STATUS_CONFIG[statusFilter].label} contents.`}
+                  </Typography>
+                )
               )}
             </Box>
           </Collapse>
@@ -534,6 +683,7 @@ export const CBPlanPage: React.FC<CBPlanPageProps> = ({ userIdProp, emailProp, r
                         key={plan.id}
                         plan={plan}
                         index={page * rowsPerPage + idx}
+                        userId={userId}
                         onViewDetails={handleViewDetails}
                         onCopy={handleCopy}
                       />

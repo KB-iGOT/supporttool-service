@@ -85,6 +85,9 @@ export const OrgWiseContents: React.FC = () => {
   // Per-org search query state
   const [orgSearchQueries, setOrgSearchQueries] = useState<{ [orgName: string]: string }>({});
 
+  // Local org list filter
+  const [orgListSearch, setOrgListSearch] = useState<string>("");
+
   // Action menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuContent, setMenuContent] = useState<Content | null>(null);
@@ -263,6 +266,7 @@ export const OrgWiseContents: React.FC = () => {
   const handleCategoryChange = (event: SelectChangeEvent<string>) => {
     const category = event.target.value;
     setSelectedCategory(category);
+    setOrgListSearch("");
     if (category) {
       fetchOrgFacets(category);
     } else {
@@ -461,6 +465,35 @@ export const OrgWiseContents: React.FC = () => {
       {/* Org-wise breakdown */}
       {selectedCategory && !loadingOrgs && orgFacets.length > 0 && (
         <TableContainer component={Paper}>
+          {/* Local search for organisations */}
+          <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <TextField
+              size="small"
+              placeholder="Search organisations..."
+              value={orgListSearch}
+              onChange={(e) => setOrgListSearch(e.target.value)}
+              sx={{ width: 360 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+                endAdornment: orgListSearch ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setOrgListSearch("")}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
+            />
+            {orgListSearch && (
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                {orgFacets.filter((o) => o.name.toLowerCase().includes(orgListSearch.toLowerCase())).length} of {orgFacets.length} organisations
+              </Typography>
+            )}
+          </Box>
           <Table>
             <TableHead>
               <TableRow>
@@ -474,7 +507,11 @@ export const OrgWiseContents: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {orgFacets.map((org) => (
+              {orgFacets
+                .filter((org) =>
+                  !orgListSearch || org.name.toLowerCase().includes(orgListSearch.toLowerCase())
+                )
+                .map((org) => (
                 <React.Fragment key={org.name}>
                   {/* Org summary row */}
                   <TableRow
