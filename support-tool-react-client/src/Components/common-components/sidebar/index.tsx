@@ -26,6 +26,7 @@ import {
   List as MasterDesignationsIcon,
   DashboardCustomize as ModuleDashboardIcon,
   Topic as TopicsIcon,
+  PlaylistPlay as PlaylistIcon,
 } from '@mui/icons-material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Module } from "../../../types";
@@ -90,6 +91,7 @@ const ICONS: { [key: string]: React.ElementType } = {
   'bulk-upload': CloudUploadIcon,
   'user-certificates': CardMembershipIcon,
   topics: TopicsIcon,
+  playlist: PlaylistIcon,
   default: DashboardIcon,
 };
 
