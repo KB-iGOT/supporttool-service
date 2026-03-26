@@ -236,8 +236,11 @@ const OrgStoreUpload = lazy(() =>
   }))
 );
 
-
-
+const PlaylistPage = lazy(() =>
+  import("../../playlist/Playlists").then((module) => ({
+    default: module.Playlists,
+  }))
+);
 
 const LazyApp = () => {
   return (
@@ -474,6 +477,14 @@ const LazyApp = () => {
           element={
             <ProtectedRoute>
               <OrgStoreUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/playlist"
+          element={
+            <ProtectedRoute>
+              <PlaylistPage />
             </ProtectedRoute>
           }
         />
