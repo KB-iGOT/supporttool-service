@@ -56,9 +56,10 @@ function TabPanel(props: TabPanelProps) {
 interface ReissueCertificateProps {
   userIdProp?: string;
   embedded?: boolean;
+  canWrite?: boolean;
 }
 
-export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdProp, embedded = false }) => {
+export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdProp, embedded = false, canWrite = true }) => {
   // Use useLocation to access query parameters
   const location = useLocation();
   const navigate = useNavigate();
@@ -759,6 +760,7 @@ export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdPr
             handleContentPageChange={handleContentPageChange}
             handleOpenContentDetailsDialog={handleOpenContentDetailsDialog}
             handleContentRowsPerPageChange={handleContentRowsPerPageChange}
+            canWrite={canWrite}
           />
         </TabPanel>
         
@@ -776,6 +778,7 @@ export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdPr
             handleOpenCertificateDialog={handleOpenCertificateDialog}
             handleEventPageChange={handleEventPageChange}
             handleEventRowsPerPageChange={handleEventRowsPerPageChange}
+            canWrite={canWrite}
           />
         </TabPanel>
       </Paper>

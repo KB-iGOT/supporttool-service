@@ -472,14 +472,14 @@ export const UserDetailPage: React.FC = () => {
           }}
         >
           <Tab icon={<VisibilityIcon />} iconPosition="start" label="Overview" />
-          <Tab icon={<EditIcon />} iconPosition="start" label="Edit Profile" disabled={isBlocked || !canWrite} />
-          <Tab icon={<PersonIcon />} iconPosition="start" label="Roles" disabled={isBlocked || !canWrite} />
-          <Tab icon={<LockResetIcon />} iconPosition="start" label="Password" disabled={isBlocked || !canWrite} />
-          <Tab icon={<CompareArrowsIcon />} iconPosition="start" label="Migration" disabled={isBlocked || !canWrite} />
-          <Tab icon={isActive ? <BlockIcon /> : <LockOpenIcon />} iconPosition="start" label={isActive ? 'Block' : 'Unblock'} disabled={!canWrite} />
-          <Tab icon={<CardMembershipIcon />} iconPosition="start" label="Certificates" disabled={isBlocked || !canWrite} />
-          <Tab icon={<AssignmentIcon />} iconPosition="start" label="CBP Plan" disabled={!canWrite} />
-          <Tab icon={<SchoolIcon />} iconPosition="start" label="Assigned CAP" disabled={!canWrite} />
+          <Tab icon={<EditIcon />} iconPosition="start" label="Edit Profile" disabled={isBlocked} />
+          <Tab icon={<PersonIcon />} iconPosition="start" label="Roles" disabled={isBlocked} />
+          <Tab icon={<LockResetIcon />} iconPosition="start" label="Password" disabled={isBlocked} />
+          <Tab icon={<CompareArrowsIcon />} iconPosition="start" label="Migration" disabled={isBlocked} />
+          <Tab icon={isActive ? <BlockIcon /> : <LockOpenIcon />} iconPosition="start" label={isActive ? 'Block' : 'Unblock'} />
+          <Tab icon={<CardMembershipIcon />} iconPosition="start" label="Certificates" disabled={isBlocked} />
+          <Tab icon={<AssignmentIcon />} iconPosition="start" label="CBP Plan" />
+          <Tab icon={<SchoolIcon />} iconPosition="start" label="Assigned CAP" />
           <Tab icon={<ManageSearchIcon />} iconPosition="start" label="Content Access" />
         </Tabs>
       </Paper>
@@ -490,7 +490,7 @@ export const UserDetailPage: React.FC = () => {
       <TabPanel value={activeTab} index={0}>
         <Card variant="outlined">
           <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>  
               <Typography variant="h6">User Profile Overview</Typography>
               <Box display="flex" gap={1}>
                 <Button variant="outlined" size="small" startIcon={<VisibilityIcon />} onClick={() => setViewJsonDialogOpen(true)}>
@@ -702,7 +702,7 @@ export const UserDetailPage: React.FC = () => {
 
       {/* Certificates */}
       <TabPanel value={activeTab} index={6}>
-        <ReissueCertificate userIdProp={userId} embedded />
+        <ReissueCertificate userIdProp={userId} embedded canWrite={canWrite} />
       </TabPanel>
 
       {/* CBP Plan */}
