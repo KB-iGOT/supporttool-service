@@ -120,6 +120,7 @@ export interface ContentTableProps {
   handleContentPageChange: (event: unknown, newPage: number) => void;
   handleContentRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleOpenContentDetailsDialog: (enrollment: ContentEnrollment) => void;
+  canWrite?: boolean;
 }
 
 export interface EventsTableProps {
@@ -134,6 +135,7 @@ export interface EventsTableProps {
   handleOpenCertificateDialog: (certId: string) => void;
   handleEventPageChange: (event: unknown, newPage: number) => void;
   handleEventRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  canWrite?: boolean;
 }
 
 export interface ReissueDialogProps {

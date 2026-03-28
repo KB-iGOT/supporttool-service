@@ -31,6 +31,7 @@ interface CollapsibleRowProps {
   handleOpenReissueDialog: (enrollment: ContentEnrollment) => void;
   handleOpenCertificateDialog: (certId: string) => void;
   handleOpenContentDetailsDialog: (enrollment: ContentEnrollment) => void;
+  canWrite?: boolean;
 }
 
 const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
@@ -39,7 +40,8 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
   getStatusLabel,
   handleOpenReissueDialog,
   handleOpenCertificateDialog,
-  handleOpenContentDetailsDialog
+  handleOpenContentDetailsDialog,
+  canWrite = true
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -105,7 +107,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 size="small"
                 startIcon={<DownloadIcon />}
                 onClick={() => handleOpenReissueDialog(enrollment)}
-                disabled={enrollment.status !== 2}
+                disabled={enrollment.status !== 2 || !canWrite}
               >
                 Re-issue
               </Button>
@@ -125,7 +127,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 size="small"
                 startIcon={<DownloadIcon />}
                 onClick={() => handleOpenReissueDialog(enrollment)}
-                disabled={enrollment.status !== 2}
+                disabled={enrollment.status !== 2 || !canWrite}
               >
                 Re-issue
               </Button>
@@ -193,7 +195,8 @@ export const ContentTable: React.FC<ContentTableProps> = ({
   handleOpenCertificateDialog,
   handleContentPageChange,
   handleContentRowsPerPageChange,
-  handleOpenContentDetailsDialog
+  handleOpenContentDetailsDialog,
+  canWrite = true
 }) => {
   if (contentEnrollments.length === 0) {
     return (
@@ -236,6 +239,7 @@ export const ContentTable: React.FC<ContentTableProps> = ({
                   handleOpenReissueDialog={handleOpenReissueDialog}
                   handleOpenCertificateDialog={handleOpenCertificateDialog}
                   handleOpenContentDetailsDialog={handleOpenContentDetailsDialog}
+                  canWrite={canWrite}
                 />
               ))}
           </TableBody>

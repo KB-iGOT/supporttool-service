@@ -29,6 +29,7 @@ interface CollapsibleEventRowProps {
   getStatusLabel: (status: number) => string;
   handleOpenReissueDialog: (event: EventEnrollment) => void;
   handleOpenCertificateDialog: (certId: string) => void;
+  canWrite?: boolean;
 }
 
 const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
@@ -36,7 +37,8 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
   formatDate,
   getStatusLabel,
   handleOpenReissueDialog,
-  handleOpenCertificateDialog
+  handleOpenCertificateDialog,
+  canWrite = true
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -102,7 +104,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
-                disabled={event.status !== 2}
+                disabled={event.status !== 2 || !canWrite}
                 onClick={() => handleOpenReissueDialog(event)}
               >
                 Re-issue
@@ -113,7 +115,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
               variant="outlined"
               size="small"
               startIcon={<DownloadIcon />}
-              disabled={event.status !== 2}
+              disabled={event.status !== 2 || !canWrite}
               onClick={() => handleOpenReissueDialog(event)}
             >
               Re-issue
@@ -193,7 +195,8 @@ export const EventsTable: React.FC<EventsTableProps> = ({
   handleOpenReissueDialog,
   handleOpenCertificateDialog,
   handleEventPageChange,
-  handleEventRowsPerPageChange
+  handleEventRowsPerPageChange,
+  canWrite = true
 }) => {
   if (eventEnrollments.length === 0) {
     return (
@@ -235,6 +238,7 @@ export const EventsTable: React.FC<EventsTableProps> = ({
                   getStatusLabel={getStatusLabel}
                   handleOpenReissueDialog={handleOpenReissueDialog}
                   handleOpenCertificateDialog={handleOpenCertificateDialog}
+                  canWrite={canWrite}
                 />
               ))}
           </TableBody>
