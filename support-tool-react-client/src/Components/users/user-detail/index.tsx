@@ -41,6 +41,7 @@ import { AssignedCAPPage } from '../assigned-cap';
 import { UserSummaryCard } from './UserSummaryCard';
 import { EditProfileTab } from  './EditProfileTab';
 import { ContentAccessTab } from './ContentAccessTab';
+import { UserProfileOverview } from './UserProfileOverview';
 
 // -------------------- Constants --------------------
 
@@ -488,126 +489,12 @@ export const UserDetailPage: React.FC = () => {
 
       {/* Overview */}
       <TabPanel value={activeTab} index={0}>
-        <Card variant="outlined">
-          <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>  
-              <Typography variant="h6">User Profile Overview</Typography>
-              <Box display="flex" gap={1}>
-                <Button variant="outlined" size="small" startIcon={<VisibilityIcon />} onClick={() => setViewJsonDialogOpen(true)}>
-                  View Raw JSON
-                </Button>
-                {isNotMyUser && canWrite && (
-                  <Button
-                    variant="outlined"
-                    color="warning"
-                    size="small"
-                    startIcon={<AssignmentTurnedInIcon />}
-                    onClick={() => setStatusUpdateDialogOpen(true)}
-                  >
-                    Reassign User
-                  </Button>
-                )}
-              </Box>
-            </Box>
-            <Typography variant="body2" color="text.secondary" mb={2}>
-              Complete profile information for this user.
-            </Typography>
-
-            {/* Basic Information */}
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 1 }}>Basic Information</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 3 }}>
-              <InfoRow label="Full Name" value={userName} />
-              <InfoRow label="Email" value={userEmail} />
-              <InfoRow label="Phone" value={userData?.profileDetails?.personalDetails?.mobile || '-'} />
-              <InfoRow label="Username" value={userData?.userName || '-'} />
-              <InfoRow label="Gender" value={(userData as any)?.gender || '-'} />
-              <InfoRow label="Date of Birth" value={(userData as any)?.dob || '-'} />
-              <InfoRow label="Category" value={(userData as any)?.profileDetails?.personalDetails?.category || '-'} />
-              <InfoRow label="Mother Tongue" value={(userData as any)?.profileDetails?.personalDetails?.domicileMedium || '-'} />
-            </Box>
-
-            <Divider sx={{ mb: 2 }} />
-
-            {/* Organization & Professional */}
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Organization & Professional</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 3 }}>
-              <InfoRow label="Organization" value={userData?.rootOrgName || '-'} />
-              <InfoRow label="Channel" value={userData?.channel || '-'} />
-              <InfoRow label="Department" value={(userData as any)?.profileDetails?.employmentDetails?.departmentName || '-'} />
-              <InfoRow label="Group" value={(userData as any)?.profileDetails?.professionalDetails?.[0]?.group || '-'} />
-              <InfoRow label="Designation" value={(userData as any)?.profileDetails?.professionalDetails?.[0]?.designation || '-'} />
-              <InfoRow label="Employee ID" value={(userData as any)?.profileDetails?.personalDetails?.employeeCode || '-'} />
-              <InfoRow label="Office Pin Code" value={(userData as any)?.profileDetails?.personalDetails?.pinCode || '-'} />
-              <InfoRow label="User Type" value={userData?.profileUserType?.type || '-'} />
-            </Box>
-
-            <Divider sx={{ mb: 2 }} />
-
-            {/* Status & Verification */}
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Status & Verification</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 3 }}>
-              <InfoRow label="User Status" value={isActive ? 'Active' : 'Inactive'} />
-              <InfoRow label="Profile Status" value={userData?.profileDetails?.profileStatus || '-'} />
-              <InfoRow label="Profile Group Status" value={(userData as any)?.profileDetails?.profileGroupStatus || '-'} />
-              <InfoRow label="Profile Designation Status" value={(userData as any)?.profileDetails?.profileDesignationStatus || '-'} />
-              <InfoRow label="Email Verified" value={userData?.emailVerified ? 'Yes' : 'No'} />
-              <InfoRow label="Phone Verified" value={userData?.phoneVerified ? 'Yes' : 'No'} />
-              <InfoRow label="Created Date" value={userData?.createdDate ? new Date(userData.createdDate).toLocaleString() : '-'} />
-              <InfoRow label="Last Login" value={userData?.lastLoginTime ? new Date(userData.lastLoginTime).toLocaleString() : '-'} />
-            </Box>
-
-            <Divider sx={{ mb: 2 }} />
-
-            {/* System / External IDs */}
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>System & External IDs</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 3 }}>
-              <InfoRow label="Root Org ID" value={userData?.rootOrgId || '-'} />
-              <InfoRow label="External System" value={(userData as any)?.profileDetails?.additionalProperties?.externalSystem || '-'} />
-              <InfoRow label="External System ID" value={(userData as any)?.profileDetails?.additionalProperties?.externalSystemId || '-'} />
-              <InfoRow label="Date of Retirement" value={(userData as any)?.profileDetails?.additionalProperties?.externalSystemDor || '-'} />
-            </Box>
-
-            {/* Cadre Details (if present) */}
-            {(userData as any)?.profileDetails?.cadreDetails?.civilServiceType && (
-              <>
-                <Divider sx={{ mb: 2 }} />
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Cadre / Civil Service Details</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr', lg: '1fr 1fr 1fr 1fr' }, gap: 2, mb: 3 }}>
-                  <InfoRow label="Type of Civil Service" value={(userData as any)?.profileDetails?.cadreDetails?.civilServiceType || '-'} />
-                  <InfoRow label="Service" value={(userData as any)?.profileDetails?.cadreDetails?.civilServiceName || '-'} />
-                  <InfoRow label="Cadre" value={(userData as any)?.profileDetails?.cadreDetails?.cadreName || '-'} />
-                  <InfoRow label="Batch" value={(userData as any)?.profileDetails?.cadreDetails?.cadreBatch != null ? String((userData as any).profileDetails.cadreDetails.cadreBatch) : '-'} />
-                  <InfoRow label="Controlling Authority" value={(userData as any)?.profileDetails?.cadreDetails?.cadreControllingAuthorityName || '-'} />
-                  <InfoRow label="Central Deputation" value={(userData as any)?.profileDetails?.cadreDetails?.isOnCentralDeputation ? 'Yes' : 'No'} />
-                </Box>
-              </>
-            )}
-
-            <Divider sx={{ mb: 2 }} />
-
-            {/* Roles */}
-            <Box mb={2}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>Roles</Typography>
-              <Box display="flex" flexWrap="wrap" gap={0.5}>
-                {(userData?.organisations?.[0]?.roles || userData?.roles || []).map((role: string) => (
-                  <Chip key={role} label={role} size="small" />
-                ))}
-              </Box>
-            </Box>
-
-            {/* Organizations */}
-            {userData?.organisations && userData.organisations.length > 0 && (
-              <Box mb={1}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Organizations</Typography>
-                <Box display="flex" flexWrap="wrap" gap={0.5}>
-                  {userData.organisations.map((org) => (
-                    <Chip key={org.organisationId} label={`${org.orgName} (${org.organisationId})`} size="small" sx={{ mb: 0.5 }} />
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+        <UserProfileOverview
+          user={userData}
+          canWrite={canWrite}
+          onViewRawJson={() => setViewJsonDialogOpen(true)}
+          onReassignUser={() => setStatusUpdateDialogOpen(true)}
+        />
       </TabPanel>
 
       {/* Edit Profile (merged Edit Details + Primary Details) */}
