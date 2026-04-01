@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { RequestHandler } from "express";
-import { cassandraClient } from "../utils/cassandra";
+import { cassandraFormClient } from "../utils/cassandra";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
 
@@ -200,9 +200,9 @@ export const getFacetsForms: RequestHandler = async (
 
     try {
         // Use qmzbm_form_service keyspace and query to select all form data fields
-        const query = "SELECT root_org, framework, type, subtype, action, component FROM qmzbm_form_service.form_data";
+        const query = "SELECT root_org, framework, type, subtype, action, component FROM form_data";
 
-        const result = await cassandraClient.execute(query, [], { prepare: true });
+        const result = await cassandraFormClient.execute(query, [], { prepare: true });
 
         if (!result || !result.rows || result.rows.length === 0) {
             logger.warn("No form data found in Cassandra (qmzbm_form_service.form_data)");
@@ -270,7 +270,7 @@ export const getFormRead: RequestHandler = async (
 
         // Build query with WHERE clauses for all parameters
         const query = `
-            SELECT * FROM qmzbm_form_service.form_data 
+            SELECT * FROM form_data 
             WHERE type = ? 
             AND subtype = ? 
             AND action = ? 
@@ -283,7 +283,7 @@ export const getFormRead: RequestHandler = async (
         const params = [type, subtype, action, root_org, component, framework];
 
         // Execute the query with prepared statement
-        const result = await cassandraClient.execute(query, params, { prepare: true });
+        const result = await cassandraFormClient.execute(query, params, { prepare: true });
 
         if (!result || !result.rows || result.rows.length === 0) {
             logger.warn(`No form data found matching the specified criteria`);
@@ -364,7 +364,7 @@ export const createFormData: RequestHandler = async (
 
         // Check if a form with the same parameters already exists
         const checkQuery = `
-            SELECT * FROM qmzbm_form_service.form_data 
+            SELECT * FROM form_data 
             WHERE type = ? 
             AND subtype = ? 
             AND action = ? 
@@ -374,7 +374,7 @@ export const createFormData: RequestHandler = async (
         `;
 
         const checkParams = [type, subtype, action, root_org, component, framework];
-        const checkResult = await cassandraClient.execute(checkQuery, checkParams, { prepare: true });
+        const checkResult = await cassandraFormClient.execute(checkQuery, checkParams, { prepare: true });
 
         if (checkResult.rows && checkResult.rows.length > 0) {
             logger.warn(`Form with the specified parameters already exists. Use update endpoint instead.`);
@@ -390,7 +390,7 @@ export const createFormData: RequestHandler = async (
 
         // Prepare the insert query
         const insertQuery = `
-            INSERT INTO qmzbm_form_service.form_data (
+            INSERT INTO form_data (
                 type, 
                 subtype, 
                 action, 
@@ -421,7 +421,7 @@ export const createFormData: RequestHandler = async (
         logger.info(`Creating new form data with parameters: type=${type}, subtype=${subtype}, action=${action}, root_org=${root_org}, component=${component}, framework=${framework}`);
 
         // Execute the insert query
-        await cassandraClient.execute(insertQuery, insertParams, { prepare: true });
+        await cassandraFormClient.execute(insertQuery, insertParams, { prepare: true });
 
         logger.info(`Successfully created new form data`);
 
@@ -507,7 +507,7 @@ export const updateFormData: RequestHandler = async (
         
         // First, fetch the existing form data to track changes
         const fetchQuery = `
-            SELECT * FROM qmzbm_form_service.form_data 
+            SELECT * FROM form_data 
             WHERE type = ? 
             AND subtype = ? 
             AND action = ? 
@@ -517,7 +517,7 @@ export const updateFormData: RequestHandler = async (
         `;
         
         const fetchParams = [type, subtype, action, root_org, component, framework];
-        const fetchResult = await cassandraClient.execute(fetchQuery, fetchParams, { prepare: true });
+        const fetchResult = await cassandraFormClient.execute(fetchQuery, fetchParams, { prepare: true });
         
         // If no form exists with these parameters, return an error
         if (!fetchResult.rows || fetchResult.rows.length === 0) {
@@ -592,7 +592,7 @@ export const updateFormData: RequestHandler = async (
         
         // Prepare the update query - only update the data field, preserve other fields
         const updateQuery = `
-            UPDATE qmzbm_form_service.form_data 
+            UPDATE form_data 
             SET data = ?
             WHERE type = ? 
             AND subtype = ? 
@@ -616,7 +616,7 @@ export const updateFormData: RequestHandler = async (
         logger.info(`Updating form data with parameters: type=${type}, subtype=${subtype}, action=${action}, root_org=${root_org}, component=${component}, framework=${framework}`);
         
         // Execute the update query
-        await cassandraClient.execute(updateQuery, updateParams, { prepare: true });
+        await cassandraFormClient.execute(updateQuery, updateParams, { prepare: true });
         
         logger.info(`Successfully updated form data`);
         
@@ -723,7 +723,7 @@ export const deleteFormData: RequestHandler = async (
         
         // First, fetch the existing form data to track what's being deleted
         const fetchQuery = `
-            SELECT * FROM qmzbm_form_service.form_data 
+            SELECT * FROM form_data 
             WHERE type = ? 
             AND subtype = ? 
             AND action = ? 
@@ -733,7 +733,7 @@ export const deleteFormData: RequestHandler = async (
         `;
         
         const fetchParams = [type, subtype, action, root_org, component, framework];
-        const fetchResult = await cassandraClient.execute(fetchQuery, fetchParams, { prepare: true });
+        const fetchResult = await cassandraFormClient.execute(fetchQuery, fetchParams, { prepare: true });
         
         // If no form exists with these parameters, return an error
         if (!fetchResult.rows || fetchResult.rows.length === 0) {
@@ -762,7 +762,7 @@ export const deleteFormData: RequestHandler = async (
         
         // Prepare the delete query
         const deleteQuery = `
-            DELETE FROM qmzbm_form_service.form_data 
+            DELETE FROM form_data 
             WHERE type = ? 
             AND subtype = ? 
             AND action = ? 
@@ -777,7 +777,7 @@ export const deleteFormData: RequestHandler = async (
         logger.info(`Deleting form data with parameters: type=${type}, subtype=${subtype}, action=${action}, root_org=${root_org}, component=${component}, framework=${framework}`);
         
         // Execute the delete query
-        await cassandraClient.execute(deleteQuery, deleteParams, { prepare: true });
+        await cassandraFormClient.execute(deleteQuery, deleteParams, { prepare: true });
         
         logger.info(`Successfully deleted form data`);
         
@@ -859,9 +859,9 @@ export const getFacetsFormsbackup: RequestHandler = async (
 
     try {
         // Use qmzbm_form_service keyspace and query to select all form data fields
-        const query = "SELECT root_org, framework, type, subtype, action, component FROM qmzbm_form_service.form_data";
+        const query = "SELECT root_org, framework, type, subtype, action, component FROM form_data";
 
-        const result = await cassandraClient.execute(query, [], { prepare: true });
+        const result = await cassandraFormClient.execute(query, [], { prepare: true });
 
         if (!result || !result.rows || result.rows.length === 0) {
             logger.warn("No form data found in Cassandra (qmzbm_form_service.form_data)");
