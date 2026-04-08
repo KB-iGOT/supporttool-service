@@ -1,6 +1,7 @@
 import axios from 'axios';
 import env from "../Config/env";
 import { getCookie } from '../utils';
+import { getStoredClientIp } from '../utils/ipUtils';
 
 const apiClient = axios.create({
   headers: {
@@ -9,13 +10,17 @@ const apiClient = axios.create({
   withCredentials: true, // <-- This enables cookies to be set from cross-origin responses
 });
 
-// Use an interceptor to dynamically add the userId to every request
+// Use an interceptor to dynamically add the userId and client IP to every request
 // Also set baseURL here so it reads env.apiBaseUrl after window._env_ is populated
 apiClient.interceptors.request.use((config) => {
   config.baseURL = env.apiBaseUrl;
   const userId = getCookie('userId');
   if (userId) {
     config.headers['x-user-id'] = userId;
+  }
+  const ip = getStoredClientIp();
+  if (ip) {
+    config.headers['x-client-ip'] = ip;
   }
   return config;
 }, (error) => {

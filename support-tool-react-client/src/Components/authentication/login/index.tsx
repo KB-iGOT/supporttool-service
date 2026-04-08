@@ -9,6 +9,7 @@ import { authService } from "../../../services/authentication.service";
 import { useNavigate } from "react-router-dom";
 import { appContextType } from "../../../types";
 import { AppContext } from "../../../Context/AppContext";
+import { storeClientIp } from "../../../utils/ipUtils";
 import Grid from "@mui/material/Grid";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
@@ -61,6 +62,9 @@ export const Login: React.FC = () => {
       if (response && response.status === 200) {
         const userSessionData = response.data;
         localStorage.setItem("userId", userSessionData.id);
+        if (userSessionData.clientIp) {
+          storeClientIp(userSessionData.clientIp);
+        }
         setUser(userSessionData);
         if (userSessionData && userSessionData.rolePermissions) {
           const permissionsMap: Record<string, any> = {};

@@ -10,6 +10,7 @@ import { ActionPayload, appContextType, IUserConfig, Module } from '../types/ind
 import { decodeCookie, getCookie } from '../utils';
 import { authService } from '../services/authentication.service';
 import { checkModulePermission } from './../utils/permissionUtils';
+import { storeClientIp, clearStoredClientIp } from '../utils/ipUtils';
 
 export const AppContext = createContext<appContextType | undefined>(
   undefined,
@@ -74,6 +75,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
       const response = await authService.getCurrentUserSession();
       if (response && response.data) {
         const userSessionData = response.data;
+        if (userSessionData.clientIp) {
+          storeClientIp(userSessionData.clientIp);
+        }
         if (userSessionData && userSessionData.rolePermissions) {
           userSessionData['userId'] = userSessionData.id ||''
           const permissionsMap: Record<string, any> = {};
@@ -95,6 +99,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   const updateIsLoggedIn = (value: boolean) => {
     setIsLoggedIn(value);
     localStorage.setItem('isLoggedIn', JSON.stringify(value));
+    if (!value) {
+      clearStoredClientIp();
+    }
   };
 
   useEffect(() => {

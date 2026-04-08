@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 export const fetchFramework: RequestHandler = async (
   req: any,
@@ -63,6 +64,7 @@ export const updateTerm: RequestHandler = async (req: any, res: Response) => {
     status: "PENDING",
     message: `Attempting to update term: ${termId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -119,6 +121,7 @@ export const publishFramework: RequestHandler = async (req: any, res: Response) 
     status: "PENDING",
     message: `Attempting to publish framework: ${frameworkId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -218,6 +221,7 @@ export const updateTermV2: RequestHandler = async (req: any, res: Response) => {
       status: "PENDING",
       message: `Attempting to update term v2: ${termId}`,
       jira_link: jiraLink,
+      ip_address: getClientIp(req),
     };
 
     // 6. Call the update API

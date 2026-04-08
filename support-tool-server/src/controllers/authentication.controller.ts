@@ -1,6 +1,7 @@
 import request from "request";
 import pool from "../config/database";
 import logger from "../utils/logger";
+import getClientIp from "../helpers/getClientIp";
 
 // Helper function to check if URL is valid
 const isValidUrl = (string: string) => {
@@ -275,7 +276,7 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
     res.status(200).send({
       status: 200,
       message: "User authenticated successfully",
-      data: cookieSafeData,
+      data: { ...cookieSafeData, clientIp: getClientIp(req) },
     });
   } catch (error: any) {
     logger.error("Authentication error: " + error.message);
@@ -323,7 +324,7 @@ export const getCurrentUserSession = async (req: any, res: any) => {
         delete userSessionData.token;
       }
       logger.info(`Found active session for user: ${userSessionData.userName} `);
-      res.status(200).send({ status: 200, data: userSessionData });
+      res.status(200).send({ status: 200, data: { ...userSessionData, clientIp: getClientIp(req) } });
     } else {
       logger.warn(`No active session found for user ID: ${userId}`);
       res.status(401).send({ status: 401, message: "Unauthorized: No active session" });
