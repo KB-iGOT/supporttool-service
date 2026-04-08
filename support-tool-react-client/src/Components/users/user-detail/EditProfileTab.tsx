@@ -230,8 +230,9 @@ export const EditProfileTab: React.FC<EditProfileTabProps> = ({
     (async () => {
       setLanguagesLoading(true);
       try {
-        const resp = await usersService.fetchMasterLanguages();
-        setMasterLanguages(resp?.languages || resp?.result?.languages || []);
+        setMasterLanguages([])
+        // const resp = await usersService.fetchMasterLanguages();
+        // setMasterLanguages(resp?.languages || resp?.result?.languages || []);
       } catch { setMasterLanguages([]); }
       finally { setLanguagesLoading(false); }
     })();
