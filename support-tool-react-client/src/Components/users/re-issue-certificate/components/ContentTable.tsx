@@ -107,7 +107,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 size="small"
                 startIcon={<DownloadIcon />}
                 onClick={() => handleOpenReissueDialog(enrollment)}
-                disabled={enrollment.status !== 2 || !canWrite}
+                disabled={enrollment.status !== 2 && !enrollment?.completedOn || !canWrite}
               >
                 Re-issue
               </Button>
@@ -127,7 +127,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 size="small"
                 startIcon={<DownloadIcon />}
                 onClick={() => handleOpenReissueDialog(enrollment)}
-                disabled={enrollment.status !== 2 || !canWrite}
+                disabled={enrollment.status !== 2 && !enrollment?.completedOn || !canWrite}
               >
                 Re-issue
               </Button>
