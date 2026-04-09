@@ -104,7 +104,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
-                disabled={event.status !== 2 || !canWrite}
+                disabled={event.status !== 2 && !event?.completedOn || !canWrite}
                 onClick={() => handleOpenReissueDialog(event)}
               >
                 Re-issue
@@ -115,7 +115,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
               variant="outlined"
               size="small"
               startIcon={<DownloadIcon />}
-              disabled={event.status !== 2 || !canWrite}
+              disabled={event.status !== 2 && !event?.completedOn || !canWrite}
               onClick={() => handleOpenReissueDialog(event)}
             >
               Re-issue
