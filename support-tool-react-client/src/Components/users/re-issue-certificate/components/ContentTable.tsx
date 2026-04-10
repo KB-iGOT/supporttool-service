@@ -102,7 +102,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
               >
                 View Certificate
               </Button>
-              <Button
+              {/* <Button
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
@@ -110,7 +110,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 disabled={enrollment.status !== 2 && !enrollment?.completedOn || !canWrite}
               >
                 Re-issue
-              </Button>
+              </Button> */}
               <Tooltip title="View Full Details">
                 <IconButton
                   color="secondary"
@@ -122,7 +122,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
             </Box>
           ) : (
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button
+              {/* <Button
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon />}
@@ -130,7 +130,7 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
                 disabled={enrollment.status !== 2 && !enrollment?.completedOn || !canWrite}
               >
                 Re-issue
-              </Button>
+              </Button> */}
               <Tooltip title="View Full Details">
                 <IconButton
                   color="secondary"
