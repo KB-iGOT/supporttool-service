@@ -89,7 +89,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
           )}
         </TableCell>
         <TableCell>
-          {event.issuedCertificates && event.issuedCertificates.length > 0 ? (
+          {/* {event.issuedCertificates && event.issuedCertificates.length > 0 ? (
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 variant="outlined"
@@ -120,7 +120,7 @@ const CollapsibleEventRow: React.FC<CollapsibleEventRowProps> = ({
             >
               Re-issue
             </Button>
-          )}
+          )} */}
         </TableCell>
       </TableRow>
       <TableRow>
