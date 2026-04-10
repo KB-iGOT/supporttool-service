@@ -10,7 +10,7 @@ import { ActionPayload, appContextType, IUserConfig, Module } from '../types/ind
 import { decodeCookie, getCookie } from '../utils';
 import { authService } from '../services/authentication.service';
 import { checkModulePermission } from './../utils/permissionUtils';
-import { storeClientIp, clearStoredClientIp } from '../utils/ipUtils';
+import { getClientIp, storeClientIp, clearStoredClientIp } from '../services/ip-detection.service';
 
 export const AppContext = createContext<appContextType | undefined>(
   undefined,
@@ -72,12 +72,20 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
     try {
+      // Ensure we have a valid client IP detected
+      const detectedIp = await getClientIp();
+      
       const response = await authService.getCurrentUserSession();
       if (response && response.data) {
         const userSessionData = response.data;
-        if (userSessionData.clientIp) {
+        
+        // Use detected IP if available, otherwise use server-provided IP if valid
+        if (detectedIp) {
+          storeClientIp(detectedIp);
+        } else if (userSessionData.clientIp && userSessionData.clientIp !== '::1' && userSessionData.clientIp !== '127.0.0.1') {
           storeClientIp(userSessionData.clientIp);
         }
+        
         if (userSessionData && userSessionData.rolePermissions) {
           userSessionData['userId'] = userSessionData.id ||''
           const permissionsMap: Record<string, any> = {};

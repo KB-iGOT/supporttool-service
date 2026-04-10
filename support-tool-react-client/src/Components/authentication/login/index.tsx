@@ -9,7 +9,7 @@ import { authService } from "../../../services/authentication.service";
 import { useNavigate } from "react-router-dom";
 import { appContextType } from "../../../types";
 import { AppContext } from "../../../Context/AppContext";
-import { storeClientIp } from "../../../utils/ipUtils";
+import { getClientIp, storeClientIp } from "../../../services/ip-detection.service";
 import Grid from "@mui/material/Grid";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
@@ -54,6 +54,16 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Step 1: Detect and cache the client IP before authentication
+      console.log("Detecting client IP address...");
+      const detectedIp = await getClientIp();
+      if (detectedIp) {
+        console.log("Client IP detected:", detectedIp);
+      } else {
+        console.warn("Could not detect client IP, will use server-provided IP");
+      }
+
+      // Step 2: Authenticate with credentials
       const response = await authService.auth({ 
         username: fields.username, 
         password: fields.password 
@@ -62,9 +72,14 @@ export const Login: React.FC = () => {
       if (response && response.status === 200) {
         const userSessionData = response.data;
         localStorage.setItem("userId", userSessionData.id);
-        if (userSessionData.clientIp) {
+        
+        // Step 3: Use detected IP if available, otherwise use server-provided IP
+        if (detectedIp) {
+          storeClientIp(detectedIp);
+        } else if (userSessionData.clientIp && userSessionData.clientIp !== '::1' && userSessionData.clientIp !== '127.0.0.1') {
           storeClientIp(userSessionData.clientIp);
         }
+        
         setUser(userSessionData);
         if (userSessionData && userSessionData.rolePermissions) {
           const permissionsMap: Record<string, any> = {};

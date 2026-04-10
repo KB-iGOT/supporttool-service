@@ -1,7 +1,7 @@
 import axios from 'axios';
 import env from "../Config/env";
 import { getCookie } from '../utils';
-import { getStoredClientIp } from '../utils/ipUtils';
+import { getStoredClientIp } from '../services/ip-detection.service';
 
 const apiClient = axios.create({
   headers: {
