@@ -1,7 +1,5 @@
 import { Request, Response } from "express";
-import pool from "../config/database";
 import { RequestHandler } from "express";
-import { userSession } from "../helpers/authHelper";
 import axios from "axios"; // Use axios instead of request (which is deprecated)
 import { fetchAdminAccessToken } from "../helpers/apiHelpers";
 

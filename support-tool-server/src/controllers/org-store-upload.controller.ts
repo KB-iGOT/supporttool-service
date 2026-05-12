@@ -105,10 +105,9 @@ export const getTokenForUser: RequestHandler = async (req: any, res: Response) =
 
     // 1. Get admin access token from Keycloak master realm
     const adminTokenParams = new URLSearchParams();
-    adminTokenParams.append("client_id", "admin-cli");
-    adminTokenParams.append("grant_type", "password");
-    adminTokenParams.append("username", process.env.ADMIN_USERNAME || "");
-    adminTokenParams.append("password", process.env.ADMIN_PASSWORD || "");
+    adminTokenParams.append("client_id", process.env.ADMIN_CLIENT_ID!);
+    adminTokenParams.append("grant_type", process.env.ADMIN_GRANT_TYPE!);
+    adminTokenParams.append("client_secret", process.env.ADMIN_CLIENT_SECRET!);
 
     const adminTokenRes = await axios.post(
       `${base}/auth/realms/master/protocol/openid-connect/token`,

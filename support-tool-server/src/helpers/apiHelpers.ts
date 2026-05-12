@@ -27,20 +27,14 @@ export const fetchAdminAccessToken = async (userEmail?: string): Promise<string>
   logger.info(`Fetching admin access token${userEmail ? ` for user: ${userEmail}` : " for system admin"}`);
 
   try {
-    if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+    if (!process.env.ADMIN_CLIENT_ID || !process.env.ADMIN_GRANT_TYPE || !process.env.ADMIN_CLIENT_SECRET) {
       throw new Error("Admin credentials not configured in environment variables");
     }
 
     const params = new URLSearchParams();
-    params.append("client_id", "admin-cli");
-    params.append("grant_type", "password");
-
-    if (userEmail) {
-      params.append("username", userEmail);
-    } else {
-      params.append("username", process.env.ADMIN_USERNAME);
-      params.append("password", process.env.ADMIN_PASSWORD);
-    }
+    params.append("client_id", process.env.ADMIN_CLIENT_ID);
+    params.append("grant_type", process.env.ADMIN_GRANT_TYPE);
+    params.append("client_secret", process.env.ADMIN_CLIENT_SECRET);
 
     const response = await axios({
       method: "POST",
