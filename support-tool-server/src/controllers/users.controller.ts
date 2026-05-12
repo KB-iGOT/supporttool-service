@@ -784,7 +784,7 @@ export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
     console.log('requestUserToken', requestUserToken);
     const response = await axios({
       method: "GET",
-      url: `${process.env.KONG_API_URL}/api/user/v1/cbplan`,
+      url: `${process.env.KONG_API_URL}/api/supportportal/cbplan/v2/admin/user/list/${req.user.user_id}`,
       headers: {
         ...createApiHeaders(requestUserToken),
         "x-authenticated-user-orgid": rootOrgId,
@@ -814,7 +814,7 @@ export const getAssignedCAP: RequestHandler = async (req: any, res: Response) =>
     const requestUserToken = await fetchAdminAccessToken(email);
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/user/v2/assignedcourses`,
+      url: `${process.env.KONG_API_URL}/api/supportportal/admin/user/v2/assignedcourses/${userId}`,
       headers: {
         ...createApiHeaders(requestUserToken),
         "wid": userId,
