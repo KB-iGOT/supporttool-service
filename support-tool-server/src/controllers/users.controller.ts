@@ -768,12 +768,12 @@ export const getAdminAccessToken: RequestHandler = async (req: any, res: Respons
 
 // GET CBP PLAN
 export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
-  const { email, rootOrgId } = req.body;
+  const { email, userId, rootOrgId } = req.body;
 
-  if (!email || !rootOrgId) {
+  if (!email || !userId || !rootOrgId) {
     res.status(400).json({
       responseCode: "CLIENT_ERROR",
-      responseMessage: "email and rootOrgId are required",
+      responseMessage: "email, userId and rootOrgId are required",
     });
     return;
   }
@@ -784,12 +784,11 @@ export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
     console.log('requestUserToken', requestUserToken);
     const response = await axios({
       method: "GET",
-      url: `${process.env.KONG_API_URL}/api/supportportal/cbplan/v2/admin/user/list/${req.user.user_id}`,
+      url: `${process.env.KONG_API_URL}/api/supportportal/cbplan/v2/admin/user/list/${userId}`,
       headers: {
         ...createApiHeaders(requestUserToken),
         "x-authenticated-user-orgid": rootOrgId,
       },
-      params: { email },
     });
 
     res.status(200).send(response.data);
