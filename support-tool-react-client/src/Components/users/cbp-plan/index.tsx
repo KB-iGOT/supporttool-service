@@ -492,17 +492,17 @@ export const CBPlanPage: React.FC<CBPlanPageProps> = ({ userIdProp, emailProp, r
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
-    if (email && rootOrgId) {
+    if (userId && rootOrgId) {
       fetchCBPlan();
     }
-  }, [email, rootOrgId]);
+  }, [userId, rootOrgId]);
 
   const fetchCBPlan = async () => {
     setLoading(true);
     setError(null);
     setData(null);
     try {
-      const response = await usersService.getCBPlan(email, rootOrgId);
+      const response = await usersService.getCBPlan(userId, rootOrgId);
       setData(response);
     } catch (err: any) {
       const msg =
@@ -569,7 +569,7 @@ export const CBPlanPage: React.FC<CBPlanPageProps> = ({ userIdProp, emailProp, r
     }
   };
 
-  const handleCloseDrawer = () => {
+  const handleCloseDrawer = () => { 
     setDrawerOpen(false);
     setPlanDetails(null);
     setDrawerError(null);

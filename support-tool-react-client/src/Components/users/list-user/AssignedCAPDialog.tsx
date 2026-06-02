@@ -61,11 +61,12 @@ export const AssignedCAPDialog: React.FC<AssignedCAPDialogProps> = ({ open, onCl
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
 
-  const email = user?.profileDetails?.personalDetails?.primaryEmail || '';
-  const userId = user?.identifier || '';
+  const email = user?.profileDetails?.personalDetails?.primaryEmail || user?.email || '';
+  const userId = user?.userId || user?.identifier || user?.id || '';
+  const rootOrgId = user?.rootOrgId || '';
 
   useEffect(() => {
-    if (open && email && userId) {
+    if (open && userId) {
       fetchAssignedCAP();
     }
     if (!open) {
@@ -82,7 +83,7 @@ export const AssignedCAPDialog: React.FC<AssignedCAPDialogProps> = ({ open, onCl
     setError(null);
     setData(null);
     try {
-      const response = await usersService.getAssignedCAP(email, userId);
+      const response = await usersService.getAssignedCAP(userId, rootOrgId);
       setData(response);
     } catch (err: any) {
       const msg =

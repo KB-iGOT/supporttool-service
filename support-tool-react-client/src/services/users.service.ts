@@ -205,18 +205,18 @@ export const usersService = {
     const response = await apiClient.get(`/users/v1/master-languages`);
     return response.data;
   },
-  getCBPlan: async (email: string, rootOrgId: string) => {
+  getCBPlan: async (userId: string, rootOrgId: string) => {
     try {
-      const response = await apiClient.post(`/users/v1/cbplan`, { email, rootOrgId });
+      const response = await apiClient.post(`/users/v1/cbplan`, { userId, rootOrgId });
       return response.data;
     } catch (error) {
       console.error("Error fetching CBP plan:", error);
       throw error;
     }
   },
-  getAssignedCAP: async (email: string, userId: string) => {
+  getAssignedCAP: async (userId: string, rootOrgId: string) => {
     try {
-      const response = await apiClient.post(`/users/v2/assigned-cap`, { email, userId });
+      const response = await apiClient.post(`/users/v2/assigned-cap`, { userId, rootOrgId });
       return response.data;
     } catch (error) {
       console.error("Error fetching assigned CAP:", error);

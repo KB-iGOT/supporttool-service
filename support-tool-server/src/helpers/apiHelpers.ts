@@ -24,7 +24,6 @@ export const createApiHeaders = (token?: string): Record<string, string> => {
  * When omitted the configured ADMIN_USERNAME / ADMIN_PASSWORD credentials are used.
  */
 export const fetchAdminAccessToken = async (userEmail?: string): Promise<string> => {
-  logger.info(`Fetching admin access token${userEmail ? ` for user: ${userEmail}` : " for system admin"}`);
 
   try {
     if (!process.env.ADMIN_CLIENT_ID || !process.env.ADMIN_GRANT_TYPE || !process.env.ADMIN_CLIENT_SECRET) {

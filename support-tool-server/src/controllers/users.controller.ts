@@ -768,19 +768,19 @@ export const getAdminAccessToken: RequestHandler = async (req: any, res: Respons
 
 // GET CBP PLAN
 export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
-  const { email, userId, rootOrgId } = req.body;
+  const { userId, rootOrgId } = req.body;
 
-  if (!email || !userId || !rootOrgId) {
+  if (!rootOrgId) {
     res.status(400).json({
       responseCode: "CLIENT_ERROR",
-      responseMessage: "email, userId and rootOrgId are required",
+      responseMessage: "rootOrgId are required",
     });
     return;
   }
-
+  
   try {
     console.log('req.user.token', req.user);
-    const requestUserToken = await fetchAdminAccessToken(req.body.email);
+    const requestUserToken = await fetchAdminAccessToken();
     console.log('requestUserToken', requestUserToken);
     const response = await axios({
       method: "GET",
@@ -793,41 +793,37 @@ export const getCBPlan: RequestHandler = async (req: any, res: Response) => {
 
     res.status(200).send(response.data);
   } catch (error) {
-    handleApiError(error, res, `Error fetching CBP plan for ${email}`);
+    handleApiError(error, res, `Error fetching CBP plan for ${rootOrgId}`);
   }
 };
 
 // GET ASSIGNED CAP (Comprehensive Assessment Program)
 export const getAssignedCAP: RequestHandler = async (req: any, res: Response) => {
-  const { email, userId } = req.body;
+  const { userId, rootOrgId } = req.body;
 
-  if (!email || !userId) {
+  if (!rootOrgId) {
     res.status(400).json({
       responseCode: "CLIENT_ERROR",
-      responseMessage: "email and userId are required",
+      responseMessage: "rootOrgId are required",
     });
     return;
   }
 
   try {
-    const requestUserToken = await fetchAdminAccessToken(email);
+    const requestUserToken = await fetchAdminAccessToken();
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/supportportal/admin/user/v2/assignedcourses/${userId}`,
       headers: {
         ...createApiHeaders(requestUserToken),
-        "wid": userId,
-        "hostpath": process.env.HOST_PATH || "portal.igotkarmayogi.gov.in",
-        "rootorg": "igot",
-        "org": "dopt",
-        "locale": "en",
+        "x-authenticated-user-orgid": rootOrgId,
       },
       data: { courseCategory: "Comprehensive Assessment Program" },
     });
 
     res.status(200).send(response.data);
   } catch (error) {
-    handleApiError(error, res, `Error fetching assigned CAP for ${email}`);
+    handleApiError(error, res, `Error fetching assigned CAP for ${userId}`);
   }
 };
 
