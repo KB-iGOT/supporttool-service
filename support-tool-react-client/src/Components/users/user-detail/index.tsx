@@ -609,6 +609,7 @@ export const UserDetailPage: React.FC = () => {
           userIdProp={userId}
           emailProp={userEmail}
           userNameProp={userName}
+          rootOrgIdProp={rootOrgId}
           embedded
         />
       </TabPanel>

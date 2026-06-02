@@ -224,11 +224,12 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({ content, index, enroll,
 interface AssignedCAPPageProps {
   userIdProp?: string;
   emailProp?: string;
+  rootOrgIdProp?: string;
   userNameProp?: string;
   embedded?: boolean;
 }
 
-export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, emailProp, userNameProp, embedded = false }) => {
+export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, emailProp, rootOrgIdProp, userNameProp, embedded = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const moduleState = location.state;
@@ -237,6 +238,8 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
   const email = emailProp || queryParams.get('email') || '';
   const userId = userIdProp || queryParams.get('userId') || '';
   const userName = userNameProp || queryParams.get('name') || '';
+  const rootOrgId = rootOrgIdProp || queryParams.get('rootOrgId') || '';
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -254,10 +257,10 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
   const [copied, setCopied] = React.useState(false);
 
   useEffect(() => {
-    if (email && userId) {
+    if (userId) {
       fetchAssignedCAP();
     }
-  }, [email, userId]);
+  }, [userId]);
 
   const fetchAssignedCAP = async () => {
     setLoading(true);
@@ -265,7 +268,7 @@ export const AssignedCAPPage: React.FC<AssignedCAPPageProps> = ({ userIdProp, em
     setData(null);
     setEnrollmentMap({});
     try {
-      const response = await usersService.getAssignedCAP(email, userId);
+      const response = await usersService.getAssignedCAP(userId, rootOrgId);
       setData(response);
       // Fetch enrollment details for all courses
       const courses: ContentItem[] = response?.result?.content || [];

@@ -67,11 +67,12 @@ export const CBPlanDialog: React.FC<CBPlanDialogProps> = ({ open, onClose, user 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
 
+  const userId = user?.userId || user?.id || '';
   const email = user?.profileDetails?.personalDetails?.primaryEmail || '';
   const rootOrgId = user?.rootOrgId || '';
 
   useEffect(() => {
-    if (open && email && rootOrgId) {
+    if (open && userId && rootOrgId) {
       fetchCBPlan();
     }
     if (!open) {
@@ -88,7 +89,7 @@ export const CBPlanDialog: React.FC<CBPlanDialogProps> = ({ open, onClose, user 
     setError(null);
     setData(null);
     try {
-      const response = await usersService.getCBPlan(email, rootOrgId);
+      const response = await usersService.getCBPlan(userId, rootOrgId);
       setData(response);
     } catch (err: any) {
       const msg =
