@@ -26,14 +26,27 @@ export const createApiHeaders = (token?: string): Record<string, string> => {
 export const fetchAdminAccessToken = async (userEmail?: string): Promise<string> => {
 
   try {
-    if (!process.env.ADMIN_CLIENT_ID || !process.env.ADMIN_GRANT_TYPE || !process.env.ADMIN_CLIENT_SECRET) {
+    if (!process.env.ADMIN_CLIENT_ID || !process.env.ADMIN_CLIENT_SECRET) {
       throw new Error("Admin credentials not configured in environment variables");
     }
 
     const params = new URLSearchParams();
     params.append("client_id", process.env.ADMIN_CLIENT_ID);
-    params.append("grant_type", process.env.ADMIN_GRANT_TYPE);
     params.append("client_secret", process.env.ADMIN_CLIENT_SECRET);
+
+    const adminUsername = process.env.ADMIN_USERNAME?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (adminUsername && adminPassword) {
+      params.append("grant_type", "password");
+      params.append("username", adminUsername);
+      params.append("password", adminPassword);
+    } else {
+      if (!process.env.ADMIN_GRANT_TYPE) {
+        throw new Error("Admin grant type not configured in environment variables");
+      }
+      params.append("grant_type", process.env.ADMIN_GRANT_TYPE);
+    }
 
     const response = await axios({
       method: "POST",
