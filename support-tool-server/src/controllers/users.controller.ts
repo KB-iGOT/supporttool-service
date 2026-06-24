@@ -355,7 +355,7 @@ export const assignUserRoles: RequestHandler = async (req: any, res: Response): 
   try {
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/user/private/v1/assign/role`,
+      url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
       headers: createApiHeaders(),
       data: req.body
     });
@@ -405,7 +405,7 @@ export const updateUserRoles: RequestHandler = async (req: any, res: Response): 
   try {
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/user/private/v1/assign/role`,
+      url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
       headers: createApiHeaders(),
       data: payload
     });
