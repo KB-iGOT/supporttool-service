@@ -406,7 +406,7 @@ export const updateUserRoles: RequestHandler = async (req: any, res: Response): 
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
-      headers: createApiHeaders(),
+      headers: createApiHeaders(req.user.token),
       data: payload
     });
 

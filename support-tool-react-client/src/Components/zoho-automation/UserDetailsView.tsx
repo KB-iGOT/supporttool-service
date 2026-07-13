@@ -916,15 +916,20 @@ const UserDetailsView: React.FC<UserDetailsViewProps> = ({ ticketDetails, onUser
                 }}
                 user={editingUser as any}
                 onRoleAssign={async (userId, orgId, roles, initialRoles) => {
-                    await usersService.modifyUserRoles({
-                        userId,
-                        organisationId: orgId,
-                        roles,
-                        initialRoles,
-                        jiraLink: getZohoTicketUrl(),
-                    });
-                    setToast({ message: 'Roles updated successfully', open: true, severity: 'success' });
-                    searchUsers();
+                    try {
+                        await usersService.modifyUserRoles({
+                            userId,
+                            organisationId: orgId,
+                            roles,
+                            initialRoles,
+                            jiraLink: getZohoTicketUrl(),
+                        });
+                        setToast({ message: 'Roles updated successfully', open: true, severity: 'success' });
+                        searchUsers();
+                    } catch (err: any) {
+                        const message = err?.response?.data?.error?.params?.errmsg || err?.response?.data?.responseMessage || 'Failed to update roles';
+                        setToast({ message, open: true, severity: 'error' });
+                    }
                 }}
             />
 

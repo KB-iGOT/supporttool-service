@@ -346,9 +346,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       closeDialog('role');
       showNotification('User roles updated successfully', 'success');
       refreshData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error assigning roles:", error);
-      showNotification('Failed to update user roles', 'error');
+      const message = error?.response?.data?.error?.params?.errmsg || error?.response?.data?.responseMessage || 'Failed to update user roles';
+      showNotification(message, 'error');
       throw error;
     }
   }, [moduleState?.name, closeDialog, showNotification, refreshData]);

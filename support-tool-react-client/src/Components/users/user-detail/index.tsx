@@ -234,9 +234,10 @@ export const UserDetailPage: React.FC = () => {
       setRoleDialogOpen(false);
       showToast('User roles updated successfully', 'success');
       fetchUser();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error assigning roles:', error);
-      showToast('Failed to update user roles', 'error');
+      const message = error?.response?.data?.error?.params?.errmsg || error?.response?.data?.responseMessage || 'Failed to update user roles';
+      showToast(message, 'error');
     }
   }, [moduleState?.name]);
 
