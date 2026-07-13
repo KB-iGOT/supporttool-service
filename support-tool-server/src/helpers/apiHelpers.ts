@@ -6,6 +6,7 @@ import logger from "../utils/logger";
  * If a token is provided it is set as x-authenticated-user-token.
  */
 export const createApiHeaders = (token?: string): Record<string, string> => {
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Authorization": process.env.AUTHORIZATION || "",
