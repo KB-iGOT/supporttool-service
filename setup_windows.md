@@ -134,10 +134,10 @@ DB_PORT=5432
 PORT=5001
 
 #qa ENV sample
-AUTHORIZATION="bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ5RVZPODkwNHZzV0pMdWhxanN6aVFLeEVZTFdZZ0MwSiJ9.0l5-vg_d_IHtNPfhp6l4OM-dmAG8azpV2amxDYLu110"
-KONG_API_URL="https://portal.qa.karmayogibharat.net/"
+AUTHORIZATION="Bearer <your-jwt-token>"
+KONG_API_URL="https://portal.<env>.karmayogibharat.net/"
 KEYCLOAK_CLIENT_ID=support_igot
-KEYCLOAK_CLIENT_SECRET=zaxVH4YfYIwoRdV7AKDoIglcnCPTAJIA
+KEYCLOAK_CLIENT_SECRET=<your-client-secret>
 
 
 HOST=http://localhost
@@ -172,10 +172,10 @@ SB_API_KEY=AUTHORIZATION
 
 
 #QA ENV sample
-ADMIN_USERNAME="tarentoadmin"
-ADMIN_PASSWORD="Admin@1234"
+ADMIN_USERNAME="<your-admin-username>"
+ADMIN_PASSWORD="<your-admin-password>"
 ADMIN_CLIENT_ID="igot-support-admin"
-ADMIN_CLIENT_SECRET="a6439425-52a3-4e94-9242-2b5ad9775ac6"
+ADMIN_CLIENT_SECRET="<your-admin-client-secret>"
 ADMIN_GRANT_TYPE="client_credentials"
 
 
