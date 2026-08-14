@@ -4,6 +4,7 @@ import axios from "axios";
 import { connectPostgres } from "../utils/postgres";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 import { fetchAdminAccessToken, createApiHeaders } from "../helpers/apiHelpers";
 
 export const fetchOrganisations: RequestHandler = async (
@@ -226,7 +227,7 @@ export const updateOrganisationStatus: RequestHandler = async (
     request_payload: payload,
     modified_payload: changedFields,
     response_payload: null as string | null,
-    ip_address: null as string | null,
+    ip_address: getClientIp(req),
     user_agent: null as string | null,
     status: null as string | null,
     message: null as string | null,

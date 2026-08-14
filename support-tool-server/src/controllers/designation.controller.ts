@@ -3,6 +3,7 @@ import axios from "axios";
 import FormData from "form-data";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 export const searchDesignations: RequestHandler = async (
   req: any,
@@ -148,6 +149,7 @@ export const createDesignation: RequestHandler = async (
     status: 'PENDING',
     message: `Attempting to create designation term: ${requestPayload.name}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -221,6 +223,7 @@ export const uploadDesignations: RequestHandler = async (
     status: 'PENDING',
     message: `Attempting to upload master designations from file: ${file.originalname}`,
     jira_link: auditData.jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -274,6 +277,7 @@ export const createMasterDesignation: RequestHandler = async (
     status: 'PENDING',
     message: `Attempting to create master designation: ${requestPayload.designation}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -326,6 +330,7 @@ export const deleteDesignation: RequestHandler = async (
     status: 'PENDING',
     message: `Attempting to delete designation: ${id}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {
@@ -376,6 +381,7 @@ export const updateDesignation: RequestHandler = async (
     status: 'PENDING',
     message: `Attempting to update designation: ${designationId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   try {

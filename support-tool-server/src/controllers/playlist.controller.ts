@@ -2,6 +2,7 @@ import { Request, Response, RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 // Create API headers
 const createApiHeaders = (token?: string) => {
@@ -80,6 +81,7 @@ export const createPlaylist: RequestHandler = async (req: any, res: Response) =>
     status: "PENDING",
     message: `Attempting to create playlist for org: ${requestPayload?.orgId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info("Creating new playlist");
@@ -162,6 +164,7 @@ export const updatePlaylist: RequestHandler = async (req: any, res: Response) =>
     status: "PENDING",
     message: `Attempting to update playlist for org: ${requestPayload?.orgId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info("Updating playlist");

@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 // Create API headers
 const createApiHeaders = (token?: string) => {
@@ -87,6 +88,7 @@ export const createTopic: RequestHandler = async (req: any, res: Response) => {
     status: 'PENDING',
     message: `Attempting to create topic: ${categoryName}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info("Creating new topic");
@@ -184,6 +186,7 @@ export const updateTopic: RequestHandler = async (req: any, res: Response) => {
     status: 'PENDING',
     message: `Attempting to update topic ID: ${categoryId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info(`Updating topic ID: ${categoryId}`);
@@ -302,6 +305,7 @@ export const deleteTopic: RequestHandler = async (req: any, res: Response) => {
     status: 'PENDING',
     message: `Attempting to delete topic ID: ${categoryId}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info(`Deleting topic ID: ${categoryId}`);

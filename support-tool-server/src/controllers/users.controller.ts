@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 import { createApiHeaders, fetchAdminAccessToken } from "../helpers/apiHelpers";
 
 // Types
@@ -40,6 +41,7 @@ const createAuditObject = (
   request_payload: any,
   modified_payload: any,
   jira_link?: string,
+  ip_address?: string | null,
 ): AuditObject => ({
   user_id,
   module,
@@ -49,7 +51,7 @@ const createAuditObject = (
   request_payload,
   modified_payload,
   response_payload: null,
-  ip_address: null,
+  ip_address: ip_address || null,
   user_agent: null,
   status: null,
   message: null,
@@ -117,7 +119,8 @@ export const updateUser: RequestHandler = async (req: any, res: Response) => {
     userId || '',
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
 
   if (!user_id) {
@@ -205,7 +208,8 @@ export const updateUserExt: RequestHandler = async (req: any, res: Response) => 
     userId || '',
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
 
   try {
@@ -256,7 +260,8 @@ export const createUsers: RequestHandler = async (req: any, res: Response) => {
     userId || userEmail,
     actualPayload,
     changedFields || {},
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
 
   logger.info(`Creating new user with email: ${userEmail}`);
@@ -309,7 +314,8 @@ export const migrateUser: RequestHandler = async (req: any, res: Response) => {
     userId,
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
   
   try {
@@ -399,7 +405,8 @@ export const updateUserRoles: RequestHandler = async (req: any, res: Response): 
     userId,
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
 
   try {
@@ -486,7 +493,8 @@ export const blockUser: RequestHandler = async (req: any, res: Response) => {
     userId,
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
   
   try {
@@ -529,7 +537,8 @@ export const unblockUser: RequestHandler = async (req: any, res: Response) => {
     userId,
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
   logger.info(`Unblocking user with ID: ${userId}`);
   
@@ -667,7 +676,8 @@ export const reissueCertificate: RequestHandler = async (req: any, res: Response
     userId,
     requestBody,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
   if (!( !eventId || !courseId )|| !batchId || !userIds || !Array.isArray(userIds) || userIds.length === 0) {
     res.status(400).json({
@@ -728,7 +738,8 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
     userId,
     payload,
     changedFields,
-    jiraLink
+    jiraLink,
+    getClientIp(req)
   );
 
   try {
@@ -1032,7 +1043,8 @@ export const deactivateBulkUser: RequestHandler = async (req: any, res: any) => 
         userId,
         singlePayload,
         changedFields,
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
 
       try {
@@ -1128,7 +1140,8 @@ export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
         userId,
         singlePayload,
         changedFields,
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
 
       try {
@@ -1292,7 +1305,8 @@ export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
         userId,
         singlePayload,
         changedFields,
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
 
       try {
