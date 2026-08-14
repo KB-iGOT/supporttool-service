@@ -7,6 +7,7 @@ import FormData from "form-data";
 import logger from "../utils/logger";
 import { Logger } from "winston";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 export const getContents: RequestHandler = async (req: any, res: Response) => {
   try {
@@ -69,7 +70,7 @@ export const retireContents: RequestHandler = async (
       request_payload: null,
       modified_payload: null,
       response_payload: null,
-      ip_address: null,
+      ip_address: getClientIp(req),
       user_agent: null,
       status: null,
       message: null,
@@ -643,6 +644,7 @@ export const updateContentHierarchy: RequestHandler = async (
     entity_id: identifier,
     request_payload: { identifier, hierarchy, jiraLink },
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   if (!identifier || !hierarchy) {
@@ -740,6 +742,7 @@ export const updateBatch: RequestHandler = async (req: any, res: Response) => {
     status: 'PENDING',
     message: `Attempting to update batch: ${request?.id}`,
     jira_link: jiraLink,
+    ip_address: getClientIp(req),
   };
 
   logger.info(`Updating batch with ID: ${request?.id}`);

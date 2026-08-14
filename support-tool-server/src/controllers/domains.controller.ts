@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import { cassandraClient } from "../utils/cassandra";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 interface AuditObject {
     user_id: string;
@@ -30,6 +31,7 @@ const createAuditObject = (
     request_payload: any,
     modified_payload: any,
     jira_link?: string,
+    ip_address?: string | null,
 ): AuditObject => ({
     user_id,
     module,
@@ -39,7 +41,7 @@ const createAuditObject = (
     request_payload,
     modified_payload,
     response_payload: null,
-    ip_address: null,
+    ip_address: ip_address || null,
     user_agent: null,
     status: null,
     message: null,
@@ -168,7 +170,8 @@ export const addDomain: RequestHandler = async (
         contextName.trim(),
         requestData,
         { error: "Domain already exists" },
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
       
       await logAudit({
@@ -226,7 +229,8 @@ export const addDomain: RequestHandler = async (
       contextName.trim(),
       requestData,
       { createdDomain: response },
-      jiraLink
+      jiraLink,
+      getClientIp(req)
     );
     
     // Log the audit entry
@@ -257,7 +261,8 @@ export const addDomain: RequestHandler = async (
         requestData?.contextName || 'unknown',
         requestData,
         { error: (error as any).message },
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
       
       await logAudit({
@@ -320,7 +325,8 @@ export const deleteDomain: RequestHandler = async (
         domainName,
         { domainName, contextType },
         { error: "Domain not found" },
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
       
       await logAudit({
@@ -366,7 +372,8 @@ export const deleteDomain: RequestHandler = async (
       domainName,
       { domainName, contextType },
       { deletedDomain: existingDomain },
-      jiraLink
+      jiraLink,
+      getClientIp(req)
     );
     
     // Log the audit entry
@@ -397,7 +404,8 @@ export const deleteDomain: RequestHandler = async (
         (req.params.id as string) || 'unknown',
         { domainName: req.params.id },
         { error: (error as any).message },
-        jiraLink
+        jiraLink,
+        getClientIp(req)
       );
       
       await logAudit({

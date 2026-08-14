@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import { cassandraFormClient } from "../utils/cassandra";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 interface AuditObject {
     user_id: string;
@@ -30,6 +31,7 @@ const createAuditObject = (
     request_payload: any,
     modified_payload: any,
     jira_link?: string,
+    ip_address?: string | null,
 ): AuditObject => ({
     user_id,
     module,
@@ -39,7 +41,7 @@ const createAuditObject = (
     request_payload,
     modified_payload,
     response_payload: null,
-    ip_address: null,
+    ip_address: ip_address || null,
     user_agent: null,
     status: null,
     message: null,
@@ -584,7 +586,8 @@ export const updateFormData: RequestHandler = async (
             `${type}:${subtype}:${action}:${root_org}:${component}:${framework}`, // composite ID
             payload,
             structuredChanges,
-            jiraLink
+            jiraLink,
+            getClientIp(req)
         );
         
         // Convert new form data to JSON string if it's an object
@@ -658,7 +661,8 @@ export const updateFormData: RequestHandler = async (
                 userId || `${payload?.type || ''}:${payload?.subtype || ''}`,
                 payload,
                 changedFields,
-                jiraLink
+                jiraLink,
+                getClientIp(req)
             );
             
             await logAudit({
@@ -757,7 +761,8 @@ export const deleteFormData: RequestHandler = async (
             `${type}:${subtype}:${action}:${root_org}:${component}:${framework}`, // composite ID
             payload,
             { deletedData: existingForm }, // Store what was deleted
-            jiraLink
+            jiraLink,
+            getClientIp(req)
         );
         
         // Prepare the delete query
@@ -820,7 +825,8 @@ export const deleteFormData: RequestHandler = async (
                 `${payload?.type || ''}:${payload?.subtype || ''}:${payload?.action || ''}:${payload?.root_org || ''}:${payload?.component || ''}:${payload?.framework || ''}`,
                 payload,
                 { error: (error as any).message },
-                jiraLink
+                jiraLink,
+                getClientIp(req)
             );
             
             await logAudit({
