@@ -294,7 +294,7 @@ export const deleteDomain: RequestHandler = async (
   
   try {
     // Extract domain id from request params
-    const domainName = req.params.id;
+    const domainName = req.params.id as string;
     const contextType = 'userRegistrationPreApprovedDomain';
     
     if (!domainName) {
@@ -394,7 +394,7 @@ export const deleteDomain: RequestHandler = async (
         module || 'domains',
         'DOMAIN_DELETE',
         "DELETE",
-        req.params.id || 'unknown',
+        (req.params.id as string) || 'unknown',
         { domainName: req.params.id },
         { error: (error as any).message },
         jiraLink

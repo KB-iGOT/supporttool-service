@@ -17,6 +17,9 @@ const editorStyles = makeStyles(() =>
     },
     editor: {
       flex: 1, // Make editor fill available space
+      // Without min-width:0 this flex item cannot shrink below Monaco's own width,
+      // so a stale width survives and pushes every ancestor wider.
+      minWidth: 0,
       overflow: 'hidden',
       border: '1px solid rgba(0, 0, 0, 0.12)', // Add border for visibility
     },
@@ -33,6 +36,9 @@ const editorStyles = makeStyles(() =>
       zIndex: 10,
     },
     fullscreenContainer: {
+      // Pinned to all four edges rather than sized with 100vw/100vh: those include
+      // the scrollbar, which made the overlay wider than the viewport and gave the
+      // whole document a horizontal scroll.
       position: 'fixed',
       top: 0,
       left: 0,
@@ -43,8 +49,8 @@ const editorStyles = makeStyles(() =>
       padding: '16px',
       display: 'flex',
       flexDirection: 'column',
-      width: '100vw !important',
-      height: '100vh !important',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
     },
     fullscreenButton: {
       position: 'absolute',
@@ -110,12 +116,30 @@ export const JsonEditor = (props: {
     
     // Mark that initial input has been set
     initialInputSet.current = true;
-    
-    // Format the document on initial load with a slight delay
-    setTimeout(() => {
-      editor?.getAction("editor.action.formatDocument")?.run();
+
+    // Format the document on initial load with a slight delay.
+    // Tracked so it can be cancelled if the editor unmounts first — running an
+    // action against a disposed editor throws.
+    formatTimerRef.current = setTimeout(() => {
+      formatTimerRef.current = null;
+      if (editorRef.current) {
+        editorRef.current.getAction("editor.action.formatDocument")?.run();
+      }
     }, 300);
   };
+
+  const formatTimerRef = useRef<any>(null);
+
+  // Cancel the pending format and drop the editor reference on unmount.
+  useEffect(() => {
+    return () => {
+      if (formatTimerRef.current) {
+        clearTimeout(formatTimerRef.current);
+        formatTimerRef.current = null;
+      }
+      editorRef.current = null;
+    };
+  }, []);
 
   // Effect to handle input changes and update editor value only on initial mount
   const initialInputSet = useRef(false);
@@ -225,13 +249,41 @@ export const JsonEditor = (props: {
     };
   }, [isFullscreen]);
 
-  // Effect to handle fullscreen state changes and force layout
+  // Fullscreen overlays the page, so the page behind it must not scroll.
+  // Restoring on exit also clears any horizontal scroll the overlay introduced,
+  // which otherwise leaves the page looking shifted with controls cut off.
   useEffect(() => {
-    if (editorRef.current) {
-      setTimeout(() => {
-        editorRef.current.layout();
-      }, 200);
-    }
+    if (!isFullscreen) return;
+
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+      window.scrollTo({ left: 0 });
+    };
+  }, [isFullscreen]);
+
+  // Re-measure once the DOM has actually settled into (or out of) fullscreen.
+  // Monaco writes explicit pixel sizes onto its own DOM, so on the way back it is
+  // told the container's real size instead of being left to rediscover it.
+  useEffect(() => {
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        // Collapse first so the container can shrink, then measure and re-apply.
+        editor.layout({ width: 0, height: 0 });
+
+        const host = containerRef.current;
+        if (!isFullscreen && host) {
+          editor.layout({ width: host.clientWidth, height: host.clientHeight });
+        } else {
+          editor.layout();
+        }
+      });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [isFullscreen]);
 
   // Handle window resize
@@ -248,32 +300,21 @@ export const JsonEditor = (props: {
     };
   }, []);
 
-  // Set initial height based on parent container
+  // Size the editor from the viewport, not from the parent.
+  // The parent *contains* the editor, so deriving the height from it fed back into
+  // itself and grew the editor a little further on every fullscreen round trip.
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || isFullscreen) return;
-
     const setHeight = () => {
-      if (container.parentElement) {
-        const parentHeight = container.parentElement.clientHeight || window.innerHeight;
-        const newHeight = Math.max(400, parentHeight - 40) + 'px';
-        setEditorHeight(newHeight);
-      }
+      const available = Math.round(window.innerHeight * 0.6);
+      setEditorHeight(`${Math.min(Math.max(400, available), 900)}px`);
     };
 
     setHeight();
-    
-    // Trigger layout update after height change
-    const timer = setTimeout(() => {
-      if (editorRef.current && !isFullscreen) {
-        editorRef.current.layout();
-      }
-    }, 100);
-    
+    window.addEventListener('resize', setHeight);
     return () => {
-      clearTimeout(timer);
+      window.removeEventListener('resize', setHeight);
     };
-  }, [isFullscreen]);
+  }, []);
 
   const editorContent = (
     <>
@@ -315,10 +356,6 @@ export const JsonEditor = (props: {
         language="json"
         defaultValue={formattedInput}
         onMount={handleEditorDidMount}
-        beforeMount={(monaco) => {
-          // Ensure Monaco is ready before mounting
-          monaco.editor.setModelLanguage(monaco.editor.createModel('', 'json'), 'json');
-        }}
         options={ props.customOptions && Object.keys(props.customOptions).length > 0 ? props.customOptions : {
           wordWrap: 'on',
           formatOnPaste: true,
@@ -358,24 +395,7 @@ export const JsonEditor = (props: {
 
   if (isFullscreen) {
     return (
-      <Box 
-        className={classes.fullscreenContainer}
-        sx={{ 
-          height: '100vh !important',
-          width: '100vw !important',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          zIndex: 1300,
-          backgroundColor: '#fff',
-          padding: '16px',
-          boxSizing: 'border-box'
-        }}
-      >
-        {editorContent}
-      </Box>
+      <Box className={classes.fullscreenContainer}>{editorContent}</Box>
     );
   }
 
@@ -383,9 +403,11 @@ export const JsonEditor = (props: {
     <Box 
       ref={containerRef} 
       className={classes.editorContainer}
-      sx={{ 
+      sx={{
         height: editorHeight,
         width: '100%',
+        // minWidth:0 stops a stale editor width from widening the page around it.
+        minWidth: 0,
         maxWidth: '100%',
         display: 'flex',
         flexDirection: 'column',
