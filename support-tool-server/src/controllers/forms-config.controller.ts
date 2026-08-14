@@ -3,6 +3,7 @@ import { RequestHandler } from "express";
 import axios from "axios";
 import logger from "../utils/logger";
 import logAudit from "../helpers/auditLogger";
+import getClientIp from "../helpers/getClientIp";
 
 const FORMS_CONFIG_LIST_PATH = "/api/formsConfig/v2/list";
 const FORMS_CONFIG_READ_PATH = "/api/formsConfig/v2/admin/read";
@@ -227,6 +228,8 @@ export const updateFormsConfig: RequestHandler = async (req: any, res: Response)
     action: "UPDATE",
     entity_id: id === undefined || id === null ? "" : String(id),
     jira_link: jiraLink || null,
+    ip_address: getClientIp(req),
+    user_agent: (req.headers["user-agent"] as string) || null,
   };
 
   if (!requestPayload || id === undefined || id === null || id === "") {
@@ -327,6 +330,8 @@ export const createFormsConfig: RequestHandler = async (req: any, res: Response)
     action: "CREATE",
     entity_id: requestPayload?.name ? String(requestPayload.name) : "",
     jira_link: jiraLink || null,
+    ip_address: getClientIp(req),
+    user_agent: (req.headers["user-agent"] as string) || null,
   };
 
   const missing = requestPayload
