@@ -284,26 +284,51 @@ export const authenticateKeycloakUser = async (req: any, res: any) => {
 };
 
 export const logout = (req: any, res: any) => {
+  // Captured before the session is destroyed, so the rows can still be found.
+  const userId = req.headers["x-user-id"] || req.session?.user?.id || null;
+
+  const finish = async () => {
+    // Clear the cookies actually in use. "uid", "name" and "sid" were never set;
+    // the ones that matter are express-session's own cookie and the userId cookie
+    // the client reads to build the x-user-id header. Leaving userId behind meant a
+    // logged-out browser kept identifying itself, and any surviving session row
+    // would still authenticate it.
+    res.clearCookie("connect.sid", { path: "/" });
+    res.clearCookie("userId", { path: "/" });
+    res.clearCookie("user", { path: "/" });
+
+    if (userId) {
+      try {
+        // Remove every session for this user, not just the current cookie's. Rows
+        // left behind here are what produced duplicate sessions and the stale-token
+        // 401s on later logins.
+        const result = await pool.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+        logger.info(`Logout cleared ${result.rowCount} session row(s) for user ${userId}`);
+      } catch (error) {
+        logger.error(`Failed to clear session rows for user ${userId}: ${error}`);
+        return res.status(500).send({
+          status: 500,
+          message: "Failed to delete session from database",
+        });
+      }
+    }
+
+    return res
+      .status(200)
+      .send({ status: 200, message: "User logged out successfully" });
+  };
+
+  if (!req.session) {
+    return finish();
+  }
+
   req.session.destroy(async (err: any) => {
     if (err) {
-      return res
-        .status(500)
-        .send({ status: 500, message: "Internal server error" });
+      logger.error(`Error destroying session: ${err}`);
     }
-    try {
-      res.clearCookie("user");
-      res.clearCookie("uid");
-      res.clearCookie("name");
-      res.clearCookie("sid");
-      res
-        .status(200)
-        .send({ status: 200, message: "User logged out successfully" });
-    } catch (error) {
-      res.status(500).send({
-        status: 500,
-        message: "Failed to delete session from database",
-      });
-    }
+    // The row removal below is the authoritative cleanup, so a failed destroy
+    // must not leave the user half logged out.
+    await finish();
   });
 };
 
@@ -315,7 +340,15 @@ export const getCurrentUserSession = async (req: any, res: any) => {
   }
 
   try {
-    const result = await pool.query('SELECT sess FROM sessions WHERE user_id = $1', [userId]);
+    // Same reason as the auth middleware: pick the newest live session, never
+    // whichever row the database happens to return first.
+    const result = await pool.query(
+      `SELECT sess FROM sessions
+       WHERE user_id = $1 AND expire > NOW()
+       ORDER BY expire DESC
+       LIMIT 1`,
+      [userId]
+    );
     if (result.rows.length > 0) {
       const userSessionData = result.rows[0].sess.user;
       // Remove token before sending to client

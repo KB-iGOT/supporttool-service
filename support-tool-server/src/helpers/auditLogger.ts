@@ -6,7 +6,9 @@ interface LogAuditParams {
   module: number | string|any;
   sub_module?: number | string | null;
   action?: number | string;
-  entity_id?: number | string;
+  // Express 5 types route params as `string | string[]`, so callers passing
+  // req.params/req.headers values land here as arrays in the type system.
+  entity_id?: number | string | string[];
   request_payload?: any;
   modified_payload?: any;
   response_payload?: any;
@@ -52,7 +54,7 @@ const logAudit = async({
       module,
       sub_module,
       action,
-      entity_id,
+      Array.isArray(entity_id) ? entity_id.join(",") : entity_id,
       JSON.stringify(request_payload),
       JSON.stringify(modified_payload),
       JSON.stringify(response_payload),

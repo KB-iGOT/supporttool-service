@@ -96,6 +96,21 @@ const Forms = lazy(() =>
     default: module.Forms,
   }))
 );
+const FormsConfig = lazy(() =>
+  import("../../forms-config/index").then((module) => ({
+    default: module.FormsConfig,
+  }))
+);
+const FormsConfigCreate = lazy(() =>
+  import("../../forms-config/create").then((module) => ({
+    default: module.FormsConfigCreate,
+  }))
+);
+const FormsConfigEdit = lazy(() =>
+  import("../../forms-config/edit").then((module) => ({
+    default: module.FormsConfigEdit,
+  }))
+);
 const SystemSettings = lazy(() =>
   import("../../system-settings/index").then((module) => ({
     default: module.SystemSettings,
@@ -330,6 +345,30 @@ const LazyApp = () => {
           element={
             <ProtectedRoute>
               <Forms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms-config"
+          element={
+            <ProtectedRoute>
+              <FormsConfig />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms-config/create"
+          element={
+            <ProtectedRoute>
+              <FormsConfigCreate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forms-config/edit/:id"
+          element={
+            <ProtectedRoute>
+              <FormsConfigEdit />
             </ProtectedRoute>
           }
         />
