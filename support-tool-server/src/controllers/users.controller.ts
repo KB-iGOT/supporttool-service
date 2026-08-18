@@ -362,7 +362,7 @@ export const assignUserRoles: RequestHandler = async (req: any, res: Response): 
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
-      headers: createApiHeaders(),
+      headers: createApiHeaders(req.user.token),
       data: req.body
     });
 
@@ -459,7 +459,7 @@ export const assignUserRolesv1: RequestHandler = async (req: any, res: Response)
     const response = await axios({
       method: "POST",
       url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
-      headers: createApiHeaders(adminToken),
+      headers: createApiHeaders(req.user.token),
       data: req.body
     });
 
@@ -745,7 +745,7 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
   try {
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/private/user/v1/password/reset`,
+      url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
       headers: createApiHeaders(req.user.token),
       data: payload
     });

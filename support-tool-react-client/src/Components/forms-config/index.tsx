@@ -7,7 +7,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Grid,
   IconButton,
   Paper,
   Snackbar,
@@ -18,25 +17,28 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import {
   Add as AddIcon,
-  Clear as ClearIcon,
-  ContentCopy as ContentCopyIcon,
   Edit as EditIcon,
   Refresh as RefreshIcon,
-  Search as SearchIcon,
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { formsConfigService } from "../../services/forms-config.service";
 import { useDebounce } from "../../hooks/useDebounce";
 import { FormConfigViewDrawer } from "./FormConfigViewDrawer";
+import { FormsConfigFilters } from "./FormsConfigFilters";
 import { FormConfigRow } from "./types";
-import { normalizeFormsConfigList } from "./utils";
+import {
+  EMPTY_FILTERS,
+  FormConfigFilters,
+  collectFilterOptions,
+  filterFormConfigRows,
+  normalizeFormsConfigList,
+} from "./utils";
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
@@ -46,9 +48,9 @@ export const FormsConfig = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Local search state
-  const [searchText, setSearchText] = useState<string>("");
-  const debouncedSearch = useDebounce(searchText, 300);
+  // Local search and per-column filters.
+  const [filters, setFilters] = useState<FormConfigFilters>(EMPTY_FILTERS);
+  const debouncedSearch = useDebounce(filters.search, 300);
 
   // Local pagination state
   const [page, setPage] = useState<number>(0);
@@ -83,17 +85,29 @@ export const FormsConfig = () => {
     fetchFormsConfig();
   }, [fetchFormsConfig]);
 
-  // Local search across every column of the row.
-  const filteredRows = useMemo(() => {
-    const query = debouncedSearch.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) => row.searchIndex.includes(query));
-  }, [rows, debouncedSearch]);
+  // The debounced search is the one that actually filters, so both the rows and the
+  // dropdown counts are derived from the same effective filter set.
+  const effectiveFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters, debouncedSearch]
+  );
+
+  // Each dropdown counts against the other active filters, so the numbers always
+  // describe what selecting that value would actually give you.
+  const filterOptions = useMemo(
+    () => collectFilterOptions(rows, effectiveFilters),
+    [rows, effectiveFilters]
+  );
+
+  const filteredRows = useMemo(
+    () => filterFormConfigRows(rows, effectiveFilters),
+    [rows, effectiveFilters]
+  );
 
   // Any change to the result set puts the user back on the first page.
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, rows]);
+  }, [effectiveFilters, rows]);
 
   const paginatedRows = useMemo(
     () => filteredRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
@@ -107,11 +121,6 @@ export const FormsConfig = () => {
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
-
-  const handleCopyJson = (row: FormConfigRow) => {
-    navigator.clipboard.writeText(JSON.stringify(row.raw, null, 2));
-    setSnackbar(`"${row.name}" JSON copied to clipboard`);
   };
 
   return (
@@ -148,43 +157,15 @@ export const FormsConfig = () => {
         </Alert>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={8}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Search"
-                placeholder="Search by name, type, sub type, portal, version or id..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} />
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Button
-                variant="outlined"
-                startIcon={<ClearIcon />}
-                onClick={() => setSearchText("")}
-                disabled={!searchText}
-              >
-                Clear
-              </Button>
-            </Grid>
-          </Grid>
-
-          {!loading && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Showing {filteredRows.length} of {rows.length} configurations
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
+      <FormsConfigFilters
+        filters={filters}
+        options={filterOptions}
+        onChange={setFilters}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+        shown={filteredRows.length}
+        total={rows.length}
+        loading={loading}
+      />
 
       <Card>
         <CardContent>
@@ -198,12 +179,12 @@ export const FormsConfig = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell align="right">ID</TableCell>
+                      <TableCell>Portal</TableCell>
                       <TableCell>Name</TableCell>
                       <TableCell>Type</TableCell>
                       <TableCell>Sub Type</TableCell>
-                      <TableCell>Portal</TableCell>
                       <TableCell align="center">Client Version</TableCell>
-                      <TableCell align="right">ID</TableCell>
                       <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -214,20 +195,14 @@ export const FormsConfig = () => {
                           <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
                             {rows.length === 0
                               ? "No form configurations found"
-                              : "No configurations match your search"}
+                              : "No configurations match these filters"}
                           </Typography>
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedRows.map((row) => (
                         <TableRow key={row.rowKey} hover>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">
-                              {row.name || "-"}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{row.type || "-"}</TableCell>
-                          <TableCell>{row.subType || "-"}</TableCell>
+                          <TableCell align="right">{row.id || "-"}</TableCell>
                           <TableCell>
                             {row.portal ? (
                               <Chip
@@ -240,8 +215,14 @@ export const FormsConfig = () => {
                               "-"
                             )}
                           </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="medium">
+                              {row.name || "-"}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{row.type || "-"}</TableCell>
+                          <TableCell>{row.subType || "-"}</TableCell>
                           <TableCell align="center">{row.clientVersion || "-"}</TableCell>
-                          <TableCell align="right">{row.id || "-"}</TableCell>
                           <TableCell align="center">
                             <Tooltip title="View configuration">
                               <IconButton size="small" onClick={() => setViewRow(row)}>
@@ -256,11 +237,6 @@ export const FormsConfig = () => {
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            {/* <Tooltip title="Copy row JSON">
-                              <IconButton size="small" onClick={() => handleCopyJson(row)}>
-                                <ContentCopyIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip> */}
                           </TableCell>
                         </TableRow>
                       ))
