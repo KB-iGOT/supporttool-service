@@ -1,0 +1,1 @@
+export { ConfigMergeDialog } from "./ConfigMergeDialog";

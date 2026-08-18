@@ -16,12 +16,14 @@ import {
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
+  CompareArrows as CompareIcon,
   Refresh as RefreshIcon,
   Save as SaveIcon,
 } from "@mui/icons-material";
 import { formsConfigService } from "../../services/forms-config.service";
 import { ConfigDetailsPanel } from "./ConfigDetailsPanel";
 import { ConfigEditorSurface } from "./ConfigEditorSurface";
+import { ConfigMergeDialog } from "./merge";
 import { useActionIntercept } from "../../Context/AppContext";
 import { FormConfigDetail } from "./types";
 import { normalizeFormConfigDetail } from "./utils";
@@ -57,6 +59,7 @@ export const FormsConfigEdit = () => {
   // Remounts the Monaco editors whenever a fresh read replaces the drafts.
   const [editorKey, setEditorKey] = useState<number>(0);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [mergeOpen, setMergeOpen] = useState<boolean>(false);
 
   const fetchDetail = useCallback(async (configId: string) => {
     setLoading(true);
@@ -203,6 +206,18 @@ export const FormsConfigEdit = () => {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+          {/* <Tooltip title="Compare this configuration with one from another environment">
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<CompareIcon />}
+                onClick={() => setMergeOpen(true)}
+                disabled={loading || !dataValid}
+              >
+                Compare
+              </Button>
+            </span>
+          </Tooltip> */}
           <Tooltip title="Reload the latest configuration from the portal">
             <span>
               <Button
@@ -291,6 +306,18 @@ export const FormsConfigEdit = () => {
           />
         </>
       )}
+
+      <ConfigMergeDialog
+        open={mergeOpen}
+        current={dataDraft}
+        onClose={() => setMergeOpen(false)}
+        onApply={(mergedData) => {
+          setDataDraft(mergedData);
+          // Remount the JSON editor so it shows the merged result.
+          setEditorKey((prev) => prev + 1);
+          setSnackbar("Merged changes applied. Review them, then save.");
+        }}
+      />
 
       <Dialog open={Boolean(pendingAction)} onClose={() => setPendingAction(null)}>
         <DialogTitle>Discard unsaved changes?</DialogTitle>

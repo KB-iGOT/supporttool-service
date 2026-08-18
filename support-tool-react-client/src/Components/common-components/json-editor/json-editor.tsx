@@ -65,11 +65,13 @@ const editorStyles = makeStyles(() =>
   }),
 );
 
-export const JsonEditor = (props: { 
-  input: any; 
-  onChange: any; 
+export const JsonEditor = (props: {
+  input: any;
+  onChange: any;
   onEditorMount?: (editor: any) => void;
   customOptions?: any;
+  /** Fixed height; omit to size from the viewport. */
+  height?: string | number;
 }) => {
   const { input, onChange, onEditorMount } = props;
   const classes = editorStyles();
@@ -303,7 +305,10 @@ export const JsonEditor = (props: {
   // Size the editor from the viewport, not from the parent.
   // The parent *contains* the editor, so deriving the height from it fed back into
   // itself and grew the editor a little further on every fullscreen round trip.
+  const fixedHeight = props.height;
   useEffect(() => {
+    if (fixedHeight !== undefined) return;
+
     const setHeight = () => {
       const available = Math.round(window.innerHeight * 0.6);
       setEditorHeight(`${Math.min(Math.max(400, available), 900)}px`);
@@ -314,7 +319,7 @@ export const JsonEditor = (props: {
     return () => {
       window.removeEventListener('resize', setHeight);
     };
-  }, []);
+  }, [fixedHeight]);
 
   const editorContent = (
     <>
@@ -404,7 +409,7 @@ export const JsonEditor = (props: {
       ref={containerRef} 
       className={classes.editorContainer}
       sx={{
-        height: editorHeight,
+        height: fixedHeight ?? editorHeight,
         width: '100%',
         // minWidth:0 stops a stale editor width from widening the page around it.
         minWidth: 0,
