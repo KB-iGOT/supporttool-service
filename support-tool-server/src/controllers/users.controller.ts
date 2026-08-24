@@ -745,7 +745,7 @@ export const resetUserPassword: RequestHandler = async (req: any, res: Response)
   try {
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/user/v1/role/assign`,
+      url: `${process.env.KONG_API_URL}/api/private/user/v1/password/reset`,
       headers: createApiHeaders(req.user.token),
       data: payload
     });
