@@ -1125,7 +1125,7 @@ export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
       const singlePayload = { 
         request: { 
           userId, 
-          channel, 
+          targetOrgId: channel, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
@@ -1290,7 +1290,7 @@ export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
       const singlePayload = { 
         request: { 
           userId, 
-          channel, 
+          targetOrgId: channel, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
