@@ -384,7 +384,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         payload: {
           request: {
             userId: data.userId,
-            channel: data.channel,
+            targetOrgId: data.channel,
             forceMigration: data.forceMigration,
             softDeleteOldOrg: data.softDeleteOldOrg,
             notifyMigration: data.notifyMigration

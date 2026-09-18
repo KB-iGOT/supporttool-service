@@ -672,7 +672,7 @@ export const MigrateUsersV2 = () => {
             payload: {
               request: usersToMigrate.map(user => ({
                 userId: user.identifier || user.userId,
-                channel: (user as any).targetChannel
+                targetOrgId: (user as any).targetChannel
               })),
               migrationOptions: {
                 forceMigration: migrationOptions.forceMigration,

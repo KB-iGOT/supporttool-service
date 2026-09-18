@@ -321,7 +321,7 @@ export const migrateUser: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "PATCH",
-      url: `${process.env.KONG_API_URL}/api/user/private/v1/migrate`,
+      url: `${process.env.KONG_API_URL}/api/user/private/v2/migrate`,
       headers: createApiHeaders(req.user.token),
       data: payload
     });
@@ -1125,7 +1125,7 @@ export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
       const singlePayload = { 
         request: { 
           userId, 
-          channel, 
+          targetOrgId: channel, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
@@ -1152,7 +1152,7 @@ export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
 
         const response = await axios({
           method: "PATCH",
-          url: `${process.env.KONG_API_URL}/api/user/private/v1/migrate`,
+          url: `${process.env.KONG_API_URL}/api/user/private/v2/migrate`,
           headers: createApiHeaders(req.user.token),
           data: singlePayload,
           timeout: 30000 // 30 second timeout for V2
@@ -1290,7 +1290,7 @@ export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
       const singlePayload = { 
         request: { 
           userId, 
-          channel, 
+          targetOrgId: channel, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
@@ -1312,7 +1312,7 @@ export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
       try {
         const response = await axios({
           method: "PATCH",
-          url: `${process.env.KONG_API_URL}/api/user/private/v1/migrate`,
+          url: `${process.env.KONG_API_URL}/api/user/private/v2/migrate`,
           headers: createApiHeaders(req.user.token),
           data: singlePayload
         });
