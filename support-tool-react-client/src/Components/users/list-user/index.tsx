@@ -389,7 +389,7 @@ export const UsersList = () => {
       if (selectedOrganization) {
           searchFilters = {
             ...searchFilters,
-            rootOrgName: [selectedOrganization.channel]
+            channel: [selectedOrganization.channel]
           };
       }
       

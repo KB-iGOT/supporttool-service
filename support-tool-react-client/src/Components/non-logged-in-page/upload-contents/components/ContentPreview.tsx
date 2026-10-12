@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, Card, CardContent, Typography, Alert, Box } from '@mui/material';
+import { Grid, Card, CardContent, Typography, Alert, Box, Link } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { ContentRequest, ContentCreateResponse, ContentUploadResponse } from '../types';
 import { extractTime } from '../utils/contentHelpers';
@@ -89,7 +89,11 @@ const ContentPreview: React.FC<ContentPreviewProps> = ({
             <Typography><strong>End Time:</strong> {extractTime(contentData.endTime)}</Typography>
             <Typography><strong>Registration End Date:</strong> {contentData.registrationEndDate}</Typography>
             <Typography><strong>Location:</strong> {contentData.location.place}</Typography>
-            <Typography><strong>Artifact URL:</strong> {uploadResponse.artifactUrl}</Typography>
+            <Typography sx={{ overflowWrap: 'anywhere' }}><strong>Artifact URL:</strong>{' '}
+              <Link href={uploadResponse.artifactUrl} target="_blank" rel="noopener noreferrer" underline="hover">
+                {uploadResponse.artifactUrl}
+              </Link>
+            </Typography>
             
             {getEditedFields()}
           </CardContent>
@@ -110,8 +114,11 @@ const ContentPreview: React.FC<ContentPreviewProps> = ({
               />
             </Box>
 
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
-              <strong>Artifact URL:</strong> {uploadResponse.artifactUrl}
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 2, overflowWrap: 'anywhere' }}>
+              <strong>Artifact URL:</strong>{' '}
+              <Link href={uploadResponse.artifactUrl} target="_blank" rel="noopener noreferrer" underline="hover">
+                {uploadResponse.artifactUrl}
+              </Link>
             </Typography>
 
             <Typography variant="body2" color="info" sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
