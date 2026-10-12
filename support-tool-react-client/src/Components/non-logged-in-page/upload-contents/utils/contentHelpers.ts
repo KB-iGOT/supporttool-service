@@ -2,11 +2,13 @@ import env from "../../../../Config/env";
 import { ContentRequest } from "../types";
 
 // Transform artifact URLs from storage to content-store URLs
+// e.g. https://storage.googleapis.com/igotprod/content/...  →  https://portal.igotkarmayogi.gov.in/content-store/content/...
 export const transformArtifactUrl = (url: string): string => {
   if (!url) return '';
+  const base = (env?.nonLoggedInBaseUrl || '').replace(/\/+$/, '');
   return url.replace(
-    `https://storage.googleapis.com/${env?.isProduction? 'igotprod':'igotuat'}/content`, 
-    `${env?.nonLoggedInBaseUrl}${env?.nonLoggedInBucketName}/content`
+    /^https?:\/\/storage\.googleapis\.com\/[^/]+\//,
+    `${base}/${env?.nonLoggedInBucketName}/`
   );
 };
 

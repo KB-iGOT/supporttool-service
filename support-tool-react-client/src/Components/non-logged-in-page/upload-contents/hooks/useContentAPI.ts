@@ -214,7 +214,7 @@ export const useContentAPI = ({ onSuccess, onError }: UseContentAPIProps = {}) =
         else if (currentStep === 1) {
           // In step 2 (file upload), only update artifactUrl
           if (uploadResponse?.artifactUrl) {
-            changedFields.artifactUrl = uploadResponse.content_url;
+            changedFields.artifactUrl = transformArtifactUrl(uploadResponse.content_url);
             changedFields.mimeType = contentData.mimeType;
           }
         }
@@ -231,7 +231,7 @@ export const useContentAPI = ({ onSuccess, onError }: UseContentAPIProps = {}) =
             
           // Include artifactUrl if it was updated
           if (uploadResponse?.artifactUrl) {
-            changedFields.artifactUrl = uploadResponse.content_url;
+            changedFields.artifactUrl = transformArtifactUrl(uploadResponse.content_url);
             changedFields.mimeType = contentData.mimeType;
           }
         }
@@ -254,7 +254,7 @@ export const useContentAPI = ({ onSuccess, onError }: UseContentAPIProps = {}) =
         
         // Always include artifactUrl if we have an upload response in create mode
         if (uploadResponse?.artifactUrl) {
-          changedFields.artifactUrl = uploadResponse.content_url;
+          changedFields.artifactUrl = transformArtifactUrl(uploadResponse.content_url);
         }
       }
 
