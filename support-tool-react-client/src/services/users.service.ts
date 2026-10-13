@@ -80,6 +80,23 @@ export const usersService = {
     }
   },
   /**
+   * Creates a new user with roles and profile details in a single call (user/v5/create)
+   * @param requestPayload Audit-wrapped payload ({ payload: { request }, changedFields, userId, jiraLink, module })
+   * @returns API response
+   */
+  createUserV5: async (requestPayload: any) => {
+    try {
+      const response = await apiClient.post(
+        `/users/v5/create`,
+        requestPayload
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+  },
+  /**
    * Migrates a user to a new organization
    * @param userId The ID of the user to migrate
    * @param data Migration options

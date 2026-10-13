@@ -801,21 +801,30 @@ export const UsersList = () => {
     setHelpDialogOpen(false);
   };
 
-  // Modify the handleCreateUser function to call all three APIs in sequence
-
+  // Create the user with roles and profile details in a single v5 call
   const handleCreateUser = async (interceptPayload: CustomFormData, data: any) => {
     try {
       setCreatingUser(true);
-      
-      // Step 1: Create the user with audit logging support
+
       const createUserPayload = {
         payload: {
           request: {
+            channel: data.channel,
             email: data.email,
+            emailVerified: true,
             firstName: data.firstName,
-            lastName: "",
-            password: "Password@123", // Default password, should be changed by user later
-            channel: data.channel
+            phone: data.phone,
+            roles: data.roles?.length ? data.roles : ['PUBLIC'],
+            profileDetails: {
+              mandatoryFieldsExists: false,
+              personalDetails: {
+                additionalProperties: {},
+                firstname: data.firstName,
+                primaryEmail: data.email,
+                mobile: Number(data.phone),
+                phoneVerified: false
+              }
+            }
           }
         },
         changedFields: {
@@ -828,68 +837,13 @@ export const UsersList = () => {
         jiraLink: interceptPayload.jiraLink, // Use jiraLink from interceptor
         module: moduleState?.name || 'users',
       };
-      
-      
-      const createResponse = await usersService.createUser(createUserPayload);
-      
+
+      const createResponse = await usersService.createUserV5(createUserPayload);
+
       if (!createResponse || createResponse.responseCode !== "OK") {
         throw new Error(createResponse?.responseMessage || "Failed to create user");
       }
-      
-      // Extract the userId from the response
-      const userId = createResponse.result.userId;
-      if (!userId) {
-        throw new Error("User ID not found in response");
-      }
-      
-      // Step 2: Assign roles to the user
-      const roleAssignPayload = {
-        request: {
-          userId: userId,
-          organisationId: data.orgId || createResponse.result.rootOrgId,
-          roles: data.roles || ['PUBLIC']
-        }
-      };
-      
-      
-      const roleResponse = await usersService.assignUserRoles(
-        userId, 
-        roleAssignPayload.request.organisationId, 
-        roleAssignPayload.request.roles
-      );
-      
-      if (!roleResponse || roleResponse.responseCode !== "OK") {
-        console.warn("Role assignment failed, continuing with profile update");
-      }
-      
-      // Step 3: Update profile with additional details
-      const profileUpdatePayload = {
-        request: {
-          userId: userId,
-          phone: data.phone,
-          maskedPhone: data.phone,
-          firstName: data.firstName,
-          lastName: "",
-          profileDetails: {
-            profileStatus: "VERIFIED",
-            personalDetails: {
-              firstname: data.firstName,
-              primaryEmail: data.email,
-              mobile: data.phone,
-              phoneVerified: true
-            },
-            mandatoryFieldsExists: true
-          }
-        }
-      };
-      
-      
-      const updateResponse = await usersService.updateUserV1(userId, profileUpdatePayload);
-      
-      if (!updateResponse || updateResponse.responseCode !== "OK") {
-        console.warn("Profile update failed, but user was created");
-      }
-      
+
       setToasts({
         message: "User created successfully",
         open: true,
