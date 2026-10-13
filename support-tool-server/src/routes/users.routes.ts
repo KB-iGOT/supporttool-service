@@ -1,6 +1,6 @@
 import express from "express";
 
-import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, fetchCadreData, fetchMasterLanguages, deactivateBulkUser, migrateBulkUser, migrateBulkUserV2, getCBPlan, getAssignedCAP, getCBPlanDetails, getEnrollmentDetails } from "../controllers/users.controller";
+import { getUsers, updateUser, getUserByEmail, assignUserRoles, getUserEnrollList, getCertificate, reissueCertificate, getUserEventEnrollList, createUsers, createUserV5, migrateUser, resetUserPassword, blockUser, unblockUser, updateSuperUser, updateUserRoles, updateUserExt, fetchGroups, fetchCadreData, fetchMasterLanguages, deactivateBulkUser, migrateBulkUser, migrateBulkUserV2, getCBPlan, getAssignedCAP, getCBPlanDetails, getEnrollmentDetails } from "../controllers/users.controller";
 import { userSession } from "../helpers/authHelper";
 
 const UsersRoutes = express.Router();
@@ -15,6 +15,7 @@ UsersRoutes.route("/event/enrollment/list/:userId").get(userSession, getUserEven
 UsersRoutes.route("/certs/download/:certId").get(userSession, getCertificate);
 UsersRoutes.route("/cert/reissue").post(userSession, reissueCertificate);
 UsersRoutes.route("/profileDetails/createUser").post(userSession, createUsers); // This route is used to create a user profile
+UsersRoutes.route("/v5/create").post(userSession, createUserV5); // Creates a user with roles and profile details in one call
 UsersRoutes.route("/migrate").patch(userSession, migrateUser,() => {
   console.log("User migration route hit");
 }); 

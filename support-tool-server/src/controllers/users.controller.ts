@@ -296,6 +296,75 @@ export const createUsers: RequestHandler = async (req: any, res: Response) => {
   }
 };
 
+// Creates a user with roles and profile details in a single call (user/v5/create)
+export const createUserV5: RequestHandler = async (req: any, res: Response) => {
+  const {
+    payload,
+    changedFields,
+    userId,
+    jiraLink,
+    module,
+  } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  // Support both direct request and audit-wrapped request formats
+  const actualPayload = payload || req.body;
+  const request = actualPayload?.request || {};
+  const userEmail = request.email || 'unknown email';
+
+  const auditObject = createAuditObject(
+    user_id,
+    module || "USER_MANAGEMENT",
+    "CREATE_USER",
+    "CREATE",
+    userId || userEmail,
+    actualPayload,
+    changedFields || {},
+    jiraLink,
+    getClientIp(req)
+  );
+
+  const validationError = validateRequiredFields(request, ['channel', 'email', 'firstName']);
+  if (validationError) {
+    const error: ApiResponse = {
+      status: 400,
+      responseCode: "CLIENT_ERROR",
+      responseMessage: validationError,
+    };
+
+    await logAudit({
+      ...auditObject,
+      status: "FAILURE",
+      response_payload: JSON.stringify(error),
+      message: error.responseMessage,
+    });
+
+    res.status(400).json(error);
+    return;
+  }
+
+  try {
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}/api/user/v5/create`,
+      headers: createApiHeaders(req.user.token),
+      data: actualPayload
+    });
+    
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "User created successfully",
+    });
+
+    res.status(200).send(response.data);
+  } catch (error) {
+    await auditLogApiError(error, res, `Error creating user ${userEmail}`, auditObject);
+    handleApiError(error, res, `Error creating user ${userEmail}`);
+  }
+};
+
 export const migrateUser: RequestHandler = async (req: any, res: Response) => {
   const {
     payload,
