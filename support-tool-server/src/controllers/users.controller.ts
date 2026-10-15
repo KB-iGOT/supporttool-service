@@ -296,7 +296,7 @@ export const createUsers: RequestHandler = async (req: any, res: Response) => {
   }
 };
 
-// Creates a user with roles and profile details in a single call (user/v5/create)
+// Creates a user with roles and profile details in a single call (user/v5/support/create)
 export const createUserV5: RequestHandler = async (req: any, res: Response) => {
   const {
     payload,
@@ -346,8 +346,8 @@ export const createUserV5: RequestHandler = async (req: any, res: Response) => {
   try {
     const response = await axios({
       method: "POST",
-      url: `${process.env.KONG_API_URL}/api/user/v5/create`,
-      headers: createApiHeaders(req.user.token),
+      url: `${process.env.KONG_API_URL}/api/user/v5/support/create`,
+      headers: { ...createApiHeaders(req.user.token), Accept: "application/json" },
       data: actualPayload
     });
     

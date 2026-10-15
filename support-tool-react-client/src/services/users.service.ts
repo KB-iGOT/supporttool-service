@@ -80,7 +80,7 @@ export const usersService = {
     }
   },
   /**
-   * Creates a new user with roles and profile details in a single call (user/v5/create)
+   * Creates a new user with roles and profile details in a single call (user/v5/support/create)
    * @param requestPayload Audit-wrapped payload ({ payload: { request }, changedFields, userId, jiraLink, module })
    * @returns API response
    */
