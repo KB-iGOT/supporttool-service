@@ -28,6 +28,7 @@ import {
   DashboardCustomize as ModuleDashboardIcon,
   Topic as TopicsIcon,
   PlaylistPlay as PlaylistIcon,
+  AutoAwesome as AuroraDashboardIcon,
 } from '@mui/icons-material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Module } from "../../../types";
@@ -75,6 +76,7 @@ const useStyles = makeStyles(() =>
 const ICONS: { [key: string]: React.ElementType } = {
   home: HomeIcon,
   'module-dashboard': ModuleDashboardIcon,
+  'aurora-ai-dashboard': AuroraDashboardIcon,
   admin: AdminPanelSettingsIcon,
   users: UsersIcon,
   contents: ContentsIcon,
@@ -212,6 +214,7 @@ export const Sidebar = () => {
           <>
             <SidebarItem module={{ id: 'home', name: 'Home', url: '/home', description: 'Home page' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
             <SidebarItem module={{ id: 'module-dashboard', name: 'Module Dashboard', url: '/module-dashboard', description: 'Dashboard for all modules' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
+            <SidebarItem module={{ id: 'aurora-ai-dashboard', name: 'Aurora AI Dashboard', url: '/aurora-ai-dashboard', description: 'AI-drafted replies for Zoho Desk tickets' }} isCollapsed={collapsed} checkPermissions={checkPermissions} />
             {modules.user.length > 0 && renderModuleList(modules.user, 'Modules')}
             {modules.admin.length > 0 && (
               <>
