@@ -14,20 +14,18 @@ import {
   TableFooter,
   TableHead,
   TableRow,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
   useTheme,
 } from "@mui/material";
 import { ExpandMore } from "@mui/icons-material";
-import { DailyChart } from "./DailyChart";
-import { ColorSwatch, outlinedCardSx } from "./shared";
-import { buildDayCells, formatDateRange, formatDayLabel, formatNumber, formatPercent, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, percentOf, toIsoDate } from "./utils";
+import { DailyChart, DailyChartLegend } from "./DailyChart";
+import { ColorSwatch, getDraftColors, outlinedCardSx } from "./shared";
+import { buildDayCells, formatDayLabel, formatNumber, formatPercent, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, percentOf, toIsoDate } from "./utils";
 import { AuroraMetrics, DailyTrendProps, StatTileProps, MonthTotalsProps, DailyNumbersTableProps } from "./aurora.model";
 
 /* ───────── Month totals ───────── */
 
-const StatTile: React.FC<StatTileProps> = ({ title, value, caption, swatchColor }) => (
+const StatTile: React.FC<StatTileProps> = ({ title, value, caption, swatchColor, swatchVariant }) => (
   <Box
     sx={{
       bgcolor: "action.hover",
@@ -39,7 +37,7 @@ const StatTile: React.FC<StatTileProps> = ({ title, value, caption, swatchColor 
     }}
   >
     <Typography variant="body2" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      {swatchColor && <ColorSwatch color={swatchColor} />}
+      {swatchColor && <ColorSwatch color={swatchColor} variant={swatchVariant} />}
       {title}
     </Typography>
     <Typography variant="h5" fontWeight="bold">
@@ -52,11 +50,11 @@ const StatTile: React.FC<StatTileProps> = ({ title, value, caption, swatchColor 
 );
 
 const MonthTotals: React.FC<MonthTotalsProps> = ({ metrics, periodLabel }) => {
-  const theme = useTheme();
+  const colors = getDraftColors(useTheme());
   const { tickets_received: received, drafts_created: drafts, drafts_accepted: accepted, drafts_rejected: rejected } = metrics;
 
   const tiles: StatTileProps[] = [
-    { title: "Total received", value: received, caption: periodLabel, swatchColor: theme.palette.grey[400] },
+    { title: "Total received", value: received, caption: periodLabel, swatchColor: colors.received, swatchVariant: "outline" },
     {
       title: "Drafts created",
       value: drafts,
@@ -66,13 +64,14 @@ const MonthTotals: React.FC<MonthTotalsProps> = ({ metrics, periodLabel }) => {
       title: "Accepted",
       value: accepted,
       caption: drafts ? `${percentOf(accepted, drafts)}% of drafts` : "—",
-      swatchColor: theme.palette.success.main,
+      swatchColor: colors.accepted,
     },
     {
       title: "Rejected",
       value: rejected,
       caption: drafts ? `${percentOf(rejected, drafts)}% of drafts` : "—",
-      swatchColor: theme.palette.error.light,
+      swatchColor: colors.rejected,
+      swatchVariant: "hatched",
     },
   ];
 
@@ -153,13 +152,6 @@ const DailyNumbersTable: React.FC<DailyNumbersTableProps> = ({ dayCells, monthMe
 
 export const DailyTrend: React.FC<DailyTrendProps> = ({ overview, selectedWeekIndex, selectedDay, periodLabel, onWeekChange, onDaySelect }) => {
   const dayCells = useMemo(() => buildDayCells(overview), [overview]);
-  const selectedWeek = overview.weeks[selectedWeekIndex];
-
-  const handleWeekChange = (_event: React.MouseEvent<HTMLElement>, weekIndex: number | null) => {
-    if (weekIndex !== null) {
-      onWeekChange(weekIndex);
-    }
-  };
 
   return (
     <Card sx={{ ...outlinedCardSx, mb: 3 }}>
@@ -168,29 +160,25 @@ export const DailyTrend: React.FC<DailyTrendProps> = ({ overview, selectedWeekIn
           <Box>
             <Typography variant="h6">Day by day</Typography>
             <Typography variant="body2" color="text.secondary">
-              Select a week, or click a day on the chart to compare it with the month.
+              Select a week or a day to compare it with the month.
             </Typography>
           </Box>
-          <ToggleButtonGroup size="small" exclusive color="primary" value={selectedWeekIndex} onChange={handleWeekChange} aria-label="Select week" sx={{ flexWrap: "wrap" }}>
-            {overview.weeks.map((week, weekIndex) => (
-              <ToggleButton key={week.index} value={weekIndex} disabled={!week.metrics} sx={{ textTransform: "none", flexDirection: "column", lineHeight: 1.2, px: 1.5 }}>
-                <Typography variant="body2" fontWeight={600}>
-                  Week {week.index}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatDateRange(parseIsoDate(week.start), parseIsoDate(week.end))}
-                  {hasDrafts(week.metrics) ? ` · ${week.metrics.success_rate}%` : ""}
-                </Typography>
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+          <DailyChartLegend />
         </Box>
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 1 }}>
           <MonthTotals metrics={overview.month.metrics} periodLabel={periodLabel} />
         </Box>
 
-        <DailyChart dayCells={dayCells} selectedDay={selectedDay} weekStart={parseIsoDate(selectedWeek.start)} weekEnd={parseIsoDate(selectedWeek.end)} onDaySelect={onDaySelect} />
+        <DailyChart
+          dayCells={dayCells}
+          weeks={overview.weeks}
+          selectedWeekIndex={selectedWeekIndex}
+          selectedDay={selectedDay}
+          today={parseIsoDate(overview.meta.today)}
+          onDaySelect={onDaySelect}
+          onWeekChange={onWeekChange}
+        />
 
         <DailyNumbersTable dayCells={dayCells} monthMetrics={overview.month.metrics} periodLabel={periodLabel} selectedDay={selectedDay} onDaySelect={onDaySelect} />
       </CardContent>

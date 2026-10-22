@@ -128,7 +128,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ kind, title, note, met
                     <b>{formatNumber(metrics.drafts_accepted)}</b> accepted
                   </Typography>
                   <Typography variant="body2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <ColorSwatch color={rejectedColor} />
+                    <ColorSwatch color={rejectedColor} variant="hatched" />
                     <b>{formatNumber(metrics.drafts_rejected)}</b> rejected
                   </Typography>
                 </Box>
