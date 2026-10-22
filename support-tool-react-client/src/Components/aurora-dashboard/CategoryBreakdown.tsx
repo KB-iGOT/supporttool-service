@@ -19,7 +19,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight, UnfoldLess, UnfoldMore } from "@mui/icons-material";
-import { noTextTransformSx, outlinedCardSx } from "./shared";
+import { hatchedFill, noTextTransformSx, outlinedCardSx } from "./shared";
 import { formatDateRange, formatDayLabel, formatMonthLong, formatMonthShort, formatNumber, formatShortDate, getMetricsTone, hasDrafts, humanizeLabel, parseIsoDate } from "./utils";
 import { AuroraMetrics, AuroraCategory, PeriodScope, SortOrder, CategoryBreakdownProps, DraftSplitBarProps, CategoryRowsProps } from "./aurora.model";
 
@@ -51,7 +51,7 @@ const DraftSplitBar: React.FC<DraftSplitBarProps> = ({ metrics, maxDrafts, isThi
     <Tooltip title={`${formatNumber(metrics.drafts_accepted)} accepted, ${formatNumber(metrics.drafts_rejected)} rejected`} placement="top">
       <Box sx={{ display: "flex", gap: "2px", height: isThin ? 8 : 12, width: `${widthPercent}%`, borderRadius: 1, overflow: "hidden" }}>
         {metrics.drafts_accepted > 0 && <Box sx={{ flex: metrics.drafts_accepted, bgcolor: theme.palette.success.main }} />}
-        {metrics.drafts_rejected > 0 && <Box sx={{ flex: metrics.drafts_rejected, bgcolor: theme.palette.error.light }} />}
+        {metrics.drafts_rejected > 0 && <Box sx={{ flex: metrics.drafts_rejected, background: hatchedFill(theme.palette.error.light) }} />}
       </Box>
     </Tooltip>
   );

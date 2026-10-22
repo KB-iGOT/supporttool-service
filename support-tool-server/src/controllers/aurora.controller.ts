@@ -56,7 +56,6 @@ export const getDashboardOverview: RequestHandler = async (req: Request, res: Re
       params,
       headers: {
         "Content-Type": "application/json",
-        // AUTHORIZATION in .env already includes the "Bearer " prefix
         Authorization: process.env.AUTHORIZATION,
       },
       timeout: AURORA_CONFIG.timeout,

@@ -94,8 +94,12 @@ export interface ThemeModeToggleProps {
 
 /* ───────── Shared components ───────── */
 
+/** solid: accepted; outline: received (dashed); hatched: rejected. */
+export type SwatchVariant = "solid" | "outline" | "hatched";
+
 export interface ColorSwatchProps {
   color: string;
+  variant?: SwatchVariant;
 }
 
 export interface StepButtonProps {
@@ -160,6 +164,7 @@ export interface StatTileProps {
   value: number;
   caption: string;
   swatchColor?: string;
+  swatchVariant?: SwatchVariant;
 }
 
 export interface MonthTotalsProps {
@@ -177,13 +182,34 @@ export interface DailyNumbersTableProps {
 
 /* ───────── DailyChart ───────── */
 
-export type MixedChartType = "bar" | "line";
-
 export interface DailyChartProps {
   dayCells: DayCell[];
+  weeks: AuroraWeek[];
+  selectedWeekIndex: number;
   selectedDay: Date;
-  weekStart: Date;
-  weekEnd: Date;
+  today: Date;
+  onDaySelect: (day: Date) => void;
+  onWeekChange: (weekIndex: number) => void;
+}
+
+export interface WeekBandsProps {
+  weeks: AuroraWeek[];
+  selectedWeekIndex: number;
+  onWeekChange: (weekIndex: number) => void;
+}
+
+export interface DayColumnProps {
+  cell: DayCell;
+  /** Position in the month, 0-based; every 5th label stays visible on small screens. */
+  dayOffset: number;
+  /** Ticket count at the top of the volume axis. */
+  volumeScaleMax: number;
+  /** Lowest success rate on the rate axis (the top is always 100%). */
+  rateFloor: number;
+  isInSelectedWeek: boolean;
+  isSelected: boolean;
+  isToday: boolean;
+  isFuture: boolean;
   onDaySelect: (day: Date) => void;
 }
 

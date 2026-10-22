@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Box, IconButton, SxProps, Theme, ThemeOptions, ToggleButton, ToggleButtonGroup, Tooltip, createTheme } from "@mui/material";
+import { Box, IconButton, SxProps, Theme, ThemeOptions, ToggleButton, ToggleButtonGroup, Tooltip, createTheme, darken } from "@mui/material";
 import { ChevronLeft, ChevronRight, DarkMode, LightMode } from "@mui/icons-material";
 import { ColorSwatchProps, StepButtonProps, ThemeMode, ThemeModeToggleProps } from "./aurora.model";
 
@@ -69,11 +69,35 @@ export const outlinedCardSx = {
 
 export const noTextTransformSx: SxProps<Theme> = { textTransform: "none" };
 
+/** Colours for received tickets and accepted / rejected drafts, used by every chart and legend. */
+export const getDraftColors = (theme: Theme) => ({
+  received: theme.palette.text.secondary,
+  accepted: theme.palette.success.main,
+  rejected: theme.palette.error.light,
+});
+
+/** Diagonal stripes, so rejected drafts stay distinguishable without relying on colour alone. */
+export const hatchedFill = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 4px, ${darken(color, 0.18)} 4px 7px)`;
+
 /* ───────── Components ───────── */
 
 /** Small colour key shown next to a legend label. */
-export const ColorSwatch: React.FC<ColorSwatchProps> = ({ color }) => (
-  <Box component="span" aria-hidden="true" sx={{ width: 10, height: 10, borderRadius: "2px", bgcolor: color, display: "inline-block", flexShrink: 0 }} />
+export const ColorSwatch: React.FC<ColorSwatchProps> = ({ color, variant = "solid" }) => (
+  <Box
+    component="span"
+    aria-hidden="true"
+    sx={{
+      width: 10,
+      height: 10,
+      borderRadius: "2px",
+      display: "inline-block",
+      flexShrink: 0,
+      boxSizing: "border-box",
+      ...(variant === "solid" && { bgcolor: color }),
+      ...(variant === "outline" && { border: `1.5px dashed ${color}` }),
+      ...(variant === "hatched" && { background: hatchedFill(color) }),
+    }}
+  />
 );
 
 /** Outlined chevron button for stepping to the previous or next month, week or day. */
