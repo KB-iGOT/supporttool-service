@@ -30,11 +30,14 @@ const duskThemeOptions: ThemeOptions = {
 
 const lightThemeOptions: ThemeOptions = { palette: { mode: "light" } };
 
+const DEFAULT_THEME_MODE: ThemeMode = "dark";
+
+/** Dark unless the viewer has switched to light before. */
 const readStoredThemeMode = (): ThemeMode => {
   try {
-    return localStorage.getItem(THEME_MODE_STORAGE_KEY) === "dark" ? "dark" : "light";
+    return localStorage.getItem(THEME_MODE_STORAGE_KEY) === "light" ? "light" : DEFAULT_THEME_MODE;
   } catch {
-    return "light";
+    return DEFAULT_THEME_MODE;
   }
 };
 
