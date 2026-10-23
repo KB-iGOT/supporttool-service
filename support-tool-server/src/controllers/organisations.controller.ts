@@ -320,3 +320,159 @@ export const updateOrganisationStatus: RequestHandler = async (
     }
   }
 };
+export const fetchOrgEligibility: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const orgId = String(req.params.orgId || '');
+  logger.info(`Fetching org eligibility contents for org: ${orgId}`);
+
+  if (!orgId) {
+    res.status(400).json({ message: "Organisation ID is required" });
+    return;
+  }
+
+  try {
+    const response = await axios({
+      method: "GET",
+      url: `${process.env.KONG_API_URL}api/orgeligibility/v1/read/${encodeURIComponent(orgId)}`,
+      headers: createApiHeaders(req.user.token),
+    });
+
+    res.status(200).json(response.data);
+  } catch (error: any) {
+    // The eligibility API answers 400 "Org eligibility not found" for orgs with no record yet
+    const upstreamErr = error.response?.data?.params?.err;
+    if (typeof upstreamErr === "string" && upstreamErr.toLowerCase().includes("not found")) {
+      logger.info(`No org eligibility record yet for org: ${orgId}`);
+      res.status(200).json({ result: { orgId, courseIds: [], courseCount: 0 } });
+      return;
+    }
+
+    logger.error("❌ Error fetching org eligibility:" + error);
+
+    if (error.response) {
+      res.status(error.response.status).json({
+        message: "Error from org eligibility API",
+        error: error.response.data,
+      });
+    } else if (error.request) {
+      res.status(503).json({
+        message: "No response from org eligibility API",
+        error: "Service unavailable",
+      });
+    } else {
+      res.status(500).json({
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+};
+
+export const upsertOrgEligibility: RequestHandler = async (
+  req: any,
+  res: Response
+) => {
+  const { payload, changedFields, jiraLink, module } = req.body;
+  const user_id = req.headers["x-user-id"];
+  const orgId = payload?.orgId;
+
+  logger.info(`Upserting org eligibility contents for org: ${orgId}`);
+
+  const auditObject = {
+    user_id,
+    module: module || "Organisation Management",
+    sub_module: "UPSERT_ORG_ELIGIBILITY",
+    action: "UPDATE",
+    entity_id: orgId || '',
+    request_payload: payload,
+    modified_payload: changedFields,
+    response_payload: null as string | null,
+    ip_address: getClientIp(req),
+    user_agent: null as string | null,
+    status: null as string | null,
+    message: null as string | null,
+    jira_link: jiraLink || null,
+  };
+
+  if (!user_id || !orgId || !Array.isArray(payload?.courseIds)) {
+    const error = {
+      status: 400,
+      responseCode: "CLIENT_ERROR",
+      responseMessage: !user_id ? "User ID is required" : "orgId and courseIds are required",
+    };
+
+    await logAudit({
+      ...auditObject,
+      status: "FAILURE",
+      response_payload: JSON.stringify(error),
+      message: error.responseMessage,
+    });
+
+    res.status(400).json(error);
+    return;
+  }
+
+  try {
+    const response = await axios({
+      method: "POST",
+      url: `${process.env.KONG_API_URL}api/orgeligibility/v1/upsert`,
+      headers: createApiHeaders(req.user.token),
+      data: payload,
+    });
+
+    logger.info(`Org eligibility contents updated for org: ${orgId}`);
+
+    await logAudit({
+      ...auditObject,
+      status: "SUCCESS",
+      response_payload: JSON.stringify(response.data),
+      message: "Org eligibility contents updated successfully",
+    });
+
+    res.status(200).json(response.data);
+  } catch (error: any) {
+    logger.error("❌ Error upserting org eligibility:" + error);
+
+    let responsePayload = '';
+    let status = "FAILURE";
+
+    if (error.response) {
+      responsePayload = JSON.stringify(error.response.data || {});
+    } else if (error.request) {
+      responsePayload = JSON.stringify({ message: "No response received from API" });
+      status = "SERVICE_UNAVAILABLE";
+    } else {
+      responsePayload = JSON.stringify({ message: error.message });
+      status = "SERVICE_UNAVAILABLE";
+    }
+
+    await logAudit({
+      ...auditObject,
+      status,
+      response_payload: responsePayload,
+      message: `Error updating org eligibility contents for ${orgId}`,
+    });
+
+    if (error.response) {
+      res.status(error.response.status).json({
+        responseCode: "API_ERROR",
+        responseMessage: `Error updating org eligibility contents for ${orgId}`,
+        error: error.response.data,
+      });
+    } else if (error.request) {
+      res.status(503).json({
+        responseCode: "SERVICE_UNAVAILABLE",
+        responseMessage: "No response received from API",
+        error: "Service unavailable",
+      });
+    } else {
+      res.status(500).json({
+        responseCode: "SERVER_ERROR",
+        responseMessage: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+};
