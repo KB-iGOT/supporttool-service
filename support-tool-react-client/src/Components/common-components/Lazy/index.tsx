@@ -17,6 +17,12 @@ const ImportDesignationsPage = lazy(() =>
   }))
 );
 
+const OrgEligibilityContents = lazy(() =>
+  import("../../organisation/OrgEligibilityContents").then((module) => ({
+    default: module.OrgEligibilityContents,
+  }))
+);
+
 const ModuleDashboard = lazy(() =>
   import("../../home/index").then((module) => ({
     default: module.Home,
@@ -397,6 +403,7 @@ const LazyApp = () => {
           <Route index element={<OrganisationList />} />
           <Route path="designations/:orgId/:frameworkId" element={<DesignationView />} />
           <Route path="designations/import/:orgId/:frameworkId" element={<ImportDesignationsPage />} />
+          <Route path="contents/:orgId" element={<OrgEligibilityContents />} />
         </Route>
         <Route
           path="/org-delete"

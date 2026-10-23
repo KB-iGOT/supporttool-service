@@ -4,7 +4,9 @@ import {
     fetchOrganisationByName,
     deleteOrganisationById,
     fetchOrganisationsData,
-    updateOrganisationStatus
+    updateOrganisationStatus,
+    fetchOrgEligibility,
+    upsertOrgEligibility
 } from "../controllers/organisations.controller";
 import { userSession } from "../helpers/authHelper";
 
@@ -19,6 +21,12 @@ router.route("/search")
 
 router.route("/status/update")
   .patch(userSession, updateOrganisationStatus);
+
+router.route("/eligibility/upsert")
+  .post(userSession, upsertOrgEligibility);
+
+router.route("/eligibility/:orgId")
+  .get(userSession, fetchOrgEligibility);
 
 router.route("/:id")
   .get(userSession, fetchOrganisationByName);

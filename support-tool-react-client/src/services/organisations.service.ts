@@ -26,5 +26,15 @@ export const organisationService = {
   updateOrganisationStatus: async (request: any) => {
     const response = await apiClient.patch(`/org/status/update`, request);
     return response.data;
+  },
+
+  fetchOrgEligibility: async (orgId: string) => {
+    const response = await apiClient.get(`/org/eligibility/${orgId}`);
+    return response.data;
+  },
+
+  upsertOrgEligibility: async (request: any) => {
+    const response = await apiClient.post(`/org/eligibility/upsert`, request);
+    return response.data;
   }
 };

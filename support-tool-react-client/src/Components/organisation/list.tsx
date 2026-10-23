@@ -24,6 +24,7 @@ import {
   MenuItem as SelectMenuItem,
   InputLabel,
   FormControl,
+  Button,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import SearchIcon from '@mui/icons-material/Search';
@@ -32,6 +33,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import { useNavigate } from 'react-router-dom';
 import { organisationService } from '../../services/organisations.service';
 import { JsonViewerDialog } from '../common-components/JsonViewerDialog';
@@ -41,6 +43,25 @@ import { AppContext } from '../../Context/AppContext';
 import { appContextType } from '../../types';
 
 const DEBOUNCE_DELAY = 500;
+
+type StatusFilter = 'all' | '1' | '0';
+type OrgTypeFilter = 'all' | 'ministry' | 'state' | 'spv' | 'ngo';
+type SubTypeFilter = 'all' | 'department' | 'board' | 'mdo';
+
+const ORG_TYPE_OPTIONS: { value: OrgTypeFilter; label: string }[] = [
+  { value: 'all', label: 'All Types' },
+  { value: 'ministry', label: 'Ministry' },
+  { value: 'state', label: 'State' },
+  { value: 'spv', label: 'SPV' },
+  { value: 'ngo', label: 'NGO' },
+];
+
+const SUB_TYPE_OPTIONS: { value: SubTypeFilter; label: string }[] = [
+  { value: 'all', label: 'All Sub Types' },
+  { value: 'department', label: 'Department' },
+  { value: 'board', label: 'Board' },
+  { value: 'mdo', label: 'MDO' },
+];
 
 // Type definitions for organization data
 interface Organisation {
@@ -74,7 +95,9 @@ export const OrganisationList: React.FC = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'id'>('name');
-  const [statusFilter, setStatusFilter] = useState<'all' | '1' | '0'>('all'); // all, active (1), inactive (0)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all'); // all, active (1), inactive (0)
+  const [orgTypeFilter, setOrgTypeFilter] = useState<OrgTypeFilter>('all');
+  const [subTypeFilter, setSubTypeFilter] = useState<SubTypeFilter>('all');
 
   // Menu and Dialog state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -90,21 +113,34 @@ export const OrganisationList: React.FC = () => {
     }
   });
 
-  const fetchOrganisations = useCallback(async (limit: number, offset: number, query: string, type: 'name' | 'id', status: 'all' | '1' | '0') => {
+  const fetchOrganisations = useCallback(async (
+    limit: number,
+    offset: number,
+    query: string,
+    type: 'name' | 'id',
+    status: StatusFilter,
+    orgType: OrgTypeFilter,
+    subType: SubTypeFilter
+  ) => {
     try {
       setLoading(true);
       setError(null);
 
-      const filters: any = {
-        isTenant: true,
-        isMdo: true,
-      };
+      // NGO orgs are tenants but are not flagged as MDOs
+      const filters: any = orgType === 'ngo'
+        ? { isTenant: true, isNgo: true }
+        : { isTenant: true, isMdo: true };
 
-      // Add status filter if not 'all'
+      if (orgType !== 'all' && orgType !== 'ngo') {
+        filters.ministryOrStateType = orgType;
+      }
+
+      if (subType !== 'all' && orgType !== 'ngo') {
+        filters.sbOrgSubType = subType;
+      }
+
       if (status !== 'all') {
         filters.status = parseInt(status);
-      } else {
-        filters.status = 1; // Default to active if 'all' is selected
       }
 
       let searchPayload: { query?: string, filters: any } = { filters };
@@ -146,16 +182,16 @@ export const OrganisationList: React.FC = () => {
   useEffect(() => {
     const handler = setTimeout(() => {
       setPage(0); // Reset to first page on new search
-      fetchOrganisations(rowsPerPage, 0, searchQuery, searchType, statusFilter);
+      fetchOrganisations(rowsPerPage, 0, searchQuery, searchType, statusFilter, orgTypeFilter, subTypeFilter);
     }, DEBOUNCE_DELAY);
 
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, searchType, statusFilter, rowsPerPage, fetchOrganisations]);
+  }, [searchQuery, searchType, statusFilter, orgTypeFilter, subTypeFilter, rowsPerPage, fetchOrganisations]);
 
   useEffect(() => {
-    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter);
+    fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter, orgTypeFilter, subTypeFilter);
   }, [page, fetchOrganisations]); // Removed rowsPerPage and searchQuery as they are handled above
 
   const handlePageChange = (event: unknown, newPage: number) => {
@@ -198,6 +234,13 @@ export const OrganisationList: React.FC = () => {
   const handleImportDesignation = () => {
     if (menuOrg && (menuOrg.frameworkid || menuOrg.frameworkId)) {
       navigate(`/organisations/designations/import/${menuOrg.id}/${menuOrg.frameworkid || menuOrg.frameworkId}`);
+      handleMenuClose();
+    }
+  };
+
+  const handleViewContents = () => {
+    if (menuOrg) {
+      navigate(`/organisations/contents/${menuOrg.id}`, { state: { orgName: menuOrg.orgName } });
       handleMenuClose();
     }
   };
@@ -260,7 +303,7 @@ export const OrganisationList: React.FC = () => {
       });
 
       // Refresh the organization list
-      fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter);
+      fetchOrganisations(rowsPerPage, page * rowsPerPage, searchQuery, searchType, statusFilter, orgTypeFilter, subTypeFilter);
       
       // Clean up
       delete (window as any).__pendingStatusUpdate;
@@ -286,6 +329,15 @@ export const OrganisationList: React.FC = () => {
     });
   };
 
+  const hasActiveFilters = statusFilter !== 'all' || orgTypeFilter !== 'all' || subTypeFilter !== 'all' || searchQuery !== '';
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setOrgTypeFilter('all');
+    setSubTypeFilter('all');
+  };
+
   const handleImageError = (orgId: string) => {
     setImageErrors((prevErrors) => ({
       ...prevErrors,
@@ -295,7 +347,7 @@ export const OrganisationList: React.FC = () => {
 
   return (
     <Box sx={{pt: 3, pb: 5}}>
-      <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 6 }}>
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
         <FormControl>
           <InputLabel id="search-type-label">Search By</InputLabel>
           <Select
@@ -315,7 +367,7 @@ export const OrganisationList: React.FC = () => {
             labelId="status-filter-label"
             value={statusFilter}
             label="Status"
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | '1' | '0')}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             sx={{ minWidth: 120 }}
           >
             <SelectMenuItem value="all">All Status</SelectMenuItem>
@@ -323,8 +375,36 @@ export const OrganisationList: React.FC = () => {
             <SelectMenuItem value="0">Inactive</SelectMenuItem>
           </Select>
         </FormControl>
+        <FormControl>
+          <InputLabel id="org-type-filter-label">Org Type</InputLabel>
+          <Select
+            labelId="org-type-filter-label"
+            value={orgTypeFilter}
+            label="Org Type"
+            onChange={(e) => setOrgTypeFilter(e.target.value as OrgTypeFilter)}
+            sx={{ minWidth: 140 }}
+          >
+            {ORG_TYPE_OPTIONS.map((option) => (
+              <SelectMenuItem key={option.value} value={option.value}>{option.label}</SelectMenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl disabled={orgTypeFilter === 'ngo'}>
+          <InputLabel id="sub-type-filter-label">Sub Type</InputLabel>
+          <Select
+            labelId="sub-type-filter-label"
+            value={orgTypeFilter === 'ngo' ? 'all' : subTypeFilter}
+            label="Sub Type"
+            onChange={(e) => setSubTypeFilter(e.target.value as SubTypeFilter)}
+            sx={{ minWidth: 150 }}
+          >
+            {SUB_TYPE_OPTIONS.map((option) => (
+              <SelectMenuItem key={option.value} value={option.value}>{option.label}</SelectMenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
-          fullWidth
+          sx={{ flex: 1, minWidth: 280 }}
           label="Search Organisations"
           variant="outlined"
           value={searchQuery}
@@ -336,6 +416,11 @@ export const OrganisationList: React.FC = () => {
             startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
           }}
         />
+        {hasActiveFilters && (
+          <Button variant="text" onClick={handleClearFilters}>
+            Clear Filters
+          </Button>
+        )}
       </Paper>
       
       {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -378,7 +463,12 @@ export const OrganisationList: React.FC = () => {
                       </Box>
                     )}
                   </TableCell>
-                  <TableCell>{org.orgName}</TableCell>
+                  <TableCell>
+                    {org.orgName}
+                    {(org.isNgo === true || org.isNgo === 'true') && (
+                      <Chip label="NGO" size="small" color="info" variant="outlined" sx={{ ml: 1 }} />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Chip label={org.ministryOrStateType || 'N/A'} size="small" />
                   </TableCell>
@@ -438,6 +528,14 @@ export const OrganisationList: React.FC = () => {
               <AssignmentIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Import Designation</ListItemText>
+          </MenuItem>
+        )}
+        {(menuOrg?.isNgo === true || menuOrg?.isNgo === 'true') && (
+          <MenuItem onClick={handleViewContents}>
+            <ListItemIcon>
+              <LibraryBooksIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>View Contents</ListItemText>
           </MenuItem>
         )}
         {menuOrg && menuOrg.status === 1 && (
