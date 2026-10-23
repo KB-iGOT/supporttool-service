@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Response } from "express";
 import logger from "../utils/logger";
 
 /**
@@ -63,5 +64,35 @@ export const fetchAdminAccessToken = async (userEmail?: string): Promise<string>
   } catch (error) {
     logger.error("❌ Error fetching admin access token");
     throw error;
+  }
+};
+
+export const handleApiError = (error: any, res: Response, logMessage: string): void => {
+  logger.error(`Error ${logMessage}`);
+
+  if (error.response) {
+    logger.error(`API Error status: ${error.response.status}`);
+    if (process.env.NODE_ENV !== "production") {
+      logger.error(`API Error details: ${JSON.stringify(error.response.data)}`);
+    }
+    res.status(error.response.status).json({
+      responseCode: "API_ERROR",
+      responseMessage: logMessage,
+      error: error.response.data,
+    });
+  } else if (error.request) {
+    logger.error("No response received from API");
+    res.status(503).json({
+      responseCode: "SERVICE_UNAVAILABLE",
+      responseMessage: "No response received from API",
+      error: "Service unavailable",
+    });
+  } else {
+    logger.error(`Request setup error: ${error.message}`);
+    res.status(500).json({
+      responseCode: "SERVER_ERROR",
+      responseMessage: "Internal server error",
+      error: error.message,
+    });
   }
 };

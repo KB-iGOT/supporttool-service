@@ -37,6 +37,7 @@ import TopicsRoutes from "./routes/topics.routes";
 import zohoRoutes from "./routes/zoho.routes";
 import OrgStoreUploadRoutes from "./routes/org-store-upload.routes";
 import PlaylistRoutes from "./routes/playlist.routes";
+import AuroraRoutes from "./routes/aurora.routes";
 
 const app = express();
 // Trust the first proxy (nginx/load balancer) so req.ip returns the real client IP
@@ -189,6 +190,7 @@ app.use("/api/topics", TopicsRoutes);
 app.use("/api/zoho", zohoRoutes);
 app.use("/api/org-store-upload", OrgStoreUploadRoutes);
 app.use("/api/playlist", PlaylistRoutes);
+app.use("/api/aurora", AuroraRoutes);
 
 // Register client routes AFTER API routes (this includes the catch-all route)
 clientRoutes(app, isAuthenticated);

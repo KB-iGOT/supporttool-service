@@ -29,6 +29,12 @@ const ModuleDashboard = lazy(() =>
   }))
 );
 
+const AuroraDashboard = lazy(() =>
+  import("../../aurora-dashboard").then((module) => ({
+    default: module.AuroraDashboard,
+  }))
+);
+
 const Login = lazy(() =>
   import("../../authentication/login/index").then((module) => ({
     default: module.Login,
@@ -468,6 +474,14 @@ const LazyApp = () => {
           element={
             <ProtectedRoute>
               <ModuleDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/aurora-ai-dashboard"
+          element={
+            <ProtectedRoute>
+              <AuroraDashboard />
             </ProtectedRoute>
           }
         />
