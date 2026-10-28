@@ -44,6 +44,7 @@ import {
 import Papa, { ParseResult } from 'papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usersService } from '../../../services/users.service';
+import { organisationService } from '../../../services/organisations.service';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 import { AppContext } from '../../../Context/AppContext';
 import { appContextType } from '../../../types';
@@ -334,19 +335,32 @@ export const MigrateUsers = () => {
           }
         }
       }
-      
-      setUsersToMigrate(usersToProcess);
+
+      // The migrate API needs the target organisation's ID, not its channel name
+      const orgIdsByChannel = await organisationService.fetchOrgIdsByChannel(usersToProcess.map(user => (user as any).targetChannel));
+      const usersWithTargetOrg = usersToProcess.filter(user => {
+        const targetChannel = (user as any).targetChannel;
+        const targetOrgId = orgIdsByChannel.get(targetChannel?.trim().toLowerCase());
+        if (!targetOrgId) {
+          processingErrors.push({ userId: user.identifier || user.userId, channel: targetChannel, reason: 'Target organisation not found for this channel.' });
+          return false;
+        }
+        (user as any).targetOrgId = targetOrgId;
+        return true;
+      });
+
+      setUsersToMigrate(usersWithTargetOrg);
       setMigrationResult({ success: [], failure: processingErrors });
-      
-      if (usersToProcess.length > 0) {
+
+      if (usersWithTargetOrg.length > 0) {
         setNotification({
           open: true,
-          message: `Found ${usersToProcess.length} users ready for migration${processingErrors.length > 0 ? ` (${processingErrors.length} not found/errors)` : ''}.`,
+          message: `Found ${usersWithTargetOrg.length} users ready for migration${processingErrors.length > 0 ? ` (${processingErrors.length} not found/errors)` : ''}.`,
           severity: 'success'
         });
       }
-      
-      if (usersToProcess.length === 0 && processingErrors.length === 0) {
+
+      if (usersWithTargetOrg.length === 0 && processingErrors.length === 0) {
         setNotification({
           open: true,
           message: 'No users found for the provided emails, phone numbers, or user IDs.',
@@ -381,7 +395,8 @@ export const MigrateUsers = () => {
             payload: {
               request: usersToMigrate.map(user => ({
                 userId: user.identifier || user.userId,
-                targetOrgId: (user as any).targetChannel
+                targetOrgId: (user as any).targetOrgId,
+                channel: (user as any).targetChannel
               })),
               migrationOptions: {
                 forceMigration: migrationOptions.forceMigration,
