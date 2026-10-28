@@ -25,6 +25,7 @@ interface UserMigrationDialogProps {
   onClose: () => void;
   user: UserProfile | null;
   onMigrate: (userId: string, data: {
+    targetOrgId: string;
     channel: string;
     forceMigration: boolean;
     softDeleteOldOrg: boolean;
@@ -92,6 +93,7 @@ export const UserMigrationDialog: React.FC<UserMigrationDialogProps> = ({
 
     try {
       await onMigrate(user.identifier, {
+        targetOrgId: targetOrg.identifier,
         channel: targetOrg.channel,
         forceMigration,
         softDeleteOldOrg,

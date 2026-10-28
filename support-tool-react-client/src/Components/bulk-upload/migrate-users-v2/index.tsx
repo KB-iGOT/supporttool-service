@@ -49,6 +49,7 @@ import {
 import Papa, { ParseResult } from 'papaparse';
 import { useLocation } from 'react-router-dom';
 import { usersService } from '../../../services/users.service';
+import { organisationService } from '../../../services/organisations.service';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 import { AppContext } from '../../../Context/AppContext';
 import { appContextType } from '../../../types';
@@ -499,7 +500,7 @@ export const MigrateUsersV2 = () => {
       const { userMapByEmail, userMapByPhone, userMapByUserId } = await fetchUsersInBatches(emails, phones, userIds, searchFields, chunkIndex);
       console.log(`✅ User fetch completed for chunk ${chunkIndex + 1}: ${userMapByEmail.size} by email, ${userMapByPhone.size} by phone, ${userMapByUserId.size} by userId`);
       
-      const usersToMigrate: UserProfile[] = [];
+      const validatedUsers: UserProfile[] = [];
       const validationErrors: MigrationFailure[] = [];
       const processedUserIds = new Set<string>();
       
@@ -526,7 +527,7 @@ export const MigrateUsersV2 = () => {
                 continue;
               }
               (user as any).targetChannel = targetChannel;
-              usersToMigrate.push(user);
+              validatedUsers.push(user);
               processedUserIds.add(user.userId);
             }
           } else {
@@ -555,7 +556,7 @@ export const MigrateUsersV2 = () => {
                   continue;
                 }
                 (userByEmail as any).targetChannel = targetChannel;
-                usersToMigrate.push(userByEmail);
+                validatedUsers.push(userByEmail);
                 processedUserIds.add(userByEmail.userId);
               }
             } else {
@@ -607,7 +608,7 @@ export const MigrateUsersV2 = () => {
                 continue;
               }
               (user as any).targetChannel = targetChannel;
-              usersToMigrate.push(user);
+              validatedUsers.push(user);
               processedUserIds.add(user.userId);
             }
           } else {
@@ -633,7 +634,7 @@ export const MigrateUsersV2 = () => {
                 continue;
               }
               (user as any).targetChannel = targetChannel;
-              usersToMigrate.push(user);
+              validatedUsers.push(user);
               processedUserIds.add(user.userId);
             }
           } else {
@@ -646,7 +647,25 @@ export const MigrateUsersV2 = () => {
           }
         }
       }
-      
+
+      // The migrate API needs the target organisation's ID, not its channel name
+      const orgIdsByChannel = await organisationService.fetchOrgIdsByChannel(validatedUsers.map(user => (user as any).targetChannel));
+      const usersToMigrate = validatedUsers.filter(user => {
+        const targetChannel = (user as any).targetChannel;
+        const targetOrgId = orgIdsByChannel.get(targetChannel?.trim().toLowerCase());
+        if (!targetOrgId) {
+          validationErrors.push({
+            userId: user.identifier || user.userId,
+            channel: targetChannel,
+            reason: 'Target organisation not found for this channel.',
+            chunkId: chunkIndex + 1
+          });
+          return false;
+        }
+        (user as any).targetOrgId = targetOrgId;
+        return true;
+      });
+
       // Update chunk status after validation
       setProcessingState(prev => ({
         ...prev,
@@ -672,7 +691,8 @@ export const MigrateUsersV2 = () => {
             payload: {
               request: usersToMigrate.map(user => ({
                 userId: user.identifier || user.userId,
-                targetOrgId: (user as any).targetChannel
+                targetOrgId: (user as any).targetOrgId,
+                channel: (user as any).targetChannel
               })),
               migrationOptions: {
                 forceMigration: migrationOptions.forceMigration,

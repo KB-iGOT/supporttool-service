@@ -963,9 +963,11 @@ const UserDetailsView: React.FC<UserDetailsViewProps> = ({ ticketDetails, onUser
                 }}
                 user={editingUser as any}
                 onMigrate={async (userId, data) => {
+                    const { channel, ...migrationRequest } = data;
                     await usersService.migrateUser({
+                        payload: { request: { userId, ...migrationRequest } },
+                        changedFields: { channel: { new: channel, original: editingUser?.channel } },
                         userId,
-                        ...data,
                         jiraLink: getZohoTicketUrl(),
                     });
                     setToast({ message: 'User migrated successfully', open: true, severity: 'success' });

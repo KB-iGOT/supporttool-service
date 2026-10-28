@@ -260,7 +260,7 @@ export const UserDetailPage: React.FC = () => {
         payload: {
           request: {
             userId: data.userId,
-            targetOrgId: data.channel,
+            targetOrgId: data.targetOrgId,
             forceMigration: data.forceMigration,
             softDeleteOldOrg: data.softDeleteOldOrg,
             notifyMigration: data.notifyMigration

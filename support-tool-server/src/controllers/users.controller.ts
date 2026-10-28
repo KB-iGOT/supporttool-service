@@ -1190,11 +1190,11 @@ export const migrateBulkUserV2: RequestHandler = async (req: any, res: any) => {
 
     // V2: Enhanced processing with better error handling and progress tracking
     const promises = userRequests.map(async (userRequest: any, index: number) => {
-      const { userId, channel } = userRequest;
+      const { userId, targetOrgId, channel } = userRequest;
       const singlePayload = { 
         request: { 
           userId, 
-          targetOrgId: channel, 
+          targetOrgId, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
@@ -1355,11 +1355,11 @@ export const migrateBulkUser: RequestHandler = async (req: any, res: any) => {
     } = migrationOptions;
 
     const promises = userRequests.map(async (userRequest: any) => {
-      const { userId, channel } = userRequest;
+      const { userId, targetOrgId, channel } = userRequest;
       const singlePayload = { 
         request: { 
           userId, 
-          targetOrgId: channel, 
+          targetOrgId, 
           forceMigration, 
           softDeleteOldOrg, 
           notifyMigration 
