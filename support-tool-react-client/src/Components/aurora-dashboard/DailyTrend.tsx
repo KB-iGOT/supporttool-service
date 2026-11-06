@@ -20,7 +20,7 @@ import {
 import { ExpandMore } from "@mui/icons-material";
 import { DailyChart, DailyChartLegend } from "./DailyChart";
 import { ColorSwatch, getDraftColors, outlinedCardSx } from "./shared";
-import { buildDayCells, formatDayLabel, formatNumber, formatPercent, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, percentOf, toIsoDate } from "./utils";
+import { buildDayCells, formatDayLabel, formatNumber, formatPercent, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, pendingOf, percentOf, toIsoDate } from "./utils";
 import { AuroraMetrics, DailyTrendProps, StatTileProps, MonthTotalsProps, DailyNumbersTableProps } from "./aurora.model";
 
 /* ───────── Month totals ───────── */
@@ -51,14 +51,14 @@ const StatTile: React.FC<StatTileProps> = ({ title, value, caption, swatchColor,
 
 const MonthTotals: React.FC<MonthTotalsProps> = ({ metrics, periodLabel }) => {
   const colors = getDraftColors(useTheme());
-  const { tickets_received: received, drafts_created: drafts, drafts_accepted: accepted, drafts_rejected: rejected } = metrics;
+  const { tickets_received: received, tickets_processed: processed, drafts_created: drafts, drafts_accepted: accepted, drafts_rejected: rejected } = metrics;
 
   const tiles: StatTileProps[] = [
     { title: "Total received", value: received, caption: periodLabel, swatchColor: colors.received, swatchVariant: "outline" },
     {
       title: "Drafts created",
       value: drafts,
-      caption: received ? `${percentOf(drafts, received)}% of tickets got a draft` : "—",
+      caption: `for ${formatNumber(processed)} tickets processed`,
     },
     {
       title: "Accepted",
@@ -69,7 +69,7 @@ const MonthTotals: React.FC<MonthTotalsProps> = ({ metrics, periodLabel }) => {
     {
       title: "Rejected",
       value: rejected,
-      caption: drafts ? `${percentOf(rejected, drafts)}% of drafts` : "—",
+      caption: drafts ? `${percentOf(rejected, drafts)}% of drafts, ${formatNumber(pendingOf(metrics))} pending` : "—",
       swatchColor: colors.rejected,
       swatchVariant: "hatched",
     },
@@ -88,7 +88,7 @@ const MonthTotals: React.FC<MonthTotalsProps> = ({ metrics, periodLabel }) => {
 
 /* ───────── Daily numbers table ───────── */
 
-const DAILY_COLUMNS = ["Received", "Drafts created", "Accepted", "Rejected", "Success rate"];
+const DAILY_COLUMNS = ["Received", "Drafts created", "Accepted", "Rejected", "Pending", "Success rate"];
 
 const DailyMetricCells: React.FC<{ metrics: AuroraMetrics }> = ({ metrics }) => {
   const tone = getMetricsTone(metrics);
@@ -98,6 +98,7 @@ const DailyMetricCells: React.FC<{ metrics: AuroraMetrics }> = ({ metrics }) => 
       <TableCell align="right">{formatNumber(metrics.drafts_created)}</TableCell>
       <TableCell align="right">{formatNumber(metrics.drafts_accepted)}</TableCell>
       <TableCell align="right">{formatNumber(metrics.drafts_rejected)}</TableCell>
+      <TableCell align="right">{formatNumber(pendingOf(metrics))}</TableCell>
       <TableCell align="right" sx={{ color: tone === "default" ? "text.secondary" : `${tone}.main`, fontWeight: 600 }}>
         {hasDrafts(metrics) ? formatPercent(metrics.success_rate) : "—"}
       </TableCell>

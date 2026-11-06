@@ -1,12 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, Grid2, LinearProgress, MenuItem, SxProps, TextField, Theme, ThemeProvider, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, FormControlLabel, Grid2, LinearProgress, MenuItem, Switch, SxProps, TextField, Theme, ThemeProvider, Typography } from "@mui/material";
+import { Refresh } from "@mui/icons-material";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { DailyTrend } from "./DailyTrend";
 import { SummaryCard } from "./SummaryCard";
 import { StepButton, ThemeModeToggle, noTextTransformSx, outlinedCardSx, useDashboardTheme } from "./shared";
 import { useAuroraOverview } from "./useAuroraOverview";
 import { addDays, countDaysInclusive, formatDateRange, formatDayLabel, formatMonthLong, formatMonthShort, getMonthOptions, getPreviousMonth, isSameDay, parseIsoDate, toIsoDate } from "./utils";
-import { DashboardContentProps, MonthPickerProps, ThemeMode } from "./aurora.model";
+import { DashboardContentProps, MonthPickerProps, RefreshControlsProps, ThemeMode } from "./aurora.model";
+
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Bordered strip holding the page title, month picker and theme switch. */
 const headerSx: SxProps<Theme> = {
@@ -67,17 +70,49 @@ const MonthPicker: React.FC<MonthPickerProps> = ({ options, selectedMonth, lates
   );
 };
 
-const DashboardContent: React.FC<DashboardContentProps> = ({ themeMode, onThemeModeChange }) => {
-  const { overview, isLoading, isRefreshing, error, loadOverview, retry, clearError } = useAuroraOverview();
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+/** Last-updated time, a manual Refresh button and the auto-refresh switch (auto-refresh can be paused). */
+const RefreshControls: React.FC<RefreshControlsProps> = ({ updatedAt, isAutoRefreshOn, disabled = false, onRefresh, onAutoRefreshChange }) => (
+  <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
+    <Typography variant="body2" color="text.secondary">
+      Updated{" "}
+      <Box component="strong" sx={{ color: "text.primary", fontWeight: 600 }}>
+        {updatedAt ? updatedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+      </Box>
+    </Typography>
+    <Button size="small" variant="outlined" startIcon={<Refresh />} disabled={disabled} onClick={onRefresh} sx={noTextTransformSx}>
+      Refresh
+    </Button>
+    <FormControlLabel
+      control={<Switch size="small" checked={isAutoRefreshOn} onChange={(event) => onAutoRefreshChange(event.target.checked)} />}
+      label={<Typography variant="body2">Auto-refresh</Typography>}
+      sx={{ mr: 0 }}
+    />
+  </Box>
+);
 
-  // Every response says which week holds the selected day; follow it.
+const DashboardContent: React.FC<DashboardContentProps> = ({ themeMode, onThemeModeChange }) => {
+  const { loaded, overview, updatedAt, isLoading, isRefreshing, error, loadOverview, retry, clearError } = useAuroraOverview();
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(0);
+  const [isAutoRefreshOn, setIsAutoRefreshOn] = useState(true);
+  const refreshRef = useRef<() => void>(() => undefined);
+
+  // Every response says which week holds the selected day; follow it. A refresh keeps the
+  // week the viewer picked, unless that week no longer has data.
   useEffect(() => {
-    if (overview) {
-      const selectedDayWeekIndex = overview.selection.week_index - 1;
-      setSelectedWeekIndex(Math.min(Math.max(selectedDayWeekIndex, 0), overview.weeks.length - 1));
-    }
-  }, [overview]);
+    if (!loaded) return;
+    const { overview: loadedOverview, isRefresh } = loaded;
+    const { weeks, selection } = loadedOverview;
+    setSelectedWeekIndex((current) => {
+      const canKeepCurrent = isRefresh && current < weeks.length && weeks[current].status !== "upcoming";
+      return canKeepCurrent ? current : Math.min(Math.max(selection.week_index - 1, 0), weeks.length - 1);
+    });
+  }, [loaded]);
+
+  useEffect(() => {
+    if (!isAutoRefreshOn) return undefined;
+    const timer = window.setInterval(() => refreshRef.current(), AUTO_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [isAutoRefreshOn]);
 
   const monthOptions = useMemo(() => (overview ? getMonthOptions(overview.meta.months.earliest, overview.meta.months.latest) : []), [overview]);
 
@@ -123,6 +158,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ themeMode, onThemeM
   const startedWeekCount = weeks.filter((week) => week.status !== "upcoming").length;
   const weekNote = selectedWeek.status === "in_progress" ? "In progress" : weekLength < 7 ? `${weekLength} days` : undefined;
 
+  // Reloads the current selection in place. Skipped while another load is running, so a timer
+  // tick never replaces a month or day the viewer has just asked for.
+  const refresh = () => {
+    if (isBusy) return;
+    loadOverview({ month: month.id, date: day.date, week_index: weekIndex + 1 }, { keepCurrentData: true, isRefresh: true });
+  };
+  refreshRef.current = refresh;
+
   const showMonth = (monthId: string) => loadOverview({ month: monthId });
   const showCurrentMonth = () => loadOverview({});
   const showDay = (date: Date) => {
@@ -155,7 +198,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ themeMode, onThemeM
         <PageTitle />
         <Box sx={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", gap: 2 }}>
           <MonthPicker options={monthOptions} selectedMonth={month.id} latestMonth={meta.months.latest} disabled={isBusy} onMonthChange={showMonth} onCurrentMonth={showCurrentMonth} />
-          <ThemeModeToggle mode={themeMode} onChange={onThemeModeChange} />
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: { xs: "flex-start", md: "flex-end" }, gap: 1 }}>
+            <RefreshControls updatedAt={updatedAt} isAutoRefreshOn={isAutoRefreshOn} disabled={isBusy} onRefresh={refresh} onAutoRefreshChange={setIsAutoRefreshOn} />
+            <ThemeModeToggle mode={themeMode} onChange={onThemeModeChange} />
+          </Box>
         </Box>
       </Box>
 
@@ -205,6 +251,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ themeMode, onThemeM
         {/* Keyed by month so sorting, period and expanded rows reset on a new month. */}
         <CategoryBreakdown key={month.id} overview={overview} selectedWeekIndex={weekIndex} />
       </Box>
+
+      <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 3 }}>
+        {isAutoRefreshOn ? "Refreshes every 5 minutes." : "Auto-refresh is off."} Data from the Zoho Desk REST API.
+      </Typography>
     </Box>
   );
 };

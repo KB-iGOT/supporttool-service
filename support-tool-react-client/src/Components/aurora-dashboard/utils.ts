@@ -59,6 +59,9 @@ export const percentOf = (part: number, total: number): number => (total ? Math.
 
 export const hasDrafts = (metrics: AuroraMetrics | null | undefined): metrics is AuroraMetrics => !!metrics && metrics.drafts_created > 0;
 
+/** Drafts not yet accepted or rejected; treated as 0 if the API leaves the field out. */
+export const pendingOf = (metrics: AuroraMetrics | null | undefined): number => metrics?.drafts_pending ?? 0;
+
 export const getSuccessTone = (successRate: number | null | undefined): SuccessTone => {
   if (successRate == null) return "default";
   if (successRate >= SUCCESS_THRESHOLD) return "success";
