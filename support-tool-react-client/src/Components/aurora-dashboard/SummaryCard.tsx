@@ -3,8 +3,8 @@ import { Box, Card, CardContent, Chip, Divider, Typography, useTheme } from "@mu
 import { ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
 import { Chart as ChartJS, ArcElement, Tooltip, ChartData, ChartOptions } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
-import { ColorSwatch, outlinedCardSx } from "./shared";
-import { formatNumber, getMetricsTone, hasDrafts, percentOf } from "./utils";
+import { ColorSwatch, getDraftColors, outlinedCardSx } from "./shared";
+import { formatNumber, getMetricsTone, hasDrafts, pendingOf } from "./utils";
 import { SummaryCardProps, SuccessDeltaChipProps } from "./aurora.model";
 
 ChartJS.register(ArcElement, Tooltip);
@@ -39,18 +39,26 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ kind, title, note, met
   const valueVariant = isLarge ? "h4" : "h5";
   const tone = getMetricsTone(metrics);
   const toneColor = tone === "default" ? theme.palette.text.secondary : theme.palette[tone].main;
-  const acceptedColor = theme.palette.success.main;
-  const rejectedColor = theme.palette.error.light;
+  const colors = getDraftColors(theme);
+  const pending = pendingOf(metrics);
+  const ringSegments = hasDrafts(metrics)
+    ? [
+        { label: "Accepted", value: metrics.drafts_accepted, color: colors.accepted },
+        { label: "Rejected", value: metrics.drafts_rejected, color: colors.rejected },
+        { label: "Pending", value: pending, color: colors.pending },
+      ].filter((segment) => segment.value > 0)
+    : [];
 
-  const ringData: ChartData<"doughnut"> = hasDrafts(metrics)
+  const ringData: ChartData<"doughnut"> = ringSegments.length
     ? {
-        labels: ["Accepted", "Rejected"],
+        labels: ringSegments.map((segment) => segment.label),
         datasets: [
           {
-            data: [metrics.drafts_accepted, metrics.drafts_rejected],
-            backgroundColor: [acceptedColor, rejectedColor],
+            data: ringSegments.map((segment) => segment.value),
+            backgroundColor: ringSegments.map((segment) => segment.color),
             borderColor: theme.palette.background.paper,
-            borderWidth: metrics.drafts_accepted && metrics.drafts_rejected ? 2 : 0,
+            // Gaps between segments only when there is more than one.
+            borderWidth: ringSegments.length > 1 ? 2 : 0,
           },
         ],
       }
@@ -63,10 +71,12 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ kind, title, note, met
     cutout: "74%",
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { enabled: hasDrafts(metrics) } },
+    plugins: { legend: { display: false }, tooltip: { enabled: ringSegments.length > 0 } },
   };
 
-  const ringLabel = hasDrafts(metrics) ? `${metrics.success_rate}% success: ${metrics.drafts_accepted} accepted, ${metrics.drafts_rejected} rejected` : "No drafts yet";
+  const ringLabel = hasDrafts(metrics)
+    ? `${metrics.success_rate}% success: ${formatNumber(metrics.drafts_accepted)} accepted, ${formatNumber(metrics.drafts_rejected)} rejected, ${formatNumber(pending)} pending`
+    : "No drafts yet";
 
   return (
     <Card sx={{ ...outlinedCardSx, height: "100%" }}>
@@ -119,17 +129,21 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ kind, title, note, met
                     {formatNumber(metrics.drafts_created)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    drafts created
+                    drafts created for {formatNumber(metrics.tickets_processed)} tickets processed
                   </Typography>
                 </Box>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                   <Typography variant="body2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <ColorSwatch color={acceptedColor} />
+                    <ColorSwatch color={colors.accepted} />
                     <b>{formatNumber(metrics.drafts_accepted)}</b> accepted
                   </Typography>
                   <Typography variant="body2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <ColorSwatch color={rejectedColor} variant="hatched" />
+                    <ColorSwatch color={colors.rejected} variant="hatched" />
                     <b>{formatNumber(metrics.drafts_rejected)}</b> rejected
+                  </Typography>
+                  <Typography variant="body2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <ColorSwatch color={colors.pending} />
+                    <b>{formatNumber(pending)}</b> pending
                   </Typography>
                 </Box>
                 {comparison && <SuccessDeltaChip metrics={metrics} comparison={comparison} />}
@@ -148,7 +162,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ kind, title, note, met
             {formatNumber(metrics?.tickets_received ?? 0)}
           </Box>{" "}
           tickets received
-          {metrics?.tickets_received ? `, ${percentOf(metrics.drafts_created, metrics.tickets_received)}% got a draft` : ""}
         </Typography>
       </CardContent>
     </Card>

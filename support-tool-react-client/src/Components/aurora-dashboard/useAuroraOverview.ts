@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { auroraService } from "../../services/aurora.service";
-import { AuroraOverview, AuroraOverviewParams, LoadOptions } from "./aurora.model";
+import { AuroraOverviewParams, LoadOptions, LoadedOverview } from "./aurora.model";
 
 /**
  * Loads the Aurora dashboard overview. Only the most recent request updates
  * state, so fast clicks through months or days never show stale data.
  */
 export const useAuroraOverview = () => {
-  const [overview, setOverview] = useState<AuroraOverview | null>(null);
+  const [loaded, setLoaded] = useState<LoadedOverview | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const latestRequestId = useRef(0);
   const lastParams = useRef<AuroraOverviewParams>({});
 
-  const loadOverview = useCallback(async (params: AuroraOverviewParams, { keepCurrentData = false }: LoadOptions = {}) => {
+  const loadOverview = useCallback(async (params: AuroraOverviewParams, { keepCurrentData = false, isRefresh = false }: LoadOptions = {}) => {
     const requestId = ++latestRequestId.current;
     lastParams.current = params;
     if (keepCurrentData) {
@@ -27,7 +28,8 @@ export const useAuroraOverview = () => {
     try {
       const response = await auroraService.getDashboardOverview(params);
       if (requestId === latestRequestId.current) {
-        setOverview(response);
+        setLoaded({ overview: response, isRefresh });
+        setUpdatedAt(new Date());
       }
     } catch (err: any) {
       if (requestId === latestRequestId.current) {
@@ -50,5 +52,5 @@ export const useAuroraOverview = () => {
     loadOverview({});
   }, [loadOverview]);
 
-  return { overview, isLoading, isRefreshing, error, loadOverview, retry, clearError };
+  return { loaded, overview: loaded?.overview ?? null, updatedAt, isLoading, isRefreshing, error, loadOverview, retry, clearError };
 };

@@ -69,11 +69,12 @@ export const outlinedCardSx = {
 
 export const noTextTransformSx: SxProps<Theme> = { textTransform: "none" };
 
-/** Colours for received tickets and accepted / rejected drafts, used by every chart and legend. */
+/** Colours for received tickets and accepted / rejected / pending drafts, used by every chart and legend. */
 export const getDraftColors = (theme: Theme) => ({
   received: theme.palette.text.secondary,
   accepted: theme.palette.success.main,
   rejected: theme.palette.error.light,
+  pending: theme.palette.action.disabledBackground,
 });
 
 /** Diagonal stripes, so rejected drafts stay distinguishable without relying on colour alone. */

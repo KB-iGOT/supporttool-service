@@ -19,8 +19,8 @@ import {
   useTheme,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowRight, UnfoldLess, UnfoldMore } from "@mui/icons-material";
-import { hatchedFill, noTextTransformSx, outlinedCardSx } from "./shared";
-import { formatDateRange, formatDayLabel, formatMonthLong, formatMonthShort, formatNumber, formatShortDate, getMetricsTone, hasDrafts, humanizeLabel, parseIsoDate } from "./utils";
+import { getDraftColors, hatchedFill, noTextTransformSx, outlinedCardSx } from "./shared";
+import { formatDateRange, formatDayLabel, formatMonthLong, formatMonthShort, formatNumber, formatShortDate, getMetricsTone, hasDrafts, humanizeLabel, parseIsoDate, pendingOf } from "./utils";
 import { AuroraMetrics, AuroraCategory, PeriodScope, SortOrder, CategoryBreakdownProps, DraftSplitBarProps, CategoryRowsProps } from "./aurora.model";
 
 /** Hides the number columns on small screens; the success chip stays visible. */
@@ -41,17 +41,20 @@ const SuccessChip: React.FC<{ metrics: AuroraMetrics }> = ({ metrics }) => {
   return <Chip size="small" color={tone} label={hasDrafts(metrics) ? `${metrics.success_rate}%` : "—"} sx={{ minWidth: 64, fontWeight: 700 }} />;
 };
 
-/** Bar whose length is the draft count and whose split is accepted vs rejected. */
+/** Bar whose length is the draft count and whose split is accepted vs rejected vs pending. */
 const DraftSplitBar: React.FC<DraftSplitBarProps> = ({ metrics, maxDrafts, isThin = false }) => {
-  const theme = useTheme();
+  const colors = getDraftColors(useTheme());
+  const pending = pendingOf(metrics);
+  const summary = `${formatNumber(metrics.drafts_accepted)} accepted, ${formatNumber(metrics.drafts_rejected)} rejected, ${formatNumber(pending)} pending`;
   const minVisibleWidth = metrics.drafts_created ? 3 : 0;
   const widthPercent = Math.max((metrics.drafts_created / maxDrafts) * 100, minVisibleWidth);
 
   return (
-    <Tooltip title={`${formatNumber(metrics.drafts_accepted)} accepted, ${formatNumber(metrics.drafts_rejected)} rejected`} placement="top">
-      <Box sx={{ display: "flex", gap: "2px", height: isThin ? 8 : 12, width: `${widthPercent}%`, borderRadius: 1, overflow: "hidden" }}>
-        {metrics.drafts_accepted > 0 && <Box sx={{ flex: metrics.drafts_accepted, bgcolor: theme.palette.success.main }} />}
-        {metrics.drafts_rejected > 0 && <Box sx={{ flex: metrics.drafts_rejected, background: hatchedFill(theme.palette.error.light) }} />}
+    <Tooltip title={summary} placement="top">
+      <Box role="img" aria-label={summary} sx={{ display: "flex", gap: "2px", height: isThin ? 8 : 12, width: `${widthPercent}%`, borderRadius: 1, overflow: "hidden" }}>
+        {metrics.drafts_accepted > 0 && <Box sx={{ flex: metrics.drafts_accepted, bgcolor: colors.accepted }} />}
+        {metrics.drafts_rejected > 0 && <Box sx={{ flex: metrics.drafts_rejected, background: hatchedFill(colors.rejected) }} />}
+        {pending > 0 && <Box sx={{ flex: pending, bgcolor: colors.pending }} />}
       </Box>
     </Tooltip>
   );
@@ -227,7 +230,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ overview, 
             <TableHead>
               <TableRow>
                 <TableCell sx={{ minWidth: 220 }}>Category</TableCell>
-                <TableCell sx={{ ...barColumnSx, width: "28%" }}>Drafts: accepted vs rejected</TableCell>
+                <TableCell sx={{ ...barColumnSx, width: "28%" }}>Drafts created, accepted vs rejected</TableCell>
                 <TableCell align="right" sx={numberColumnSx}>
                   Received
                 </TableCell>

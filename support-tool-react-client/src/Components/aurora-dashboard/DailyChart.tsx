@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Tooltip, Typography, alpha, useTheme } from "@mui/material";
 import { ColorSwatch, getDraftColors, hatchedFill } from "./shared";
-import { SUCCESS_THRESHOLD, addDays, countDaysInclusive, formatDateRange, formatDayLabel, formatNumber, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, toIsoDate } from "./utils";
+import { SUCCESS_THRESHOLD, addDays, countDaysInclusive, formatDateRange, formatDayLabel, formatNumber, getMetricsTone, hasDrafts, isSameDay, parseIsoDate, pendingOf, toIsoDate } from "./utils";
 import { DailyChartProps, DayCell, DayColumnProps, WeekBandsProps } from "./aurora.model";
 
 /** Heights in px of the chart rows, top to bottom. */
@@ -56,7 +56,9 @@ const buildRatePath = (dayCells: DayCell[], rateFloor: number) => {
 const describeDay = (cell: DayCell) => {
   const metrics = cell.metrics;
   const received = metrics?.tickets_received ?? 0;
-  const summary = hasDrafts(metrics) ? `${metrics.drafts_created} drafts, ${metrics.drafts_accepted} accepted, ${metrics.drafts_rejected} rejected, ${metrics.success_rate}% success` : "no drafts";
+  const summary = hasDrafts(metrics)
+    ? `${metrics.drafts_created} drafts, ${metrics.drafts_accepted} accepted, ${metrics.drafts_rejected} rejected, ${pendingOf(metrics)} pending, ${metrics.success_rate}% success`
+    : "no drafts";
   return `${formatDayLabel(cell.date)}: ${received} received, ${summary}`;
 };
 
@@ -71,6 +73,7 @@ export const DailyChartLegend: React.FC = () => {
     { label: "Received", key: <ColorSwatch color={colors.received} variant="outline" /> },
     { label: "Accepted", key: <ColorSwatch color={colors.accepted} /> },
     { label: "Rejected", key: <ColorSwatch color={colors.rejected} variant="hatched" /> },
+    { label: "Pending", key: <ColorSwatch color={colors.pending} /> },
     { label: "Success rate", key: lineKey("solid", theme.palette.text.primary) },
     { label: `${SUCCESS_THRESHOLD}% mark`, key: lineKey("dashed", theme.palette.text.secondary) },
   ];
@@ -154,7 +157,7 @@ const WeekBands: React.FC<WeekBandsProps> = ({ weeks, selectedWeekIndex, onWeekC
 
 /* ───────── Day column ───────── */
 
-/** One day: received outline with accepted / rejected drafts inside, the success-rate dot, and the date. */
+/** One day: received outline with accepted / rejected / pending drafts inside, the success-rate dot, and the date. */
 const DayColumn: React.FC<DayColumnProps> = ({ cell, dayOffset, volumeScaleMax, rateFloor, isInSelectedWeek, isSelected, isToday, isFuture, onDaySelect }) => {
   const theme = useTheme();
   const colors = getDraftColors(theme);
@@ -201,7 +204,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ cell, dayOffset, volumeScaleMax, 
         "&:focus-visible": { outline: `3px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
       }}
     >
-      {/* Volume: dashed outline for received, stacked rejected (top) and accepted (bottom) drafts inside it */}
+      {/* Volume: dashed outline for received, stacked pending (top), rejected and accepted (bottom) drafts inside it */}
       <Box sx={{ height: LAYOUT.volume, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
         {(received > 0 || drafts > 0) && (
           <Box sx={{ position: "relative", width: "62%", maxWidth: 22, height: "100%" }}>
@@ -234,6 +237,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ cell, dayOffset, volumeScaleMax, 
                   overflow: "hidden",
                 }}
               >
+                <Box sx={{ flex: pendingOf(metrics), bgcolor: colors.pending }} />
                 <Box sx={{ flex: metrics!.drafts_rejected, background: hatchedFill(colors.rejected) }} />
                 <Box sx={{ flex: metrics!.drafts_accepted, bgcolor: colors.accepted }} />
               </Box>
@@ -297,7 +301,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ cell, dayOffset, volumeScaleMax, 
             <>
               {formatNumber(drafts)} drafts created
               <br />
-              {formatNumber(metrics.drafts_accepted)} accepted, {formatNumber(metrics.drafts_rejected)} rejected
+              {formatNumber(metrics.drafts_accepted)} accepted, {formatNumber(metrics.drafts_rejected)} rejected, {formatNumber(pendingOf(metrics))} pending
               <br />
               <b>{metrics.success_rate}% success</b>
             </>
@@ -316,7 +320,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ cell, dayOffset, volumeScaleMax, 
 
 /**
  * Day-by-day chart, matching the original Aurora dashboard: week bands on top, one column per
- * day (received outline with accepted / rejected drafts inside) and a success-rate strip below.
+ * day (received outline with accepted / rejected / pending drafts inside) and a success-rate strip below.
  * Every week band and day is a button, so the chart works with the keyboard and screen readers.
  */
 export const DailyChart: React.FC<DailyChartProps> = ({ dayCells, weeks, selectedWeekIndex, selectedDay, today, onDaySelect, onWeekChange }) => {

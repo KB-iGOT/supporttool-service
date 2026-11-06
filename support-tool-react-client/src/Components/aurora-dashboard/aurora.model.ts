@@ -4,11 +4,13 @@ import { ReactNode } from "react";
 
 export interface AuroraMetrics {
   tickets_received: number;
+  tickets_processed: number;
   drafts_created: number;
   drafts_accepted: number;
   drafts_rejected: number;
+  /** Drafts not yet accepted or rejected. */
+  drafts_pending: number;
   success_rate: number | null;
-  draft_coverage: number | null;
 }
 
 export interface AuroraCategory {
@@ -81,6 +83,14 @@ export interface DayCell {
 export interface LoadOptions {
   /** Keep the current data on screen while loading, instead of the full-page loader. */
   keepCurrentData?: boolean;
+  /** A reload of the same selection (Refresh button or auto-refresh); the page keeps its selected week. */
+  isRefresh?: boolean;
+}
+
+/** A response together with how it was requested, set in one update so they never disagree. */
+export interface LoadedOverview {
+  overview: AuroraOverview;
+  isRefresh: boolean;
 }
 
 /* ───────── Theme ───────── */
@@ -94,7 +104,7 @@ export interface ThemeModeToggleProps {
 
 /* ───────── Shared components ───────── */
 
-/** solid: accepted; outline: received (dashed); hatched: rejected. */
+/** solid: accepted or pending; outline: received (dashed); hatched: rejected. */
 export type SwatchVariant = "solid" | "outline" | "hatched";
 
 export interface ColorSwatchProps {
@@ -114,6 +124,15 @@ export interface StepButtonProps {
 export interface DashboardContentProps {
   themeMode: ThemeMode;
   onThemeModeChange: (mode: ThemeMode) => void;
+}
+
+export interface RefreshControlsProps {
+  /** When the data on screen was last loaded; null before the first load. */
+  updatedAt: Date | null;
+  isAutoRefreshOn: boolean;
+  disabled?: boolean;
+  onRefresh: () => void;
+  onAutoRefreshChange: (isOn: boolean) => void;
 }
 
 export interface MonthPickerProps {
