@@ -18,6 +18,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import { usersService } from '../../../services/users.service';
 import { useActionInterceptor } from '../../../hooks/useActionInterceptor';
 import { JsonViewerDialog } from '../../common-components/JsonViewerDialog';
+import { normalizeExternalCourse } from '../../../utils/certificateUtils';
 import {
   StatusFilterPills,
   SearchBar,
@@ -127,18 +128,10 @@ export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdPr
       
       if (contentResponse.result && contentResponse.result.courses && Array.isArray(contentResponse.result.courses)) {
         let courses = contentResponse.result.courses;
-        let externalCourses = contentResponse.result.external_courses;
+        let externalCourses = contentResponse.result.external_courses || [];
 
         // Normalize external courses to match the structure of regular courses
-        const normalizedExternalCourses = externalCourses.map((extCourse: any) => ({
-          ...extCourse,
-          courseName: extCourse.content?.name || 'N/A',
-          courseLogoUrl: extCourse.content?.appIcon,
-          contentId: extCourse.courseId,
-          collectionId: extCourse.courseId,
-          active: extCourse.content?.isActive,
-          // Add other key mappings here if needed
-        }));
+        const normalizedExternalCourses = externalCourses.map(normalizeExternalCourse);
 
         let combinedCourses = [...courses, ...normalizedExternalCourses];
 
@@ -232,7 +225,7 @@ export const ReissueCertificate: React.FC<ReissueCertificateProps> = ({ userIdPr
     if (contentEnrollments.length > 0) {
       const filtered = contentEnrollments.filter(
         item => 
-          item.courseName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          (item.courseName || '').toLowerCase().includes(searchQuery.toLowerCase()) &&
           selectedStatuses.includes(item.status)
       );
       setFilteredContent(filtered);

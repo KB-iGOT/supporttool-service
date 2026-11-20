@@ -38,6 +38,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SchoolIcon from '@mui/icons-material/School';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { normalizeExternalCourse, fitSvgForPreview } from '../../utils/certificateUtils';
 import DownloadIcon from '@mui/icons-material/Download';
 import CodeIcon from '@mui/icons-material/Code';
 import ImageIcon from '@mui/icons-material/Image';
@@ -260,6 +261,7 @@ const CertificatesView: React.FC<CertificatesViewProps> = ({ ticketDetails, user
     // Certificate Dialog
     const [certDialogOpen, setCertDialogOpen] = useState(false);
     const [certificateData, setCertificateData] = useState<string | null>(null);
+    const certificatePreview = React.useMemo(() => fitSvgForPreview(certificateData), [certificateData]);
     const [loadingCert, setLoadingCert] = useState(false);
     const [certError, setCertError] = useState<string | null>(null);
     const [selectedCertId, setSelectedCertId] = useState<string | null>(null);
@@ -294,12 +296,7 @@ const CertificatesView: React.FC<CertificatesViewProps> = ({ ticketDetails, user
             const response = await usersService.getUserContentEnrollList(userId);
             if (response?.result?.courses) {
                 let courses = response.result.courses || [];
-                let externalCourses = (response.result.external_courses || []).map((c: any) => ({
-                    ...c,
-                    courseName: c.content?.name || 'N/A',
-                    courseLogoUrl: c.content?.appIcon,
-                    contentId: c.courseId,
-                }));
+                let externalCourses = (response.result.external_courses || []).map(normalizeExternalCourse);
                 const combined = [...courses, ...externalCourses];
                 setContentEnrollments(combined);
                 setFilteredContent(combined);
@@ -676,7 +673,7 @@ const CertificatesView: React.FC<CertificatesViewProps> = ({ ticketDetails, user
                         <Alert severity="error">{certError}</Alert>
                     ) : certificateData ? (
                         <Box sx={{ width: '100%', height: 500, overflow: 'auto', border: '1px solid #eee', p: 2, display: 'flex', justifyContent: 'center' }}>
-                            <Box component="object" data={certificateData} type="image/svg+xml" sx={{ width: '100%', height: '100%' }} />
+                            <Box component="object" data={certificatePreview || certificateData} type="image/svg+xml" sx={{ width: '100%', height: '100%' }} />
                         </Box>
                     ) : (
                         <Typography>No certificate data</Typography>
