@@ -59,10 +59,10 @@ const CollapsibleRow: React.FC<CollapsibleRowProps> = ({
         </TableCell>
         <TableCell>
           <Box display="flex" alignItems="center">
-            {enrollment.courseLogoUrl && (
+            {(enrollment.courseLogoUrl || enrollment?.content?.posterImage || enrollment?.content?.appIcon) && (
               <Box
                 component="img"
-                src={enrollment.content.posterImage || enrollment?.content?.appIcon}
+                src={enrollment?.content?.posterImage || enrollment?.content?.appIcon || enrollment.courseLogoUrl}
                 alt=""
                 sx={{ width: 40, height: 40, mr: 2, borderRadius: 1 }}
               />

@@ -19,6 +19,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { CertificateDialogProps } from '../types';
+import { fitSvgForPreview } from '../../../../utils/certificateUtils';
 
 export const CertificateDialog: React.FC<CertificateDialogProps> = ({
   open,
@@ -34,6 +35,9 @@ export const CertificateDialog: React.FC<CertificateDialogProps> = ({
   onDownloadAsPNG,
   onDownloadAsPDF
 }) => {
+  // Display-only copy scaled to fit the dialog; downloads use the original data
+  const previewData = React.useMemo(() => fitSvgForPreview(certificateData), [certificateData]);
+
   return (
     <Dialog 
       open={open} 
@@ -99,15 +103,15 @@ export const CertificateDialog: React.FC<CertificateDialogProps> = ({
           <Box sx={{ 
             width: '100%', 
             height: '500px', 
-            overflow: 'auto', 
+            overflow: 'auto',
             border: '1px solid #eee',
             p: 2,
             display: 'flex',
             justifyContent: 'center'
           }}>
-            <Box 
+            <Box
               component="object"
-              data={certificateData}
+              data={previewData || certificateData}
               type="image/svg+xml"
               sx={{ width: '100%', height: '100%' }}
             />
